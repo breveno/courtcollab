@@ -35,8 +35,13 @@ Deals
   PATCH  /api/deals/{id}/status
 
 Messages
-  POST   /api/messages
-  GET    /api/messages/{other_user_id}
+  GET    /api/conversations                  — all threads, last message + unread count
+  POST   /api/messages                       — send; fan-out to WS if receiver online
+  GET    /api/messages/{other_user_id}       — full thread, marks all as read
+  PATCH  /api/messages/{message_id}/read     — explicit single-message read receipt
+
+WebSocket
+  WS     /ws?token=<jwt>                     — real-time delivery channel
 
 Payments
   POST   /api/payments
@@ -50,7 +55,7 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -72,6 +77,41 @@ pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer  = HTTPBearer()
 
 # ---------------------------------------------------------------------------
+# WebSocket connection manager
+# ---------------------------------------------------------------------------
+
+class ConnectionManager:
+    """Tracks one active WebSocket per user (last connection wins)."""
+
+    def __init__(self):
+        self._conns: dict = {}   # user_id -> WebSocket
+
+    async def connect(self, user_id: int, ws: WebSocket):
+        await ws.accept()
+        self._conns[user_id] = ws
+
+    def disconnect(self, user_id: int):
+        self._conns.pop(user_id, None)
+
+    async def send(self, user_id: int, payload: dict) -> bool:
+        """Push JSON to a user if they are connected. Returns True if delivered."""
+        ws = self._conns.get(user_id)
+        if not ws:
+            return False
+        try:
+            await ws.send_json(payload)
+            return True
+        except Exception:
+            self.disconnect(user_id)
+            return False
+
+    def online_ids(self) -> list:
+        return list(self._conns.keys())
+
+
+manager = ConnectionManager()
+
+# ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
 
@@ -88,6 +128,46 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     init_db()
+
+
+# ---------------------------------------------------------------------------
+# WebSocket endpoint
+# ---------------------------------------------------------------------------
+
+@app.websocket("/ws")
+async def websocket_endpoint(ws: WebSocket, token: str = Query(...)):
+    """
+    Connect:  ws://localhost:8000/ws?token=<jwt>
+    Receive:  JSON messages pushed by the server when someone messages you.
+    Send:     ping frames {"type":"ping"} — server echoes {"type":"pong"}.
+
+    Payload shape for incoming messages:
+    {
+      "type":       "message",
+      "id":         <int>,
+      "sender_id":  <int>,
+      "sender_name":"...",
+      "body":       "...",
+      "deal_id":    <int|null>,
+      "created_at": "..."
+    }
+    """
+    try:
+        user_id = _decode_token(token)
+    except HTTPException:
+        await ws.close(code=4001)
+        return
+
+    await manager.connect(user_id, ws)
+    try:
+        while True:
+            data = await ws.receive_json()
+            if isinstance(data, dict) and data.get("type") == "ping":
+                await ws.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)
+    except Exception:
+        manager.disconnect(user_id)
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -827,26 +907,93 @@ class MessageIn(BaseModel):
 # Routes — Messages
 # ---------------------------------------------------------------------------
 
+@app.get("/api/conversations")
+def list_conversations(user: dict = Depends(current_user)):
+    """
+    Return one entry per unique conversation partner, ordered by most recent
+    message.  Each entry includes partner info, last message preview, and
+    unread count (messages sent TO the current user that have no read_at).
+    """
+    uid = user["id"]
+    with get_conn() as conn:
+        # All unique partner IDs the current user has exchanged messages with
+        pairs = _rows(conn, """
+            SELECT DISTINCT
+              CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END AS partner_id
+            FROM messages
+            WHERE sender_id = ? OR receiver_id = ?
+        """, (uid, uid, uid))
+
+        results = []
+        for p in pairs:
+            pid = p["partner_id"]
+
+            partner = _row(conn, "SELECT id, name, initials, role FROM users WHERE id = ?", (pid,))
+            if not partner:
+                continue
+
+            last_msg = _row(conn, """
+                SELECT * FROM messages
+                WHERE (sender_id = ? AND receiver_id = ?)
+                   OR (sender_id = ? AND receiver_id = ?)
+                ORDER BY created_at DESC, id DESC LIMIT 1
+            """, (uid, pid, pid, uid))
+
+            unread = conn.execute("""
+                SELECT COUNT(*) FROM messages
+                WHERE sender_id = ? AND receiver_id = ? AND read_at IS NULL
+            """, (pid, uid)).fetchone()[0]
+
+            results.append({
+                "partner":      partner,
+                "last_message": last_msg,
+                "unread_count": unread,
+            })
+
+        # Sort by most recent message first
+        results.sort(
+            key=lambda x: x["last_message"]["created_at"] if x["last_message"] else "",
+            reverse=True,
+        )
+    return results
+
+
 @app.post("/api/messages", status_code=201)
-def send_message(body: MessageIn, user: dict = Depends(current_user)):
+async def send_message(body: MessageIn, user: dict = Depends(current_user)):
     if body.receiver_id == user["id"]:
         raise HTTPException(400, "Cannot message yourself")
+
     with get_conn() as conn:
-        receiver = _row(conn, "SELECT id FROM users WHERE id = ?", (body.receiver_id,))
+        receiver = _row(conn, "SELECT id, name FROM users WHERE id = ?", (body.receiver_id,))
         if not receiver:
             raise HTTPException(404, "Recipient not found")
-        cur = conn.execute("""
-            INSERT INTO messages (sender_id, receiver_id, body, deal_id)
-            VALUES (?,?,?,?)
-        """, (user["id"], body.receiver_id, body.body, body.deal_id))
+        cur = conn.execute(
+            "INSERT INTO messages (sender_id, receiver_id, body, deal_id) VALUES (?,?,?,?)",
+            (user["id"], body.receiver_id, body.body, body.deal_id),
+        )
         conn.commit()
         mid = cur.lastrowid
-    with get_conn() as conn:
-        return _row(conn, "SELECT * FROM messages WHERE id = ?", (mid,))
+        msg = _row(conn, "SELECT * FROM messages WHERE id = ?", (mid,))
+
+    # Real-time fan-out — push to receiver's WebSocket if they are online
+    await manager.send(body.receiver_id, {
+        "type":        "message",
+        "id":          msg["id"],
+        "sender_id":   user["id"],
+        "sender_name": user["name"],
+        "sender_initials": user["initials"],
+        "body":        msg["body"],
+        "deal_id":     msg["deal_id"],
+        "created_at":  msg["created_at"],
+    })
+
+    return msg
 
 
 @app.get("/api/messages/{other_user_id}")
 def get_conversation(other_user_id: int, user: dict = Depends(current_user)):
+    """Fetch full thread and mark all incoming unread messages as read."""
+    uid = user["id"]
     with get_conn() as conn:
         rows = _rows(conn, """
             SELECT m.*, u.name AS sender_name, u.initials AS sender_initials
@@ -855,8 +1002,33 @@ def get_conversation(other_user_id: int, user: dict = Depends(current_user)):
             WHERE (m.sender_id = ? AND m.receiver_id = ?)
                OR (m.sender_id = ? AND m.receiver_id = ?)
             ORDER BY m.created_at ASC
-        """, (user["id"], other_user_id, other_user_id, user["id"]))
+        """, (uid, other_user_id, other_user_id, uid))
+
+        # Mark all unread messages from the other user as read
+        conn.execute("""
+            UPDATE messages
+            SET read_at = datetime('now')
+            WHERE sender_id = ? AND receiver_id = ? AND read_at IS NULL
+        """, (other_user_id, uid))
+        conn.commit()
+
     return rows
+
+
+@app.patch("/api/messages/{message_id}/read", status_code=200)
+def mark_message_read(message_id: int, user: dict = Depends(current_user)):
+    """Explicit single-message read receipt."""
+    with get_conn() as conn:
+        msg = _row(conn, "SELECT * FROM messages WHERE id = ? AND receiver_id = ?",
+                   (message_id, user["id"]))
+        if not msg:
+            raise HTTPException(404, "Message not found or not addressed to you")
+        conn.execute(
+            "UPDATE messages SET read_at = datetime('now') WHERE id = ? AND read_at IS NULL",
+            (message_id,),
+        )
+        conn.commit()
+    return {"ok": True}
 
 # ---------------------------------------------------------------------------
 # Schemas — Payments

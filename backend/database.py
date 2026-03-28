@@ -187,6 +187,7 @@ def init_db():
     _add_column_if_missing("campaigns", "min_followers", "INTEGER DEFAULT 0")
     _add_column_if_missing("campaigns", "max_rate",      "INTEGER DEFAULT 0")
     _add_column_if_missing("matches",   "match_reasons", "TEXT DEFAULT '[]'")
+    _add_column_if_missing("messages",  "read_at",       "TEXT")
 
 
 def _add_column_if_missing(table: str, column: str, definition: str):
