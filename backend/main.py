@@ -89,6 +89,27 @@ ALGORITHM      = "HS256"
 TOKEN_TTL_HRS  = 72
 PLATFORM_FEE   = 0.15          # 15 % taken by CourtCollab
 
+# ---------------------------------------------------------------------------
+# Email config
+# ---------------------------------------------------------------------------
+# Runtime overrides via environment variables (set these before launching):
+#   SMTP_HOST   — e.g. smtp.sendgrid.net or smtp.gmail.com
+#   SMTP_PORT   — default 587
+#   SMTP_USER   — SMTP username / API key
+#   SMTP_PASS   — SMTP password
+#   FROM_EMAIL  — override the sender address
+
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@courtcollab.com")
+
+# Platform admins — always receive a copy of every deal notification email.
+# Override via ADMIN_EMAILS env var (comma-separated) or edit the list below.
+_env_admins = os.environ.get("ADMIN_EMAILS", "")
+ADMIN_EMAILS: List[str] = (
+    [e.strip() for e in _env_admins.split(",") if e.strip()]
+    if _env_admins
+    else ["ben@courtcollab.com", "julia@courtcollab.com"]
+)
+
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer  = HTTPBearer()
 
@@ -221,20 +242,32 @@ def _rows(conn, sql: str, params: tuple = ()) -> List[dict]:
 # Notification helpers
 # ---------------------------------------------------------------------------
 
-def _send_email(to_email: str, subject: str, body: str):
+def _send_email(to_email: str, subject: str, body: str, event_type: str = ""):
     """
-    Send a plain-text email if SMTP env vars are configured.
-    Set SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / FROM_EMAIL.
-    Silently skips when not configured so dev env works without mail setup.
+    Send notification email to `to_email` and BCC platform admins.
+
+    Requires SMTP_HOST to be set; silently skips in dev if not configured.
+    Admin BCC list: ADMIN_EMAILS (ben@courtcollab.com, julia@courtcollab.com).
     """
     host = os.environ.get("SMTP_HOST")
     if not host:
+        logging.debug("SMTP not configured — skipping email to %s (%s)", to_email, subject)
         return
+
+    # Deduplicate: if the recipient IS an admin, don't double-deliver
+    all_recipients = list({to_email} | set(ADMIN_EMAILS))
+
     try:
-        msg          = MIMEText(body, "plain")
-        msg["Subject"] = subject
-        msg["From"]    = os.environ.get("FROM_EMAIL", "noreply@courtcollab.com")
-        msg["To"]      = to_email
+        msg             = MIMEText(body, "plain")
+        msg["Subject"]  = subject
+        msg["From"]     = FROM_EMAIL
+        msg["To"]       = to_email
+
+        # Admins receive as BCC so the primary recipient doesn't see them
+        bcc_list = [a for a in ADMIN_EMAILS if a != to_email]
+        if bcc_list:
+            msg["Bcc"] = ", ".join(bcc_list)
+
         port = int(os.environ.get("SMTP_PORT", 587))
         user = os.environ.get("SMTP_USER", "")
         pw   = os.environ.get("SMTP_PASS", "")
@@ -242,38 +275,76 @@ def _send_email(to_email: str, subject: str, body: str):
             s.starttls()
             if user:
                 s.login(user, pw)
-            s.sendmail(msg["From"], [to_email], msg.as_string())
+            s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
+
+        logging.info("Email sent to %s (BCC: %s) — %s", to_email, bcc_list, subject)
     except Exception as exc:
-        logging.warning("Email delivery failed: %s", exc)
+        logging.warning("Email delivery failed for %s: %s", to_email, exc)
+
+
+def _admin_email_body(
+    notif_type: str,
+    title:      str,
+    user_body:  str,
+    data:       dict,
+) -> str:
+    """Format a richer admin copy with deal context appended."""
+    lines = [
+        "CourtCollab Platform Notification",
+        "=" * 40,
+        f"Event : {notif_type}",
+        f"Deal  : #{data.get('deal_id', '—')}",
+        f"Campaign: #{data.get('campaign_id', '—')}",
+        "",
+        "User received:",
+        f"  {title}",
+        f"  {user_body}",
+        "",
+        "— CourtCollab Platform",
+    ]
+    return "\n".join(lines)
 
 
 async def _notify(
-    user_id:  int,
+    user_id:    int,
     notif_type: str,
-    title:    str,
-    body:     str,
-    data:     Optional[dict] = None,
-    email:    Optional[str]  = None,
+    title:      str,
+    body:       str,
+    data:       Optional[dict] = None,
+    email:      Optional[str]  = None,
 ):
     """
     1. Persist notification to DB.
     2. Push to user's WebSocket if they are online.
-    3. Optionally send email (fire-and-forget).
+    3. Send email to the user (with BCC to platform admins).
     """
+    payload = data or {}
+
     with get_conn() as conn:
         cur = conn.execute(
             "INSERT INTO notifications (user_id, type, title, body, data) VALUES (?,?,?,?,?)",
-            (user_id, notif_type, title, body, json.dumps(data or {})),
+            (user_id, notif_type, title, body, json.dumps(payload)),
         )
         conn.commit()
-        nid = cur.lastrowid
+        nid   = cur.lastrowid
         notif = _row(conn, "SELECT * FROM notifications WHERE id = ?", (nid,))
 
     notif["data"] = json.loads(notif.get("data") or "{}")
     await manager.send(user_id, {"type": "notification", **notif})
 
     if email:
-        _send_email(email, title, body)
+        # User gets the plain notification; admins are BCC'd with extra context
+        email_body = (
+            f"{body}\n\n"
+            f"Log in to CourtCollab to view deal #{payload.get('deal_id', '')} details.\n\n"
+            f"— The CourtCollab Team"
+        )
+        _send_email(email, title, email_body, event_type=notif_type)
+    else:
+        # No primary recipient but admins should still be notified
+        admin_body = _admin_email_body(notif_type, title, body, payload)
+        for admin in ADMIN_EMAILS:
+            _send_email(admin, f"[Admin] {title}", admin_body, event_type=notif_type)
 
 
 def current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)) -> dict:
