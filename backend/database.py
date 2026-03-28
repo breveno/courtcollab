@@ -179,3 +179,19 @@ def init_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_creator ON payments(creator_id)")
 
         conn.commit()
+
+    # ------------------------------------------------------------------ #
+    # Non-destructive migrations — add columns introduced after v1        #
+    # ------------------------------------------------------------------ #
+    _add_column_if_missing("campaigns", "target_age",    "TEXT")
+    _add_column_if_missing("campaigns", "min_followers", "INTEGER DEFAULT 0")
+    _add_column_if_missing("campaigns", "max_rate",      "INTEGER DEFAULT 0")
+    _add_column_if_missing("matches",   "match_reasons", "TEXT DEFAULT '[]'")
+
+
+def _add_column_if_missing(table: str, column: str, definition: str):
+    with get_conn() as conn:
+        cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+        if column not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+            conn.commit()

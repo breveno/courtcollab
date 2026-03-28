@@ -18,13 +18,16 @@ Brand Profiles
 
 Campaigns
   POST   /api/campaigns
-  GET    /api/campaigns                ?niche=&status=
+  GET    /api/campaigns                ?niche=&status=&mine=true
   GET    /api/campaigns/{id}
+  PATCH  /api/campaigns/{id}           (full content update)
   PATCH  /api/campaigns/{id}/status
+  DELETE /api/campaigns/{id}
 
-Matches
+Matches / Discovery
   POST   /api/campaigns/{id}/matches   (compute & store scores for all creators)
   GET    /api/campaigns/{id}/matches
+  GET    /api/discover                 ?niche=&skill=&age=&min_followers=&max_budget=
 
 Deals
   POST   /api/deals
@@ -45,7 +48,7 @@ import json
 import os
 import sqlite3
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -272,6 +275,14 @@ def get_own_creator_profile(user: dict = Depends(current_user)):
     return profile
 
 
+@app.delete("/api/creator/profile", status_code=204)
+def delete_creator_profile(user: dict = Depends(current_user)):
+    require_role("creator", user)
+    with get_conn() as conn:
+        conn.execute("DELETE FROM creator_profiles WHERE user_id = ?", (user["id"],))
+        conn.commit()
+
+
 @app.get("/api/creators")
 def list_creators(
     niche:         Optional[str] = Query(None),
@@ -372,16 +383,37 @@ def get_own_brand_profile(user: dict = Depends(current_user)):
         raise HTTPException(404, "Profile not set up yet")
     return profile
 
+
+@app.delete("/api/brand/profile", status_code=204)
+def delete_brand_profile(user: dict = Depends(current_user)):
+    require_role("brand", user)
+    with get_conn() as conn:
+        conn.execute("DELETE FROM brand_profiles WHERE user_id = ?", (user["id"],))
+        conn.commit()
+
 # ---------------------------------------------------------------------------
 # Schemas — Campaigns
 # ---------------------------------------------------------------------------
 
 class CampaignIn(BaseModel):
-    title:       str
-    description: Optional[str] = None
-    budget:      Optional[int] = 0
-    niche:       Optional[str] = None
-    skills:      Optional[List[str]] = []
+    title:         str
+    description:   Optional[str]       = None
+    budget:        Optional[int]        = 0
+    niche:         Optional[str]        = None
+    skills:        Optional[List[str]]  = []
+    target_age:    Optional[str]        = None   # e.g. "25-34"
+    min_followers: Optional[int]        = 0
+    max_rate:      Optional[int]        = 0      # max $/post brand will pay
+
+class CampaignUpdateIn(BaseModel):
+    title:         Optional[str]       = None
+    description:   Optional[str]       = None
+    budget:        Optional[int]       = None
+    niche:         Optional[str]       = None
+    skills:        Optional[List[str]] = None
+    target_age:    Optional[str]       = None
+    min_followers: Optional[int]       = None
+    max_rate:      Optional[int]       = None
 
 class CampaignStatusIn(BaseModel):
     status: str
@@ -395,35 +427,41 @@ def create_campaign(body: CampaignIn, user: dict = Depends(current_user)):
     require_role("brand", user)
     with get_conn() as conn:
         cur = conn.execute("""
-            INSERT INTO campaigns (brand_id, title, description, budget, niche, skills)
-            VALUES (?,?,?,?,?,?)
+            INSERT INTO campaigns
+              (brand_id, title, description, budget, niche, skills,
+               target_age, min_followers, max_rate)
+            VALUES (?,?,?,?,?,?,?,?,?)
         """, (user["id"], body.title, body.description, body.budget,
-              body.niche, json.dumps(body.skills)))
+              body.niche, json.dumps(body.skills),
+              body.target_age, body.min_followers, body.max_rate))
         conn.commit()
         cid = cur.lastrowid
     with get_conn() as conn:
-        return _row(conn, "SELECT * FROM campaigns WHERE id = ?", (cid,))
+        row = _row(conn, "SELECT * FROM campaigns WHERE id = ?", (cid,))
+        row["skills"] = json.loads(row.get("skills") or "[]")
+        return row
 
 
 @app.get("/api/campaigns")
 def list_campaigns(
-    niche:  Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
-    user:   dict          = Depends(current_user),
+    niche:  Optional[str]  = Query(None),
+    status: Optional[str]  = Query(None),
+    mine:   Optional[bool] = Query(None),   # brands: only show their own campaigns
+    user:   dict           = Depends(current_user),
 ):
     with get_conn() as conn:
         rows = _rows(conn, """
             SELECT c.*, u.name AS brand_name, bp.company_name
             FROM campaigns c
-            JOIN users u       ON u.id  = c.brand_id
+            JOIN users u ON u.id = c.brand_id
             LEFT JOIN brand_profiles bp ON bp.user_id = c.brand_id
-            WHERE 1=1
         """)
     results = []
     for r in rows:
         r["skills"] = json.loads(r.get("skills") or "[]")
-        if niche  and r.get("niche")  != niche:  continue
-        if status and r.get("status") != status: continue
+        if mine   and r.get("brand_id") != user["id"]: continue
+        if niche  and r.get("niche")    != niche:      continue
+        if status and r.get("status")   != status:     continue
         results.append(r)
     return results
 
@@ -444,6 +482,40 @@ def get_campaign(campaign_id: int, user: dict = Depends(current_user)):
     return row
 
 
+@app.patch("/api/campaigns/{campaign_id}")
+def update_campaign(campaign_id: int, body: CampaignUpdateIn, user: dict = Depends(current_user)):
+    """Update any campaign content field. Only the campaign's brand owner can do this."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        row = _row(conn, "SELECT * FROM campaigns WHERE id = ? AND brand_id = ?",
+                   (campaign_id, user["id"]))
+        if not row:
+            raise HTTPException(404, "Campaign not found or not yours")
+
+        updates = {}
+        if body.title         is not None: updates["title"]         = body.title
+        if body.description   is not None: updates["description"]   = body.description
+        if body.budget        is not None: updates["budget"]        = body.budget
+        if body.niche         is not None: updates["niche"]         = body.niche
+        if body.skills        is not None: updates["skills"]        = json.dumps(body.skills)
+        if body.target_age    is not None: updates["target_age"]    = body.target_age
+        if body.min_followers is not None: updates["min_followers"] = body.min_followers
+        if body.max_rate      is not None: updates["max_rate"]      = body.max_rate
+
+        if not updates:
+            raise HTTPException(400, "No fields to update")
+
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        conn.execute(
+            f"UPDATE campaigns SET {set_clause} WHERE id = ?",
+            (*updates.values(), campaign_id)
+        )
+        conn.commit()
+        updated = _row(conn, "SELECT * FROM campaigns WHERE id = ?", (campaign_id,))
+        updated["skills"] = json.loads(updated.get("skills") or "[]")
+        return updated
+
+
 @app.patch("/api/campaigns/{campaign_id}/status")
 def update_campaign_status(campaign_id: int, body: CampaignStatusIn, user: dict = Depends(current_user)):
     require_role("brand", user)
@@ -458,52 +530,137 @@ def update_campaign_status(campaign_id: int, body: CampaignStatusIn, user: dict 
         conn.commit()
     return {"ok": True}
 
+
+@app.delete("/api/campaigns/{campaign_id}", status_code=204)
+def delete_campaign(campaign_id: int, user: dict = Depends(current_user)):
+    require_role("brand", user)
+    with get_conn() as conn:
+        row = _row(conn, "SELECT * FROM campaigns WHERE id = ? AND brand_id = ?",
+                   (campaign_id, user["id"]))
+        if not row:
+            raise HTTPException(404, "Campaign not found or not yours")
+        conn.execute("DELETE FROM campaigns WHERE id = ?", (campaign_id,))
+        conn.commit()
+
 # ---------------------------------------------------------------------------
 # Routes — Matches
 # ---------------------------------------------------------------------------
 
-def _compute_score(creator: dict, campaign: dict) -> int:
-    score = 50
-    c_skills  = json.loads(creator.get("skills")   or "[]")
-    ca_skills = json.loads(campaign.get("skills")  or "[]")
+def _compute_score(creator: dict, campaign: dict) -> Tuple[int, List[str]]:
+    """
+    Port of the JS scoring algorithm in app.js → runMatching().
+    Returns (score 0–100, reasons[]).
 
-    if campaign.get("niche") and creator.get("niche") == campaign["niche"]:
-        score += 20
-    for s in ca_skills:
-        if s in c_skills:
-            score += 10
-    if (creator.get("engagement_rate") or 0) >= 6:
-        score += 10
+    Weights (matching JS exactly):
+      Niche match          +20  |  niche specified but no match  -10
+      Skill match          +20  |  skill specified but no match  -10
+      Audience age match   +15
+      Meets min_followers  +10  |  below threshold               -20
+      Rate ≤ max_rate      +10  |  all rates above max_rate      -15
+      Engagement ≥ 6 %     +10
+      Total followers ≥ 200k +5
+    """
+    score   = 50
+    reasons: List[str] = []
+
+    def _parse_skills(v) -> List[str]:
+        if isinstance(v, list): return v
+        try: return json.loads(v or "[]")
+        except Exception: return []
+
+    c_skills  = _parse_skills(creator.get("skills"))
+    ca_skills = _parse_skills(campaign.get("skills"))
+
     total = ((creator.get("followers_ig") or 0) +
              (creator.get("followers_tt") or 0) +
              (creator.get("followers_yt") or 0))
-    if total >= 200_000:
-        score += 10
 
-    return min(100, max(0, score))
+    # --- Niche ---
+    niche = campaign.get("niche")
+    if niche:
+        if creator.get("niche") == niche:
+            score += 20
+            reasons.append(f"Specializes in {niche}")
+        else:
+            score -= 10
+
+    # --- Skills (first required skill only, mirrors JS single-select) ---
+    if ca_skills:
+        matched_skill = next((s for s in ca_skills if s in c_skills), None)
+        if matched_skill:
+            score += 20
+            reasons.append(f"Specializes in {matched_skill}")
+        else:
+            score -= 10
+
+    # --- Audience age ---
+    target_age = campaign.get("target_age")
+    if target_age and creator.get("demo_age") == target_age:
+        score += 15
+        reasons.append(f"Audience is {target_age} age range")
+
+    # --- Follower threshold ---
+    min_followers = campaign.get("min_followers") or 0
+    if min_followers:
+        if total >= min_followers:
+            score += 10
+        else:
+            score -= 20
+
+    # --- Budget / rate match ---
+    max_rate = campaign.get("max_rate") or 0
+    if max_rate:
+        min_creator_rate = min(
+            creator.get("rate_ig")     or 0,
+            creator.get("rate_tiktok") or 0,
+            creator.get("rate_ugc")    or 0,
+        )
+        if min_creator_rate <= max_rate:
+            score += 10
+            reasons.append(f"Rates start at ${min_creator_rate}")
+        else:
+            score -= 15
+
+    # --- Engagement bonus ---
+    if (creator.get("engagement_rate") or 0) >= 6:
+        score += 10
+        reasons.append(f"High engagement ({creator.get('engagement_rate')}%)")
+
+    # --- Audience size bonus ---
+    if total >= 200_000:
+        score += 5
+        reasons.append(f"Large audience ({total:,})")
+
+    score = min(100, max(0, score))
+    if not reasons:
+        reasons.append("General pickleball creator")
+
+    return score, reasons
 
 
 @app.post("/api/campaigns/{campaign_id}/matches", status_code=201)
 def compute_matches(campaign_id: int, user: dict = Depends(current_user)):
+    """Score every creator profile against this campaign and persist results."""
     require_role("brand", user)
     with get_conn() as conn:
         campaign = _row(conn, "SELECT * FROM campaigns WHERE id = ? AND brand_id = ?",
                         (campaign_id, user["id"]))
         if not campaign:
             raise HTTPException(404, "Campaign not found or not yours")
-
         creators = _rows(conn, "SELECT * FROM creator_profiles")
 
     stored = []
     with get_conn() as conn:
         for c in creators:
-            score = _compute_score(c, campaign)
+            score, reasons = _compute_score(c, campaign)
             conn.execute("""
-                INSERT INTO matches (campaign_id, creator_id, match_score)
-                VALUES (?,?,?)
-                ON CONFLICT(campaign_id, creator_id) DO UPDATE SET match_score=excluded.match_score
-            """, (campaign_id, c["user_id"], score))
-            stored.append({"creator_id": c["user_id"], "match_score": score})
+                INSERT INTO matches (campaign_id, creator_id, match_score, match_reasons)
+                VALUES (?,?,?,?)
+                ON CONFLICT(campaign_id, creator_id) DO UPDATE SET
+                  match_score=excluded.match_score,
+                  match_reasons=excluded.match_reasons
+            """, (campaign_id, c["user_id"], score, json.dumps(reasons)))
+            stored.append({"creator_id": c["user_id"], "match_score": score, "match_reasons": reasons})
         conn.commit()
 
     return sorted(stored, key=lambda x: x["match_score"], reverse=True)
@@ -513,21 +670,67 @@ def compute_matches(campaign_id: int, user: dict = Depends(current_user)):
 def get_matches(campaign_id: int, user: dict = Depends(current_user)):
     with get_conn() as conn:
         rows = _rows(conn, """
-            SELECT m.match_score, m.created_at,
+            SELECT m.match_score, m.match_reasons, m.created_at,
                    cp.user_id, cp.name, cp.niche, cp.location,
                    cp.followers_ig, cp.followers_tt, cp.followers_yt,
-                   cp.engagement_rate, cp.rate_ugc, cp.skills
+                   cp.engagement_rate, cp.rate_ig, cp.rate_tiktok, cp.rate_ugc, cp.skills
             FROM matches m
             JOIN creator_profiles cp ON cp.user_id = m.creator_id
             WHERE m.campaign_id = ?
             ORDER BY m.match_score DESC
         """, (campaign_id,))
     for r in rows:
-        r["skills"]          = json.loads(r.get("skills") or "[]")
-        r["total_followers"] = (r.get("followers_ig") or 0) + \
-                               (r.get("followers_tt") or 0) + \
-                               (r.get("followers_yt") or 0)
+        r["skills"]          = json.loads(r.get("skills")        or "[]")
+        r["match_reasons"]   = json.loads(r.get("match_reasons") or "[]")
+        r["total_followers"] = ((r.get("followers_ig") or 0) +
+                                (r.get("followers_tt") or 0) +
+                                (r.get("followers_yt") or 0))
     return rows
+
+
+@app.get("/api/discover")
+def discover(
+    niche:         Optional[str] = Query(None),
+    skill:         Optional[str] = Query(None),
+    age:           Optional[str] = Query(None),
+    min_followers: Optional[int] = Query(None, ge=0),
+    max_budget:    Optional[int] = Query(None, ge=0),
+    user:          dict          = Depends(current_user),
+):
+    """
+    Standalone discovery — score all creators against ad-hoc filter params.
+    No campaign required. Mirrors the Discovery page filters in the frontend.
+    """
+    # Build a synthetic campaign dict so we can reuse _compute_score
+    synthetic = {
+        "niche":         niche,
+        "skills":        json.dumps([skill]) if skill else "[]",
+        "target_age":    age,
+        "min_followers": min_followers or 0,
+        "max_rate":      max_budget or 0,
+    }
+
+    with get_conn() as conn:
+        creators = _rows(conn, """
+            SELECT cp.*, u.email
+            FROM creator_profiles cp
+            JOIN users u ON u.id = cp.user_id
+        """)
+
+    results = []
+    for c in creators:
+        c["skills"]         = json.loads(c.get("skills")         or "[]")
+        c["social_handles"] = json.loads(c.get("social_handles") or "{}")
+        score, reasons      = _compute_score(c, synthetic)
+        c["match_score"]    = score
+        c["match_reasons"]  = reasons
+        c["total_followers"] = ((c.get("followers_ig") or 0) +
+                                (c.get("followers_tt") or 0) +
+                                (c.get("followers_yt") or 0))
+        results.append(c)
+
+    results.sort(key=lambda x: x["match_score"], reverse=True)
+    return results
 
 # ---------------------------------------------------------------------------
 # Schemas — Deals
