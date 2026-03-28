@@ -820,23 +820,19 @@
 
         <!-- Make a Payment -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-8">
-          <h2 class="text-xl font-bold mb-6">Make a Payment</h2>
-          <form id="payment-form" class="space-y-4" onsubmit="submitPayment(event)">
+          <h2 class="text-xl font-bold mb-2">Make a Payment</h2>
+          <p class="text-sm text-gray-500 mb-6">Enter your active deal ID below to launch a secure Stripe checkout. The deal must be in <strong>active</strong> status before payment can be initiated.</p>
+          <form id="payment-form" class="space-y-4" onsubmit="handleStripePaymentForm(event)">
             <div class="grid md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Select Creator</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Deal ID</label>
+                <input type="number" id="pay-deal-id" min="1" placeholder="e.g., 42" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                <p class="text-xs text-gray-400 mt-1">Find your deal ID in the Messages &amp; Deals tab.</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Creator</label>
                 <select id="pay-creator" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                  <option value="">Choose a creator...</option>
-                  <option>Dink Dynasty</option>
-                  <option>PicklePro Sarah</option>
-                  <option>The Kitchen King</option>
-                  <option>Paddle Review Pro</option>
-                  <option>Court & Cocktails</option>
-                  <option>PickleNews Daily</option>
-                  <option>Tiny Dinkers</option>
-                  <option>Smash Brothers PB</option>
-                  <option>Zen & the Art of Dinking</option>
-                </select>
+                  <option value="">(auto-filled from deal)</option>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Select Campaign</label>
@@ -863,8 +859,13 @@
                 <input type="text" id="creator-payout-display" readonly value="$0.00" class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-pickle-50 text-pickle-700 font-semibold cursor-not-allowed">
               </div>
             </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+              <strong>How it works:</strong> Clicking "Pay with Stripe" opens a secure Stripe checkout page. Your card is charged, 85% is held in escrow for the creator, and 15% goes to CourtCollab. Funds release to the creator when you confirm content delivery.
+            </div>
             <div>
-              <button type="submit" class="bg-pickle-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition">Send Payment</button>
+              <button type="submit" class="bg-[#635BFF] text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-[#4f49cc] transition">
+                💳 Pay with Stripe
+              </button>
             </div>
           </form>
         </div>
@@ -978,22 +979,17 @@
           </div>
         </div>
 
-        <!-- Payout Method -->
+        <!-- Stripe Connect Payout Setup -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-8">
           <h2 class="text-xl font-bold mb-4">Payout Method</h2>
-          <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-            <div class="flex items-center gap-4">
-              <div class="w-12 h-12 bg-pickle-100 rounded-xl flex items-center justify-center">
-                <svg class="w-6 h-6 text-pickle-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-              </div>
-              <div>
-                <div class="font-semibold">Bank Account</div>
-                <div class="text-sm text-gray-500">••••••••4821 · Chase Bank</div>
-              </div>
+          <!-- Dynamic Stripe Connect status banner — loaded by loadStripeConnectStatus() -->
+          <div id="stripe-connect-banner" class="mb-4">
+            <div class="flex items-center gap-3 text-gray-400 text-sm py-2">
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+              Checking Stripe status…
             </div>
-            <button onclick="alert('Update payout method — coming soon!')" class="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 transition">Update</button>
           </div>
-          <p class="text-xs text-gray-400 mt-3">Payouts are processed within 3-5 business days after content is approved by the brand.</p>
+          <p class="text-xs text-gray-400 mt-1">Payouts go directly to your bank via Stripe. CourtCollab never stores your banking details.</p>
         </div>
 
         <!-- Earnings History -->

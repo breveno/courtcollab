@@ -209,8 +209,13 @@ def init_db():
     _add_column_if_missing("campaigns", "target_age",    "TEXT")
     _add_column_if_missing("campaigns", "min_followers", "INTEGER DEFAULT 0")
     _add_column_if_missing("campaigns", "max_rate",      "INTEGER DEFAULT 0")
-    _add_column_if_missing("matches",   "match_reasons", "TEXT DEFAULT '[]'")
-    _add_column_if_missing("messages",  "read_at",       "TEXT")
+    _add_column_if_missing("matches",          "match_reasons",        "TEXT DEFAULT '[]'")
+    _add_column_if_missing("messages",         "read_at",              "TEXT")
+    # Stripe Connect
+    _add_column_if_missing("creator_profiles", "stripe_account_id",    "TEXT")
+    _add_column_if_missing("creator_profiles", "stripe_onboarded",     "INTEGER DEFAULT 0")
+    _add_column_if_missing("payments",         "checkout_session_id",  "TEXT")
+    _add_column_if_missing("payments",         "stripe_transfer_id",   "TEXT")
 
 
 def _migrate_deal_statuses():

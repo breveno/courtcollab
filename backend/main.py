@@ -60,6 +60,12 @@ Payments
   POST   /api/payments
   GET    /api/payments
   PATCH  /api/payments/{id}/release
+
+Stripe Connect
+  POST   /api/stripe/connect/onboard         — creator: create/resume Connect Express account
+  GET    /api/stripe/connect/status          — creator: check onboarding status
+  POST   /api/stripe/checkout/{deal_id}      — brand: create Checkout Session for a deal
+  POST   /api/stripe/webhook                 — Stripe webhook (no auth)
 """
 
 import json
@@ -67,11 +73,22 @@ import logging
 import os
 import smtplib
 import sqlite3
+import stripe
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
+from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+# Load .env file if present (dev convenience — production uses real env vars)
+_env_path = Path(__file__).parent / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text().splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -88,6 +105,14 @@ SECRET_KEY     = os.environ.get("JWT_SECRET", "change-me-in-production-use-a-lon
 ALGORITHM      = "HS256"
 TOKEN_TTL_HRS  = 72
 PLATFORM_FEE   = 0.15          # 15 % taken by CourtCollab
+
+# ---------------------------------------------------------------------------
+# Stripe config
+# ---------------------------------------------------------------------------
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_SUCCESS_URL    = os.environ.get("STRIPE_SUCCESS_URL", "http://localhost:3000/deal-success")
+STRIPE_CANCEL_URL     = os.environ.get("STRIPE_CANCEL_URL",  "http://localhost:3000/deal-cancel")
 
 # ---------------------------------------------------------------------------
 # Email config
@@ -268,14 +293,24 @@ def _send_email(to_email: str, subject: str, body: str, event_type: str = ""):
         if bcc_list:
             msg["Bcc"] = ", ".join(bcc_list)
 
-        port = int(os.environ.get("SMTP_PORT", 587))
-        user = os.environ.get("SMTP_USER", "")
-        pw   = os.environ.get("SMTP_PASS", "")
-        with smtplib.SMTP(host, port) as s:
-            s.starttls()
-            if user:
-                s.login(user, pw)
-            s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
+        port    = int(os.environ.get("SMTP_PORT", 587))
+        use_ssl = os.environ.get("SMTP_SSL", "false").lower() in ("true", "1", "yes")
+        user    = os.environ.get("SMTP_USER", "")
+        pw      = os.environ.get("SMTP_PASS", "")
+
+        if use_ssl:
+            # Port 465 — SSL from the start (Zoho, etc.)
+            with smtplib.SMTP_SSL(host, port) as s:
+                if user:
+                    s.login(user, pw)
+                s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
+        else:
+            # Port 587 — plaintext then STARTTLS upgrade
+            with smtplib.SMTP(host, port) as s:
+                s.starttls()
+                if user:
+                    s.login(user, pw)
+                s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
 
         logging.info("Email sent to %s (BCC: %s) — %s", to_email, bcc_list, subject)
     except Exception as exc:
@@ -1372,7 +1407,11 @@ def list_payments(user: dict = Depends(current_user)):
 
 @app.patch("/api/payments/{payment_id}/release")
 def release_payment(payment_id: int, user: dict = Depends(current_user)):
-    """Brand marks content delivered — releases funds to creator."""
+    """
+    Brand marks content delivered — releases funds to creator.
+    If Stripe is configured and the creator has a Connect account,
+    a transfer is created for the creator_payout amount.
+    """
     require_role("brand", user)
     with get_conn() as conn:
         payment = _row(conn,
@@ -1381,18 +1420,303 @@ def release_payment(payment_id: int, user: dict = Depends(current_user)):
         if not payment:
             raise HTTPException(404, "Held payment not found or not yours")
 
+        creator_profile = _row(conn,
+            "SELECT stripe_account_id FROM creator_profiles WHERE user_id = ?",
+            (payment["creator_id"],))
+
+    stripe_transfer_id = None
+
+    # Attempt Stripe transfer if keys are configured and creator has an account
+    if (stripe.api_key
+            and not stripe.api_key.startswith("sk_test_REPLACE")
+            and creator_profile
+            and creator_profile.get("stripe_account_id")
+            and payment.get("stripe_payment_id")):
+        try:
+            transfer = stripe.Transfer.create(
+                amount=int(payment["creator_payout"]) * 100,  # cents
+                currency="usd",
+                destination=creator_profile["stripe_account_id"],
+                source_transaction=payment["stripe_payment_id"],
+                metadata={"deal_id": str(payment["deal_id"]), "payment_id": str(payment_id)},
+            )
+            stripe_transfer_id = transfer["id"]
+        except stripe.error.StripeError as exc:
+            logging.error("Stripe transfer failed for payment %s: %s", payment_id, exc)
+            raise HTTPException(502, f"Stripe transfer failed: {exc.user_message}")
+
+    with get_conn() as conn:
         conn.execute("""
             UPDATE payments
-            SET status = 'released', released_at = datetime('now')
+            SET status = 'released',
+                released_at = datetime('now'),
+                stripe_transfer_id = COALESCE(?, stripe_transfer_id)
             WHERE id = ?
-        """, (payment_id,))
+        """, (stripe_transfer_id, payment_id))
         # Mark deal complete
         conn.execute(
             "UPDATE deals SET status = 'completed', updated_at = datetime('now') WHERE id = ?",
             (payment["deal_id"],)
         )
         conn.commit()
-    return {"ok": True, "creator_payout": payment["creator_payout"]}
+
+    return {
+        "ok": True,
+        "creator_payout":    payment["creator_payout"],
+        "stripe_transfer_id": stripe_transfer_id,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Routes — Stripe Connect
+# ---------------------------------------------------------------------------
+
+@app.post("/api/stripe/connect/onboard")
+def stripe_connect_onboard(user: dict = Depends(current_user)):
+    """Creator: create or retrieve a Stripe Express account and get the onboarding URL."""
+    require_role("creator", user)
+    if not stripe.api_key or stripe.api_key.startswith("sk_test_REPLACE"):
+        raise HTTPException(503, "Stripe is not configured on this server")
+
+    with get_conn() as conn:
+        profile = _row(conn,
+            "SELECT stripe_account_id FROM creator_profiles WHERE user_id = ?",
+            (user["id"],))
+
+    acct_id = profile["stripe_account_id"] if profile else None
+
+    # Create a new Express account if the creator doesn't have one yet
+    if not acct_id:
+        acct = stripe.Account.create(
+            type="express",
+            capabilities={"transfers": {"requested": True}},
+            metadata={"courtcollab_user_id": str(user["id"])},
+        )
+        acct_id = acct["id"]
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE creator_profiles SET stripe_account_id = ? WHERE user_id = ?",
+                (acct_id, user["id"]),
+            )
+            conn.commit()
+
+    # Generate a fresh onboarding link (links expire after ~24 h)
+    link = stripe.AccountLink.create(
+        account=acct_id,
+        refresh_url=f"{STRIPE_CANCEL_URL}?reason=refresh",
+        return_url=f"{STRIPE_SUCCESS_URL}?stripe_onboard=1",
+        type="account_onboarding",
+    )
+    return {"url": link["url"], "stripe_account_id": acct_id}
+
+
+@app.get("/api/stripe/connect/status")
+def stripe_connect_status(user: dict = Depends(current_user)):
+    """Creator: check whether their Stripe Connect account is fully onboarded."""
+    require_role("creator", user)
+    if not stripe.api_key or stripe.api_key.startswith("sk_test_REPLACE"):
+        return {"onboarded": False, "reason": "stripe_not_configured"}
+
+    with get_conn() as conn:
+        profile = _row(conn,
+            "SELECT stripe_account_id, stripe_onboarded FROM creator_profiles WHERE user_id = ?",
+            (user["id"],))
+
+    if not profile or not profile["stripe_account_id"]:
+        return {"onboarded": False, "stripe_account_id": None}
+
+    acct = stripe.Account.retrieve(profile["stripe_account_id"])
+    charges_enabled  = acct.get("charges_enabled", False)
+    payouts_enabled  = acct.get("payouts_enabled", False)
+    details_submitted = acct.get("details_submitted", False)
+    fully_onboarded  = charges_enabled and payouts_enabled and details_submitted
+
+    # Persist onboarded flag so we don't have to call Stripe every time
+    if fully_onboarded and not profile["stripe_onboarded"]:
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE creator_profiles SET stripe_onboarded = 1 WHERE user_id = ?",
+                (user["id"],),
+            )
+            conn.commit()
+
+    return {
+        "onboarded":         fully_onboarded,
+        "stripe_account_id": profile["stripe_account_id"],
+        "charges_enabled":   charges_enabled,
+        "payouts_enabled":   payouts_enabled,
+        "details_submitted": details_submitted,
+    }
+
+
+@app.post("/api/stripe/checkout/{deal_id}")
+def stripe_checkout(deal_id: int, user: dict = Depends(current_user)):
+    """
+    Brand: create a Stripe Checkout Session for a deal.
+    Returns a redirect URL to Stripe's hosted payment page.
+    85% will be transferred to the creator on release; 15% stays on platform.
+    """
+    require_role("brand", user)
+    if not stripe.api_key or stripe.api_key.startswith("sk_test_REPLACE"):
+        raise HTTPException(503, "Stripe is not configured on this server")
+
+    with get_conn() as conn:
+        deal = _row(conn,
+            "SELECT d.*, c.title AS campaign_title, u.name AS creator_name "
+            "FROM deals d "
+            "JOIN campaigns c ON c.id = d.campaign_id "
+            "JOIN users u     ON u.id = d.creator_id "
+            "WHERE d.id = ? AND d.brand_id = ? AND d.status = 'active'",
+            (deal_id, user["id"]))
+        if not deal:
+            raise HTTPException(404, "Active deal not found or not yours")
+
+        # Block duplicate payments
+        existing = _row(conn,
+            "SELECT id FROM payments WHERE deal_id = ? AND status NOT IN ('refunded')",
+            (body.deal_id,)) if False else _row(conn,
+            "SELECT id FROM payments WHERE deal_id = ? AND status NOT IN ('refunded')",
+            (deal_id,))
+        if existing:
+            raise HTTPException(409, "Payment already initiated for this deal")
+
+        # Get creator's Stripe account
+        creator_profile = _row(conn,
+            "SELECT stripe_account_id, stripe_onboarded FROM creator_profiles WHERE user_id = ?",
+            (deal["creator_id"],))
+
+    if not creator_profile or not creator_profile["stripe_account_id"]:
+        raise HTTPException(422, "Creator has not connected their Stripe account yet")
+    if not creator_profile["stripe_onboarded"]:
+        raise HTTPException(422, "Creator's Stripe account is not fully verified yet")
+
+    amount_cents     = int(deal["amount"]) * 100          # convert dollars → cents
+    platform_fee_c   = int(round(amount_cents * PLATFORM_FEE))
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=[{
+            "price_data": {
+                "currency": "usd",
+                "unit_amount": amount_cents,
+                "product_data": {
+                    "name": f"Campaign: {deal['campaign_title']}",
+                    "description": f"Creator partnership with {deal['creator_name']} — CourtCollab",
+                },
+            },
+            "quantity": 1,
+        }],
+        mode="payment",
+        success_url=f"{STRIPE_SUCCESS_URL}?deal_id={deal_id}&session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{STRIPE_CANCEL_URL}?deal_id={deal_id}",
+        payment_intent_data={
+            "application_fee_amount": platform_fee_c,
+            "transfer_data": {"destination": creator_profile["stripe_account_id"]},
+            "metadata": {
+                "deal_id":    str(deal_id),
+                "brand_id":   str(user["id"]),
+                "creator_id": str(deal["creator_id"]),
+            },
+        },
+        metadata={
+            "deal_id":    str(deal_id),
+            "brand_id":   str(user["id"]),
+            "creator_id": str(deal["creator_id"]),
+        },
+    )
+
+    # Pre-create the payment record in 'pending' state
+    amount_dollars   = int(deal["amount"])
+    platform_fee_d   = int(round(amount_dollars * PLATFORM_FEE))
+    creator_payout_d = amount_dollars - platform_fee_d
+
+    with get_conn() as conn:
+        cur = conn.execute("""
+            INSERT INTO payments
+              (deal_id, brand_id, creator_id, amount, platform_fee, creator_payout,
+               stripe_payment_id, checkout_session_id, status)
+            VALUES (?,?,?,?,?,?,?,?,'pending')
+        """, (
+            deal_id, user["id"], deal["creator_id"],
+            amount_dollars, platform_fee_d, creator_payout_d,
+            session.get("payment_intent"), session["id"],
+        ))
+        conn.commit()
+
+    return {"checkout_url": session["url"], "session_id": session["id"]}
+
+
+@app.post("/api/stripe/webhook", include_in_schema=False)
+async def stripe_webhook(request: Request):
+    """
+    Stripe sends signed events here. No JWT auth — verified by Stripe signature.
+    Handles:
+      checkout.session.completed  → mark payment 'held'
+      charge.refunded             → mark payment 'refunded'
+    """
+    payload   = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+
+    try:
+        if STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith("whsec_REPLACE"):
+            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+        else:
+            # Dev mode: parse without verification (never do this in production)
+            event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
+    except (ValueError, stripe.error.SignatureVerificationError) as e:
+        logging.warning("Stripe webhook signature failed: %s", e)
+        raise HTTPException(400, "Invalid Stripe signature")
+
+    etype = event["type"]
+    data  = event["data"]["object"]
+
+    if etype == "checkout.session.completed":
+        session_id     = data["id"]
+        payment_intent = data.get("payment_intent")
+        deal_id        = int(data["metadata"].get("deal_id", 0))
+
+        with get_conn() as conn:
+            conn.execute("""
+                UPDATE payments
+                SET status = 'held',
+                    stripe_payment_id = COALESCE(stripe_payment_id, ?)
+                WHERE checkout_session_id = ?
+            """, (payment_intent, session_id))
+            conn.commit()
+
+            payment = _row(conn,
+                "SELECT * FROM payments WHERE checkout_session_id = ?", (session_id,))
+
+        if payment and deal_id:
+            # Notify creator that funds are held
+            with get_conn() as conn:
+                deal_row = _row(conn,
+                    "SELECT d.*, u.email AS creator_email "
+                    "FROM deals d JOIN users u ON u.id = d.creator_id "
+                    "WHERE d.id = ?", (deal_id,))
+            if deal_row:
+                import asyncio
+                asyncio.create_task(_notify(
+                    user_id=deal_row["creator_id"],
+                    notif_type="payment_received",
+                    title="Payment received — funds held",
+                    body=f"${payment['amount']} has been received and is held for deal #{deal_id}. "
+                         f"Funds will be released once the brand confirms delivery.",
+                    data={"deal_id": deal_id},
+                    email=deal_row["creator_email"],
+                ))
+
+    elif etype == "charge.refunded":
+        payment_intent = data.get("payment_intent")
+        if payment_intent:
+            with get_conn() as conn:
+                conn.execute("""
+                    UPDATE payments SET status = 'refunded'
+                    WHERE stripe_payment_id = ?
+                """, (payment_intent,))
+                conn.commit()
+
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

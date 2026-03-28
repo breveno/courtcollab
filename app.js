@@ -987,9 +987,89 @@ function renderPayments() {
   }
 }
 
+// --- Stripe Connect helpers ---
+
+async function stripeConnectOnboard() {
+  try {
+    const btn = document.getElementById('stripe-connect-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
+    const data = await apiPost('/api/stripe/connect/onboard', {});
+    window.location.href = data.url;   // redirect to Stripe hosted onboarding
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Could not start Stripe onboarding'));
+    const btn = document.getElementById('stripe-connect-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Connect Stripe Payouts'; }
+  }
+}
+
+async function loadStripeConnectStatus() {
+  const banner = document.getElementById('stripe-connect-banner');
+  if (!banner) return;
+  try {
+    const status = await apiGet('/api/stripe/connect/status');
+    if (status.onboarded) {
+      banner.innerHTML = `
+        <div class="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span class="font-medium">Stripe payouts connected — you'll receive 85% of each deal directly to your bank.</span>
+        </div>`;
+    } else {
+      banner.innerHTML = `
+        <div class="flex items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <div class="flex items-center gap-2 text-amber-800">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            <span class="font-medium">Connect your bank to receive deal payouts (85% of each deal).</span>
+          </div>
+          <button id="stripe-connect-btn" onclick="stripeConnectOnboard()"
+            class="shrink-0 bg-[#2F4F2F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#1f3a1f] transition">
+            Connect Stripe Payouts
+          </button>
+        </div>`;
+    }
+  } catch {
+    // Stripe not configured or network error — hide banner silently
+    banner.innerHTML = '';
+  }
+}
+
+async function stripeCheckout(dealId) {
+  try {
+    const btn = document.getElementById(`pay-btn-${dealId}`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to payment…'; }
+    const data = await apiPost(`/api/stripe/checkout/${dealId}`, {});
+    window.location.href = data.checkout_url;
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Payment failed'));
+    const btn = document.getElementById(`pay-btn-${dealId}`);
+    if (btn) { btn.disabled = false; btn.textContent = 'Pay with Stripe'; }
+  }
+}
+
 function submitPayment(e) {
   e.preventDefault();
   showToast('✓ Payment sent! Funds held in escrow pending content delivery.');
+}
+
+async function handleStripePaymentForm(e) {
+  e.preventDefault();
+  const dealId = parseInt(document.getElementById('pay-deal-id')?.value);
+  if (!dealId) { showToast('⚠ Please enter a Deal ID'); return; }
+  await stripeCheckout(dealId);
+}
+
+// Handle Stripe return URLs (?stripe_onboard=1 or ?deal_id=X)
+function handleStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('stripe_onboard')) {
+    showToast('🎉 Stripe account connected! You\'re ready to receive payouts.');
+    history.replaceState({}, '', window.location.pathname);
+    navigate('profile');
+  }
+  if (params.get('deal_id') && params.get('session_id')) {
+    showToast('💳 Payment complete! Funds are held in escrow until you confirm delivery.');
+    history.replaceState({}, '', window.location.pathname);
+    navigate('messages');
+  }
 }
 
 // --- Contact ---
@@ -1016,11 +1096,14 @@ function submitContact(e) {
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('user-role').value = state.role;
   highlightRole();
+  handleStripeReturn();   // handle ?stripe_onboard=1 or ?session_id= redirects
   // Restore session via /api/me if a JWT is stored
   if (getToken()) {
     try {
       const user = await apiGet('/api/me');
       onAuthSuccess(user);
+      // Load Stripe Connect status for creators
+      if (user.role === 'creator') loadStripeConnectStatus();
     } catch {
       clearToken();
       showAuthGate();
