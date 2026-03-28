@@ -43,6 +43,19 @@ Messages
 WebSocket
   WS     /ws?token=<jwt>                     — real-time delivery channel
 
+Deals (updated)
+  POST   /api/deals                          — brand proposes; creator notified
+  GET    /api/deals                          — list own deals (brand or creator)
+  GET    /api/deals/{id}                     — single deal with full context
+  PATCH  /api/deals/{id}/status              — pending→active|declined / active→completed
+                                               each transition notifies the other party
+
+Notifications
+  GET    /api/notifications                  — list (unread first, then read)
+  GET    /api/notifications/unread-count     — quick badge count
+  PATCH  /api/notifications/read-all         — mark every notification read
+  PATCH  /api/notifications/{id}/read        — mark one read
+
 Payments
   POST   /api/payments
   GET    /api/payments
@@ -50,8 +63,11 @@ Payments
 """
 
 import json
+import logging
 import os
+import smtplib
 import sqlite3
+from email.mime.text import MIMEText
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
@@ -199,6 +215,66 @@ def _row(conn, sql: str, params: tuple = ()) -> Optional[dict]:
 
 def _rows(conn, sql: str, params: tuple = ()) -> List[dict]:
     return [dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+# ---------------------------------------------------------------------------
+# Notification helpers
+# ---------------------------------------------------------------------------
+
+def _send_email(to_email: str, subject: str, body: str):
+    """
+    Send a plain-text email if SMTP env vars are configured.
+    Set SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / FROM_EMAIL.
+    Silently skips when not configured so dev env works without mail setup.
+    """
+    host = os.environ.get("SMTP_HOST")
+    if not host:
+        return
+    try:
+        msg          = MIMEText(body, "plain")
+        msg["Subject"] = subject
+        msg["From"]    = os.environ.get("FROM_EMAIL", "noreply@courtcollab.com")
+        msg["To"]      = to_email
+        port = int(os.environ.get("SMTP_PORT", 587))
+        user = os.environ.get("SMTP_USER", "")
+        pw   = os.environ.get("SMTP_PASS", "")
+        with smtplib.SMTP(host, port) as s:
+            s.starttls()
+            if user:
+                s.login(user, pw)
+            s.sendmail(msg["From"], [to_email], msg.as_string())
+    except Exception as exc:
+        logging.warning("Email delivery failed: %s", exc)
+
+
+async def _notify(
+    user_id:  int,
+    notif_type: str,
+    title:    str,
+    body:     str,
+    data:     Optional[dict] = None,
+    email:    Optional[str]  = None,
+):
+    """
+    1. Persist notification to DB.
+    2. Push to user's WebSocket if they are online.
+    3. Optionally send email (fire-and-forget).
+    """
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO notifications (user_id, type, title, body, data) VALUES (?,?,?,?,?)",
+            (user_id, notif_type, title, body, json.dumps(data or {})),
+        )
+        conn.commit()
+        nid = cur.lastrowid
+        notif = _row(conn, "SELECT * FROM notifications WHERE id = ?", (nid,))
+
+    notif["data"] = json.loads(notif.get("data") or "{}")
+    await manager.send(user_id, {"type": "notification", **notif})
+
+    if email:
+        _send_email(email, title, body)
+
 
 def current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)) -> dict:
     uid  = _decode_token(creds.credentials)
@@ -829,70 +905,183 @@ class DealStatusIn(BaseModel):
 # Routes — Deals
 # ---------------------------------------------------------------------------
 
+# Allowed transitions per role
+_CREATOR_TRANSITIONS = {"active", "declined"}   # creator accepts (active) or declines
+_BRAND_TRANSITIONS   = {"completed"}             # brand marks work done
+
+# Human-readable labels for notifications
+_STATUS_LABELS = {
+    "pending":   "Pending",
+    "active":    "Active",
+    "declined":  "Declined",
+    "completed": "Completed",
+}
+
+
+def _deal_detail(conn, deal_id: int) -> Optional[dict]:
+    return _row(conn, """
+        SELECT d.*,
+               c.title        AS campaign_title,
+               c.niche        AS campaign_niche,
+               ub.name        AS brand_name,
+               ub.email       AS brand_email,
+               uc.name        AS creator_name,
+               uc.email       AS creator_email,
+               uc.initials    AS creator_initials
+        FROM deals d
+        JOIN campaigns c ON c.id  = d.campaign_id
+        JOIN users ub    ON ub.id = d.brand_id
+        JOIN users uc    ON uc.id = d.creator_id
+        WHERE d.id = ?
+    """, (deal_id,))
+
+
 @app.post("/api/deals", status_code=201)
-def create_deal(body: DealIn, user: dict = Depends(current_user)):
+async def create_deal(body: DealIn, user: dict = Depends(current_user)):
     require_role("brand", user)
     with get_conn() as conn:
         campaign = _row(conn, "SELECT * FROM campaigns WHERE id = ? AND brand_id = ?",
                         (body.campaign_id, user["id"]))
         if not campaign:
             raise HTTPException(404, "Campaign not found or not yours")
-        creator = _row(conn, "SELECT id FROM users WHERE id = ? AND role = 'creator'",
+        creator = _row(conn, "SELECT * FROM users WHERE id = ? AND role = 'creator'",
                        (body.creator_id,))
         if not creator:
             raise HTTPException(404, "Creator not found")
 
-        cur = conn.execute("""
-            INSERT INTO deals (campaign_id, creator_id, brand_id, amount, terms)
-            VALUES (?,?,?,?,?)
-        """, (body.campaign_id, body.creator_id, user["id"], body.amount, body.terms))
+        cur = conn.execute(
+            "INSERT INTO deals (campaign_id, creator_id, brand_id, amount, terms) VALUES (?,?,?,?,?)",
+            (body.campaign_id, body.creator_id, user["id"], body.amount, body.terms),
+        )
         conn.commit()
         did = cur.lastrowid
 
     with get_conn() as conn:
-        return _row(conn, "SELECT * FROM deals WHERE id = ?", (did,))
+        deal = _deal_detail(conn, did)
+
+    # Notify creator — deal proposed
+    await _notify(
+        user_id    = body.creator_id,
+        notif_type = "deal_proposed",
+        title      = f"New deal proposal from {user['name']}",
+        body       = (f"{user['name']} proposed a ${body.amount:,} deal for "
+                      f"\"{campaign['title']}\". Review and accept or decline."),
+        data       = {"deal_id": did, "campaign_id": body.campaign_id},
+        email      = creator["email"],
+    )
+    return deal
 
 
 @app.get("/api/deals")
-def list_deals(user: dict = Depends(current_user)):
+def list_deals(
+    deal_status: Optional[str] = Query(None, alias="status"),
+    user: dict = Depends(current_user),
+):
     field = "brand_id" if user["role"] == "brand" else "creator_id"
     with get_conn() as conn:
         rows = _rows(conn, f"""
             SELECT d.*,
-                   c.title  AS campaign_title,
-                   ub.name  AS brand_name,
-                   uc.name  AS creator_name
+                   c.title        AS campaign_title,
+                   c.niche        AS campaign_niche,
+                   ub.name        AS brand_name,
+                   uc.name        AS creator_name,
+                   uc.initials    AS creator_initials
             FROM deals d
             JOIN campaigns c ON c.id  = d.campaign_id
             JOIN users ub    ON ub.id = d.brand_id
             JOIN users uc    ON uc.id = d.creator_id
             WHERE d.{field} = ?
-            ORDER BY d.created_at DESC
+            ORDER BY d.updated_at DESC
         """, (user["id"],))
+    if deal_status:
+        rows = [r for r in rows if r["status"] == deal_status]
     return rows
 
 
-@app.patch("/api/deals/{deal_id}/status")
-def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depends(current_user)):
-    if body.status not in ("accepted", "declined", "completed"):
-        raise HTTPException(400, "status must be accepted | declined | completed")
+@app.get("/api/deals/{deal_id}")
+def get_deal(deal_id: int, user: dict = Depends(current_user)):
     with get_conn() as conn:
-        # Brands can only complete; creators accept/decline
-        if user["role"] == "creator":
-            deal = _row(conn, "SELECT * FROM deals WHERE id = ? AND creator_id = ?",
-                        (deal_id, user["id"]))
-        else:
-            deal = _row(conn, "SELECT * FROM deals WHERE id = ? AND brand_id = ?",
-                        (deal_id, user["id"]))
+        deal = _deal_detail(conn, deal_id)
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+        raise HTTPException(403, "Not your deal")
+    return deal
+
+
+@app.patch("/api/deals/{deal_id}/status")
+async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depends(current_user)):
+    """
+    Status machine:
+      creator:  pending  → active | declined
+      brand:    active   → completed
+    """
+    role = user["role"]
+    allowed = _CREATOR_TRANSITIONS if role == "creator" else _BRAND_TRANSITIONS
+    if body.status not in allowed:
+        raise HTTPException(400, f"{role} can only set status to: {' | '.join(sorted(allowed))}")
+
+    with get_conn() as conn:
+        own_field = "creator_id" if role == "creator" else "brand_id"
+        deal = _row(conn, f"SELECT * FROM deals WHERE id = ? AND {own_field} = ?",
+                    (deal_id, user["id"]))
         if not deal:
             raise HTTPException(404, "Deal not found or not yours")
 
+        # Guard valid from-state
+        if body.status == "active"    and deal["status"] != "pending":
+            raise HTTPException(409, "Can only accept a pending deal")
+        if body.status == "declined"  and deal["status"] != "pending":
+            raise HTTPException(409, "Can only decline a pending deal")
+        if body.status == "completed" and deal["status"] != "active":
+            raise HTTPException(409, "Can only complete an active deal")
+
         conn.execute(
             "UPDATE deals SET status = ?, updated_at = datetime('now') WHERE id = ?",
-            (body.status, deal_id)
+            (body.status, deal_id),
         )
         conn.commit()
-    return {"ok": True}
+        deal = _deal_detail(conn, deal_id)
+
+    label = _STATUS_LABELS.get(body.status, body.status)
+
+    # Notify the other party
+    if body.status == "active":
+        # Creator accepted → notify brand
+        await _notify(
+            user_id    = deal["brand_id"],
+            notif_type = "deal_active",
+            title      = f"{deal['creator_name']} accepted your deal",
+            body       = (f"Your ${deal['amount']:,} deal for \"{deal['campaign_title']}\" "
+                          f"is now active. Payment can be released once content is delivered."),
+            data       = {"deal_id": deal_id, "campaign_id": deal["campaign_id"]},
+            email      = deal["brand_email"],
+        )
+    elif body.status == "declined":
+        # Creator declined → notify brand
+        await _notify(
+            user_id    = deal["brand_id"],
+            notif_type = "deal_declined",
+            title      = f"{deal['creator_name']} declined your deal",
+            body       = (f"Your proposal for \"{deal['campaign_title']}\" was declined. "
+                          f"Consider adjusting terms or reaching out to other creators."),
+            data       = {"deal_id": deal_id, "campaign_id": deal["campaign_id"]},
+            email      = deal["brand_email"],
+        )
+    elif body.status == "completed":
+        # Brand marked complete → notify creator
+        await _notify(
+            user_id    = deal["creator_id"],
+            notif_type = "deal_completed",
+            title      = f"Deal completed — payout incoming",
+            body       = (f"Your deal with {deal['brand_name']} for "
+                          f"\"{deal['campaign_title']}\" has been marked complete. "
+                          f"Your payout of ${round(deal['amount'] * 0.85):,} is being processed."),
+            data       = {"deal_id": deal_id, "campaign_id": deal["campaign_id"]},
+            email      = deal["creator_email"],
+        )
+
+    return deal
 
 # ---------------------------------------------------------------------------
 # Schemas — Messages
@@ -1046,7 +1235,7 @@ def create_payment(body: PaymentIn, user: dict = Depends(current_user)):
     require_role("brand", user)
     with get_conn() as conn:
         deal = _row(conn,
-            "SELECT * FROM deals WHERE id = ? AND brand_id = ? AND status = 'accepted'",
+            "SELECT * FROM deals WHERE id = ? AND brand_id = ? AND status = 'active'",
             (body.deal_id, user["id"]))
         if not deal:
             raise HTTPException(404, "Accepted deal not found or not yours")
@@ -1117,6 +1306,66 @@ def release_payment(payment_id: int, user: dict = Depends(current_user)):
         )
         conn.commit()
     return {"ok": True, "creator_payout": payment["creator_payout"]}
+
+
+# ---------------------------------------------------------------------------
+# Routes — Notifications
+# ---------------------------------------------------------------------------
+
+@app.get("/api/notifications")
+def list_notifications(
+    unread_only: bool = Query(False),
+    user: dict = Depends(current_user),
+):
+    """Unread notifications first, then read, capped at 100 most recent."""
+    with get_conn() as conn:
+        rows = _rows(conn, """
+            SELECT * FROM notifications
+            WHERE user_id = ?
+            ORDER BY (read_at IS NULL) DESC, created_at DESC
+            LIMIT 100
+        """, (user["id"],))
+    for r in rows:
+        r["data"] = json.loads(r.get("data") or "{}")
+    if unread_only:
+        rows = [r for r in rows if r["read_at"] is None]
+    return rows
+
+
+@app.get("/api/notifications/unread-count")
+def unread_count(user: dict = Depends(current_user)):
+    with get_conn() as conn:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL",
+            (user["id"],),
+        ).fetchone()[0]
+    return {"count": count}
+
+
+@app.patch("/api/notifications/read-all", status_code=200)
+def mark_all_read(user: dict = Depends(current_user)):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE notifications SET read_at = datetime('now') WHERE user_id = ? AND read_at IS NULL",
+            (user["id"],),
+        )
+        conn.commit()
+    return {"ok": True}
+
+
+@app.patch("/api/notifications/{notif_id}/read", status_code=200)
+def mark_one_read(notif_id: int, user: dict = Depends(current_user)):
+    with get_conn() as conn:
+        row = _row(conn, "SELECT * FROM notifications WHERE id = ? AND user_id = ?",
+                   (notif_id, user["id"]))
+        if not row:
+            raise HTTPException(404, "Notification not found")
+        conn.execute(
+            "UPDATE notifications SET read_at = datetime('now') WHERE id = ? AND read_at IS NULL",
+            (notif_id,),
+        )
+        conn.commit()
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

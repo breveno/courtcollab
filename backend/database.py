@@ -15,7 +15,7 @@ def init_db():
     with get_conn() as conn:
 
         # ------------------------------------------------------------------ #
-        # users — identity & auth only; profile detail lives in child tables  #
+        # users                                                                #
         # ------------------------------------------------------------------ #
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -31,7 +31,6 @@ def init_db():
 
         # ------------------------------------------------------------------ #
         # creator_profiles                                                     #
-        # rates / social_handles stored as JSON strings                       #
         # ------------------------------------------------------------------ #
         conn.execute("""
             CREATE TABLE IF NOT EXISTS creator_profiles (
@@ -51,8 +50,8 @@ def init_db():
                 rate_yt         INTEGER DEFAULT 0,
                 rate_ugc        INTEGER DEFAULT 0,
                 rate_notes      TEXT,
-                skills          TEXT    DEFAULT '[]',   -- JSON array
-                social_handles  TEXT    DEFAULT '{}',   -- JSON object
+                skills          TEXT    DEFAULT '[]',
+                social_handles  TEXT    DEFAULT '{}',
                 demo_age        TEXT,
                 demo_gender     TEXT,
                 demo_locations  TEXT,
@@ -82,31 +81,35 @@ def init_db():
         # ------------------------------------------------------------------ #
         conn.execute("""
             CREATE TABLE IF NOT EXISTS campaigns (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                brand_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                title       TEXT    NOT NULL,
-                description TEXT,
-                budget      INTEGER DEFAULT 0,
-                niche       TEXT,
-                skills      TEXT    DEFAULT '[]',   -- JSON array of required skills
-                status      TEXT    NOT NULL DEFAULT 'open'
-                                CHECK(status IN ('open','paused','closed')),
-                created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                brand_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                title         TEXT    NOT NULL,
+                description   TEXT,
+                budget        INTEGER DEFAULT 0,
+                niche         TEXT,
+                skills        TEXT    DEFAULT '[]',
+                target_age    TEXT,
+                min_followers INTEGER DEFAULT 0,
+                max_rate      INTEGER DEFAULT 0,
+                status        TEXT    NOT NULL DEFAULT 'open'
+                                  CHECK(status IN ('open','paused','closed')),
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
             )
         """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_campaigns_brand ON campaigns(brand_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_campaigns_brand   ON campaigns(brand_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_campaigns_status  ON campaigns(status)")
 
         # ------------------------------------------------------------------ #
         # matches                                                              #
         # ------------------------------------------------------------------ #
         conn.execute("""
             CREATE TABLE IF NOT EXISTS matches (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-                creator_id  INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
-                match_score INTEGER NOT NULL DEFAULT 0,
-                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                campaign_id    INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+                creator_id     INTEGER NOT NULL REFERENCES users(id)     ON DELETE CASCADE,
+                match_score    INTEGER NOT NULL DEFAULT 0,
+                match_reasons  TEXT    DEFAULT '[]',
+                created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
                 UNIQUE(campaign_id, creator_id)
             )
         """)
@@ -115,6 +118,8 @@ def init_db():
 
         # ------------------------------------------------------------------ #
         # deals                                                                #
+        # Status flow:  pending → active → completed                          #
+        #               pending → declined  (terminal)                        #
         # ------------------------------------------------------------------ #
         conn.execute("""
             CREATE TABLE IF NOT EXISTS deals (
@@ -122,8 +127,8 @@ def init_db():
                 campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
                 creator_id  INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
                 brand_id    INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
-                status      TEXT    NOT NULL DEFAULT 'proposed'
-                                CHECK(status IN ('proposed','accepted','declined','completed')),
+                status      TEXT    NOT NULL DEFAULT 'pending'
+                                CHECK(status IN ('pending','active','declined','completed')),
                 amount      INTEGER NOT NULL DEFAULT 0,
                 terms       TEXT,
                 created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
@@ -136,7 +141,6 @@ def init_db():
 
         # ------------------------------------------------------------------ #
         # messages                                                             #
-        # deal_id is nullable — messages can exist outside a formal deal      #
         # ------------------------------------------------------------------ #
         conn.execute("""
             CREATE TABLE IF NOT EXISTS messages (
@@ -145,6 +149,7 @@ def init_db():
                 receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 body        TEXT    NOT NULL,
                 deal_id     INTEGER REFERENCES deals(id) ON DELETE SET NULL,
+                read_at     TEXT,
                 created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
             )
         """)
@@ -153,17 +158,34 @@ def init_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_deal     ON messages(deal_id)")
 
         # ------------------------------------------------------------------ #
+        # notifications                                                        #
+        # data — arbitrary JSON for deep-linking (deal_id, campaign_id, etc.) #
+        # ------------------------------------------------------------------ #
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                type       TEXT    NOT NULL,   -- deal_proposed | deal_active | deal_declined
+                                              --   deal_completed | payment_received | message
+                title      TEXT    NOT NULL,
+                body       TEXT    NOT NULL,
+                data       TEXT    DEFAULT '{}',
+                read_at    TEXT,
+                created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_user    ON notifications(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_notif_read    ON notifications(user_id, read_at)")
+
+        # ------------------------------------------------------------------ #
         # payments                                                             #
-        # stripe_payment_id populated when Stripe integration is live         #
-        # platform_fee = 15 % of amount (stored for audit trail)             #
-        # creator_payout = amount - platform_fee                              #
         # ------------------------------------------------------------------ #
         conn.execute("""
             CREATE TABLE IF NOT EXISTS payments (
                 id                INTEGER PRIMARY KEY AUTOINCREMENT,
-                deal_id           INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
-                brand_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                creator_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                deal_id           INTEGER NOT NULL REFERENCES deals(id)  ON DELETE CASCADE,
+                brand_id          INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                creator_id        INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
                 amount            INTEGER NOT NULL,
                 platform_fee      INTEGER NOT NULL,
                 creator_payout    INTEGER NOT NULL,
@@ -180,14 +202,63 @@ def init_db():
 
         conn.commit()
 
-    # ------------------------------------------------------------------ #
-    # Non-destructive migrations — add columns introduced after v1        #
-    # ------------------------------------------------------------------ #
+    # ---------------------------------------------------------------------- #
+    # Migrations — safe to re-run; each is idempotent                        #
+    # ---------------------------------------------------------------------- #
+    _migrate_deal_statuses()
     _add_column_if_missing("campaigns", "target_age",    "TEXT")
     _add_column_if_missing("campaigns", "min_followers", "INTEGER DEFAULT 0")
     _add_column_if_missing("campaigns", "max_rate",      "INTEGER DEFAULT 0")
     _add_column_if_missing("matches",   "match_reasons", "TEXT DEFAULT '[]'")
     _add_column_if_missing("messages",  "read_at",       "TEXT")
+
+
+def _migrate_deal_statuses():
+    """
+    Rename deal status values from v1 naming (proposed/accepted) to v2
+    (pending/active).  Uses table-rebuild because SQLite doesn't allow
+    ALTER TABLE … DROP CONSTRAINT.  Safe to call repeatedly.
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='deals'"
+        ).fetchone()
+        if not row:
+            return
+        if "'pending'" in row["sql"]:
+            return  # already migrated
+
+        # Rebuild deals with new constraint, mapping old status values
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute("""
+            CREATE TABLE deals_v2 (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+                creator_id  INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+                brand_id    INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+                status      TEXT    NOT NULL DEFAULT 'pending'
+                                CHECK(status IN ('pending','active','declined','completed')),
+                amount      INTEGER NOT NULL DEFAULT 0,
+                terms       TEXT,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
+            INSERT INTO deals_v2
+            SELECT id, campaign_id, creator_id, brand_id,
+                   CASE status
+                       WHEN 'proposed' THEN 'pending'
+                       WHEN 'accepted' THEN 'active'
+                       ELSE status
+                   END,
+                   amount, terms, created_at, updated_at
+            FROM deals
+        """)
+        conn.execute("DROP TABLE deals")
+        conn.execute("ALTER TABLE deals_v2 RENAME TO deals")
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.commit()
 
 
 def _add_column_if_missing(table: str, column: str, definition: str):
