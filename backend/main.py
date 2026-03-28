@@ -405,8 +405,24 @@ def signup(body: SignupIn):
             uid = cur.lastrowid
     except sqlite3.IntegrityError:
         raise HTTPException(409, "An account with that email already exists")
+
     with get_conn() as conn:
         user = _row(conn, "SELECT * FROM users WHERE id = ?", (uid,))
+
+    # Notify platform admins of every new signup
+    role_label = "Creator" if body.role == "creator" else "Brand"
+    subject    = f"New {role_label} signup — {body.name}"
+    email_body = (
+        f"A new {role_label.lower()} just joined CourtCollab.\n\n"
+        f"  Name  : {body.name}\n"
+        f"  Email : {body.email.lower()}\n"
+        f"  Role  : {role_label}\n"
+        f"  ID    : #{uid}\n\n"
+        f"— CourtCollab Platform"
+    )
+    for admin in ADMIN_EMAILS:
+        _send_email(admin, subject, email_body, event_type="new_signup")
+
     return {"token": _make_token(uid), "user": UserOut(**user)}
 
 
