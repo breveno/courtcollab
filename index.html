@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CourtCollab — Creator & Brand Marketplace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pickle: { 50:'#f0f5f0', 100:'#d6e8d6', 200:'#acceac', 300:'#7db07d', 400:'#4f8a4f', 500:'#2F4F2F', 600:'#264226', 700:'#1e351e', 800:'#162816', 900:'#0f1c0f' },
+            brand: { 50:'#eff6ff', 100:'#dbeafe', 200:'#bfdbfe', 300:'#93c5fd', 400:'#60a5fa', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 800:'#1e40af', 900:'#1e3a8a' }
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .nav-link.active { color: #2F4F2F; border-bottom: 2px solid #2F4F2F; }
+    .tag { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; margin: 2px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; }
+    .modal-content { background: white; border-radius: 1rem; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+    .stat-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
+    .stat-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #4f8a4f, #2F4F2F); }
+    .card-hover { transition: all 0.2s; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); }
+    .gradient-bg { background: linear-gradient(135deg, #0f1c0f 0%, #162816 50%, #1e351e 100%); }
+    .match-score { background: linear-gradient(135deg, #4f8a4f, #2F4F2F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    input:focus, select:focus, textarea:focus { outline: none; ring: 2px; border-color: #2F4F2F; }
+    .message-bubble-left { background: #f3f4f6; border-radius: 0 12px 12px 12px; }
+    .message-bubble-right { background: #d6e8d6; border-radius: 12px 0 12px 12px; }
+  /* Auth gate */
+  #auth-gate { position:fixed; inset:0; z-index:9999; display:flex; }
+  #auth-gate.hidden { display:none; }
+  .auth-left { width:55%; background:linear-gradient(145deg,#0f1c0f 0%,#162816 55%,#1e351e 100%); display:flex; flex-direction:column; justify-content:center; padding:4rem; position:relative; overflow:hidden; }
+  .auth-left::after { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%234f8a4f' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); pointer-events:none; }
+  .auth-right { width:45%; background:white; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:3rem 2.5rem; overflow-y:auto; }
+  .auth-tab { padding:0.6rem 1.5rem; font-weight:600; font-size:0.95rem; border-radius:0.5rem; cursor:pointer; transition:all 0.2s; }
+  .auth-tab.active { background:#2F4F2F; color:white; }
+  .auth-tab:not(.active) { color:#6b7280; }
+  .auth-input { width:100%; border:1.5px solid #e5e7eb; border-radius:0.6rem; padding:0.7rem 1rem; font-size:0.95rem; transition:border-color 0.2s; }
+  .auth-input:focus { border-color:#2F4F2F; outline:none; }
+  .auth-btn { width:100%; background:#2F4F2F; color:white; padding:0.8rem; border-radius:0.6rem; font-weight:700; font-size:1rem; cursor:pointer; transition:background 0.2s; }
+  .auth-btn:hover { background:#1e351e; }
+  .auth-error { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:0.5rem; padding:0.6rem 1rem; font-size:0.85rem; }
+  @media(max-width:768px) { #auth-gate { flex-direction:column; } .auth-left { width:100%; padding:2rem; flex:0 0 auto; } .auth-right { width:100%; flex:1; padding:2rem 1.5rem; } }
+  </style>
+</head>
+<body class="font-sans bg-gray-50 text-gray-900 min-h-screen">
+
+  <!-- Auth Gate -->
+  <div id="auth-gate">
+    <!-- Left: Company Overview -->
+    <div class="auth-left">
+      <div class="relative z-10">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 mb-10">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="48" height="48">
+            <defs>
+              <g id="ag-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/></g>
+              <g id="ag-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#fff"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#fff"/></g>
+            </defs>
+            <circle cx="60" cy="60" r="56" fill="#2F4F2F"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#3d6b3d" stroke-width="1.5"/>
+            <g transform="translate(60,60) scale(0.4)"><use href="#ag-pb" transform="rotate(38)"/><use href="#ag-pf" transform="rotate(-38)"/><circle cx="0" cy="0" r="7" fill="#2F4F2F" stroke="#7db07d" stroke-width="2"/></g>
+          </svg>
+          <span style="font-size:1.8rem;font-weight:900;letter-spacing:-0.03em;"><span style="color:#7db07d;">Court</span><span style="color:#fff;">Collab</span></span>
+        </div>
+
+        <h1 style="color:white;font-size:2.2rem;font-weight:800;line-height:1.2;margin-bottom:1rem;">The Pickleball Creator &amp; Brand Marketplace</h1>
+        <p style="color:#a7c4a7;font-size:1.05rem;line-height:1.7;margin-bottom:2.5rem;">CourtCollab connects pickleball content creators with brands looking to reach the sport's passionate and fast-growing audience — all in one streamlined platform.</p>
+
+        <div style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:3rem;">
+          <div style="display:flex;align-items:flex-start;gap:1rem;">
+            <div style="width:2.5rem;height:2.5rem;background:rgba(79,138,79,0.25);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="18" height="18" fill="none" stroke="#7db07d" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            </div>
+            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Creator Profiles &amp; Media Kits</p><p style="color:#a7c4a7;font-size:0.9rem;margin:0;">Showcase your stats, niche, skills, and rates to attract the right brand partners.</p></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:1rem;">
+            <div style="width:2.5rem;height:2.5rem;background:rgba(79,138,79,0.25);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="18" height="18" fill="none" stroke="#7db07d" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Smart Brand Discovery</p><p style="color:#a7c4a7;font-size:0.9rem;margin:0;">Brands find perfectly matched creators using filters, niches, and our AI scoring engine.</p></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:1rem;">
+            <div style="width:2.5rem;height:2.5rem;background:rgba(79,138,79,0.25);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="18" height="18" fill="none" stroke="#7db07d" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Secure Deal &amp; Payment Flow</p><p style="color:#a7c4a7;font-size:0.9rem;margin:0;">Message, negotiate, and pay through the platform — with automatic platform fee splits.</p></div>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div style="display:flex;gap:2rem;border-top:1px solid rgba(255,255,255,0.1);padding-top:2rem;">
+          <div><p style="color:white;font-size:1.6rem;font-weight:800;margin:0;">500+</p><p style="color:#a7c4a7;font-size:0.85rem;margin:0;">Active Creators</p></div>
+          <div><p style="color:white;font-size:1.6rem;font-weight:800;margin:0;">120+</p><p style="color:#a7c4a7;font-size:0.85rem;margin:0;">Brand Partners</p></div>
+          <div><p style="color:white;font-size:1.6rem;font-weight:800;margin:0;">$2M+</p><p style="color:#a7c4a7;font-size:0.85rem;margin:0;">Deals Closed</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Login / Signup Forms -->
+    <div class="auth-right">
+      <div style="width:100%;max-width:380px;">
+        <h2 style="font-size:1.6rem;font-weight:800;color:#111;margin:0 0 0.4rem;">Welcome back</h2>
+        <p style="color:#6b7280;margin:0 0 1.75rem;font-size:0.95rem;">Sign in or create your account to get started.</p>
+
+        <!-- Tabs -->
+        <div style="display:flex;gap:0.5rem;background:#f3f4f6;border-radius:0.65rem;padding:0.3rem;margin-bottom:1.75rem;">
+          <button class="auth-tab active" id="tab-login" onclick="showAuthTab('login')">Sign In</button>
+          <button class="auth-tab" id="tab-signup" onclick="showAuthTab('signup')">Create Account</button>
+        </div>
+
+        <!-- Error -->
+        <div id="auth-error" class="auth-error hidden" style="margin-bottom:1rem;"></div>
+
+        <!-- Login Form -->
+        <form id="login-form" onsubmit="handleLogin(event)">
+          <div style="display:flex;flex-direction:column;gap:1rem;">
+            <div>
+              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email</label>
+              <input id="login-email" type="email" class="auth-input" placeholder="you@example.com" required />
+            </div>
+            <div>
+              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Password</label>
+              <input id="login-password" type="password" class="auth-input" placeholder="••••••••" required />
+            </div>
+            <button type="submit" class="auth-btn" style="margin-top:0.5rem;">Sign In</button>
+          </div>
+          <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Don't have an account? <button type="button" onclick="showAuthTab('signup')" style="color:#2F4F2F;font-weight:600;background:none;border:none;cursor:pointer;">Create one</button></p>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="signup-form" onsubmit="handleSignup(event)" style="display:none;">
+          <div style="display:flex;flex-direction:column;gap:1rem;">
+            <div>
+              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Full Name</label>
+              <input id="signup-name" type="text" class="auth-input" placeholder="Jane Smith" required />
+            </div>
+            <div>
+              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email</label>
+              <input id="signup-email" type="email" class="auth-input" placeholder="you@example.com" required />
+            </div>
+            <div>
+              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Password</label>
+              <input id="signup-password" type="password" class="auth-input" placeholder="Min. 6 characters" required minlength="6" />
+            </div>
+            <div>
+              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.5rem;">I am a…</label>
+              <div style="display:flex;gap:0.75rem;">
+                <label style="flex:1;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-brand-label">
+                  <input type="radio" name="signup-role" value="brand" id="role-brand" style="display:none;" onchange="highlightRole()" checked />
+                  <span style="font-size:1.4rem;display:block;margin-bottom:0.2rem;">🏢</span>
+                  <span style="font-weight:600;font-size:0.9rem;color:#374151;">Brand</span>
+                </label>
+                <label style="flex:1;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-creator-label">
+                  <input type="radio" name="signup-role" value="creator" id="role-creator" style="display:none;" onchange="highlightRole()" />
+                  <span style="font-size:1.4rem;display:block;margin-bottom:0.2rem;">🎥</span>
+                  <span style="font-weight:600;font-size:0.9rem;color:#374151;">Creator</span>
+                </label>
+              </div>
+            </div>
+            <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Create Account</button>
+          </div>
+          <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Already have an account? <button type="button" onclick="showAuthTab('login')" style="color:#2F4F2F;font-weight:600;background:none;border:none;cursor:pointer;">Sign in</button></p>
+        </form>
+
+        <p style="text-align:center;margin-top:2rem;font-size:0.78rem;color:#9ca3af;">By continuing, you agree to CourtCollab's Terms of Service and Privacy Policy.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center cursor-pointer" onclick="navigate('landing')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" height="36" aria-label="CourtCollab">
+            <defs>
+              <g id="nav-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/></g>
+              <g id="nav-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#fff"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#fff"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/></g>
+            </defs>
+            <g transform="translate(60,60) scale(0.4)">
+              <circle cx="0" cy="0" r="96" fill="#2F4F2F"/>
+              <circle cx="0" cy="0" r="90" fill="none" stroke="#3d6b3d" stroke-width="1.5"/>
+              <use href="#nav-pb" transform="rotate(38)"/>
+              <use href="#nav-pf" transform="rotate(-38)"/>
+              <circle cx="0" cy="0" r="7" fill="#2F4F2F" stroke="#7db07d" stroke-width="2"/>
+            </g>
+            <text x="118" y="68" font-family="'Inter',system-ui,sans-serif" font-weight="800" font-size="46" dominant-baseline="middle" text-anchor="start"><tspan fill="#1e351e">Court</tspan><tspan fill="#2F4F2F">Collab</tspan></text>
+          </svg>
+        </div>
+        <div class="hidden md:flex items-center gap-1" id="main-nav">
+          <button onclick="navigate('creators')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="creators">Browse Creators</button>
+          <button onclick="navigate('campaigns')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="campaigns">Campaign Briefs</button>
+          <button onclick="navigate('matching')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="matching">Discovery</button>
+          <button onclick="navigate('messages')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="messages">Messages</button>
+          <button onclick="navigate('payments')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="payments">Payments</button>
+          <button onclick="navigate('contact')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="contact">Contact</button>
+        </div>
+        <div class="flex items-center gap-3">
+          <select id="user-role" onchange="switchRole(this.value)" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white">
+            <option value="brand">I'm a Brand</option>
+            <option value="creator">I'm a Creator</option>
+          </select>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center" title="Account">
+              <span id="nav-user-initials" class="text-xs font-bold text-pickle-700"></span>
+            </div>
+            <span id="nav-user-name" class="hidden md:block text-sm font-medium text-gray-700 max-w-[120px] truncate"></span>
+            <button onclick="handleLogout()" class="text-sm text-gray-400 hover:text-red-500 transition font-medium ml-1" title="Sign out">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Mobile nav -->
+    <div class="md:hidden flex overflow-x-auto border-t border-gray-100 px-2" id="mobile-nav">
+      <button onclick="navigate('creators')" class="nav-link whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-600 border-b-2 border-transparent" data-page="creators">Creators</button>
+      <button onclick="navigate('campaigns')" class="nav-link whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-600 border-b-2 border-transparent" data-page="campaigns">Campaigns</button>
+      <button onclick="navigate('matching')" class="nav-link whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-600 border-b-2 border-transparent" data-page="matching">Discovery</button>
+      <button onclick="navigate('messages')" class="nav-link whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-600 border-b-2 border-transparent" data-page="messages">Messages</button>
+      <button onclick="navigate('payments')" class="nav-link whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-600 border-b-2 border-transparent" data-page="payments">Payments</button>
+      <button onclick="navigate('contact')" class="nav-link whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-600 border-b-2 border-transparent" data-page="contact">Contact</button>
+    </div>
+  </nav>
+
+  <!-- Landing Page -->
+  <div id="page-landing" class="page active">
+    <div class="gradient-bg text-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
+        <div class="max-w-3xl">
+          <div class="inline-block bg-white/10 backdrop-blur rounded-full px-4 py-1.5 text-sm font-medium mb-6">The #1 Pickleball Creator Marketplace</div>
+          <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-6">Connect Pickleball <br>Creators with <span class="text-pickle-300">Top Brands</span></h1>
+          <p class="text-lg md:text-xl text-pickle-100 mb-10 max-w-2xl">The marketplace where pickleball creators showcase their audience, skills, and rates — and brands discover the perfect partners for their campaigns.</p>
+          <div class="flex flex-wrap gap-4">
+            <button onclick="navigate('creators')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition">Browse Creators</button>
+            <button onclick="switchRole('creator');navigate('creator-profile')" class="border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-white/10 transition">Join as Creator</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold mb-3">How It Works</h2>
+        <p class="text-gray-500 text-lg">Simple, transparent, effective</p>
+      </div>
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="bg-white rounded-2xl p-8 text-center card-hover border border-gray-100">
+          <div class="w-14 h-14 bg-pickle-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <svg class="w-7 h-7 text-pickle-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          </div>
+          <h3 class="font-bold text-lg mb-2">Creators List Profiles</h3>
+          <p class="text-gray-500">Post your audience stats, content niche, skills, and rates. Showcase what makes you unique.</p>
+        </div>
+        <div class="bg-white rounded-2xl p-8 text-center card-hover border border-gray-100">
+          <div class="w-14 h-14 bg-brand-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <svg class="w-7 h-7 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+          <h3 class="font-bold text-lg mb-2">Brands Discover & Match</h3>
+          <p class="text-gray-500">Browse creators, filter by niche, audience, and skills. Find your perfect campaign partner.</p>
+        </div>
+        <div class="bg-white rounded-2xl p-8 text-center card-hover border border-gray-100">
+          <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <svg class="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          </div>
+          <h3 class="font-bold text-lg mb-2">Connect & Close Deals</h3>
+          <p class="text-gray-500">Message directly, negotiate rates, and finalize campaign deals — all in one place.</p>
+        </div>
+      </div>
+    </div>
+    <div class="bg-white border-t border-gray-100">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          <div><div class="text-3xl font-extrabold text-pickle-600">500+</div><div class="text-gray-500 mt-1">Creators</div></div>
+          <div><div class="text-3xl font-extrabold text-pickle-600">120+</div><div class="text-gray-500 mt-1">Brands</div></div>
+          <div><div class="text-3xl font-extrabold text-pickle-600">1.2K</div><div class="text-gray-500 mt-1">Campaigns</div></div>
+          <div><div class="text-3xl font-extrabold text-pickle-600">$2.4M</div><div class="text-gray-500 mt-1">Deals Closed</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Browse Creators Page -->
+  <div id="page-creators" class="page">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 class="text-3xl font-bold">Browse Creators</h1>
+          <p class="text-gray-500 mt-1">Find the perfect pickleball creator for your campaign</p>
+        </div>
+        <button onclick="switchRole('creator');navigate('creator-profile')" class="bg-pickle-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-pickle-700 transition whitespace-nowrap">+ Create Your Profile</button>
+      </div>
+
+      <!-- Filters -->
+      <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <input type="text" id="filter-search" placeholder="Search creators..." class="col-span-2 md:col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" oninput="filterCreators()">
+          <select id="filter-niche" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="filterCreators()">
+            <option value="">All Niches</option>
+            <option>Tutorials & Tips</option>
+            <option>Pro Match Highlights</option>
+            <option>Gear Reviews</option>
+            <option>Comedy & Entertainment</option>
+            <option>Lifestyle & Fitness</option>
+            <option>News & Commentary</option>
+          </select>
+          <select id="filter-skill" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="filterCreators()">
+            <option value="">All Skills</option>
+            <option>Short Form Video</option>
+            <option>Long Form Video</option>
+            <option>Editing</option>
+            <option>Voice Overs</option>
+            <option>Photography</option>
+            <option>Live Streaming</option>
+            <option>UGC</option>
+          </select>
+          <select id="filter-audience" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="filterCreators()">
+            <option value="">Audience Size</option>
+            <option value="micro">Micro (1K-10K)</option>
+            <option value="mid">Mid (10K-50K)</option>
+            <option value="macro">Macro (50K-200K)</option>
+            <option value="mega">Mega (200K+)</option>
+          </select>
+          <select id="filter-rate" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="filterCreators()">
+            <option value="">Rate Range</option>
+            <option value="budget">Under $500</option>
+            <option value="mid">$500-$2,000</option>
+            <option value="premium">$2,000-$5,000</option>
+            <option value="elite">$5,000+</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Creator Grid -->
+      <div id="creator-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Creator Profile / Edit Page -->
+  <div id="page-creator-profile" class="page">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 class="text-3xl font-bold mb-2">Your Creator Profile</h1>
+      <p class="text-gray-500 mb-8">Set up your profile so brands can find and connect with you</p>
+
+      <form id="creator-form" class="space-y-8" onsubmit="saveCreatorProfile(event)">
+        <!-- Basic Info -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+          <h2 class="font-bold text-lg mb-4">Basic Information</h2>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+              <input type="text" id="cp-name" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Your creator name" required>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+              <input type="text" id="cp-location" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="City, State">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+              <textarea id="cp-bio" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Tell brands about yourself and your pickleball content..."></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Content Niche</label>
+              <select id="cp-niche" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="">Select niche</option>
+                <option>Tutorials & Tips</option>
+                <option>Pro Match Highlights</option>
+                <option>Gear Reviews</option>
+                <option>Comedy & Entertainment</option>
+                <option>Lifestyle & Fitness</option>
+                <option>News & Commentary</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Skill Level (Pickleball)</label>
+              <select id="cp-skill-level" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="">Select level</option>
+                <option>Beginner (2.0-2.5)</option>
+                <option>Intermediate (3.0-3.5)</option>
+                <option>Advanced (4.0-4.5)</option>
+                <option>Pro (5.0+)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Creator Skills -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+          <h2 class="font-bold text-lg mb-4">Creator Skills</h2>
+          <p class="text-sm text-gray-500 mb-4">Select all that apply</p>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="cp-skills">
+            <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pickle-400 has-[:checked]:border-pickle-500 has-[:checked]:bg-pickle-50">
+              <input type="checkbox" value="Short Form Video" class="accent-pickle-600"> <span class="text-sm">Short Form Video</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pickle-400 has-[:checked]:border-pickle-500 has-[:checked]:bg-pickle-50">
+              <input type="checkbox" value="Long Form Video" class="accent-pickle-600"> <span class="text-sm">Long Form Video</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pickle-400 has-[:checked]:border-pickle-500 has-[:checked]:bg-pickle-50">
+              <input type="checkbox" value="Editing" class="accent-pickle-600"> <span class="text-sm">Editing</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pickle-400 has-[:checked]:border-pickle-500 has-[:checked]:bg-pickle-50">
+              <input type="checkbox" value="Voice Overs" class="accent-pickle-600"> <span class="text-sm">Voice Overs</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pickle-400 has-[:checked]:border-pickle-500 has-[:checked]:bg-pickle-50">
+              <input type="checkbox" value="Photography" class="accent-pickle-600"> <span class="text-sm">Photography</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pickle-400 has-[:checked]:border-pickle-500 has-[:checked]:bg-pickle-50">
+              <input type="checkbox" value="Live Streaming" class="accent-pickle-600"> <span class="text-sm">Live Streaming</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pickle-400 has-[:checked]:border-pickle-500 has-[:checked]:bg-pickle-50">
+              <input type="checkbox" value="UGC" class="accent-pickle-600"> <span class="text-sm">UGC</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pickle-400 has-[:checked]:border-pickle-500 has-[:checked]:bg-pickle-50">
+              <input type="checkbox" value="Podcast" class="accent-pickle-600"> <span class="text-sm">Podcast</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Audience Stats -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+          <h2 class="font-bold text-lg mb-4">Audience Stats</h2>
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Instagram Followers</label>
+              <input type="number" id="cp-ig" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="0">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">TikTok Followers</label>
+              <input type="number" id="cp-tiktok" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="0">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">YouTube Subscribers</label>
+              <input type="number" id="cp-yt" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="0">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Avg Engagement Rate (%)</label>
+              <input type="number" step="0.1" id="cp-engagement" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="4.5">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Avg Views per Post</label>
+              <input type="number" id="cp-views" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="0">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Total Followers (All Platforms)</label>
+              <input type="number" id="cp-total" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="0">
+            </div>
+          </div>
+        </div>
+
+        <!-- Audience Demographics -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+          <h2 class="font-bold text-lg mb-4">Audience Demographics</h2>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Primary Age Group</label>
+              <select id="cp-age" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="">Select age group</option>
+                <option>18-24</option>
+                <option>25-34</option>
+                <option>35-44</option>
+                <option>45-54</option>
+                <option>55+</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Gender Split</label>
+              <select id="cp-gender" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="">Select split</option>
+                <option>Mostly Male (70%+)</option>
+                <option>Male Leaning (55-70%)</option>
+                <option>Even Split</option>
+                <option>Female Leaning (55-70%)</option>
+                <option>Mostly Female (70%+)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Top Locations</label>
+              <input type="text" id="cp-locations" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="e.g., USA 60%, Canada 15%, UK 10%">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Audience Interests</label>
+              <input type="text" id="cp-interests" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="e.g., Sports, Fitness, Outdoors">
+            </div>
+          </div>
+        </div>
+
+        <!-- Rates -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+          <h2 class="font-bold text-lg mb-4">Rates & Availability</h2>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Rate per Instagram Post</label>
+              <input type="number" id="cp-rate-ig" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="$">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Rate per TikTok/Reel</label>
+              <input type="number" id="cp-rate-tiktok" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="$">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Rate per YouTube Video</label>
+              <input type="number" id="cp-rate-yt" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="$">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">UGC Rate (per piece)</label>
+              <input type="number" id="cp-rate-ugc" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="$">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Additional Rate Notes</label>
+              <textarea id="cp-rate-notes" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Bundle discounts, long-term partnership rates, etc."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-4">
+          <button type="submit" class="bg-pickle-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-pickle-700 transition">Save Profile</button>
+          <button type="button" onclick="navigate('creators')" class="border border-gray-300 text-gray-600 px-8 py-3 rounded-xl font-medium hover:bg-gray-50 transition">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Campaign Briefs Page -->
+  <div id="page-campaigns" class="page">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 class="text-3xl font-bold">Campaign Briefs</h1>
+          <p class="text-gray-500 mt-1" id="campaigns-subtitle">Browse active campaigns from top brands</p>
+        </div>
+        <button onclick="openModal('campaign-modal')" class="bg-brand-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-brand-700 transition whitespace-nowrap" id="post-campaign-btn">+ Post Campaign Brief</button>
+      </div>
+
+      <div id="campaign-list" class="space-y-6">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Discovery / Matching Page -->
+  <div id="page-matching" class="page">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold">Smart Discovery</h1>
+        <p class="text-gray-500 mt-1">AI-powered matching between creators and campaigns</p>
+      </div>
+
+      <!-- Match Criteria -->
+      <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+        <h2 class="font-bold text-lg mb-4">What are you looking for?</h2>
+        <div class="grid md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Content Type</label>
+            <select id="match-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="runMatching()">
+              <option value="">Any</option>
+              <option>Short Form Video</option>
+              <option>Long Form Video</option>
+              <option>UGC</option>
+              <option>Photography</option>
+              <option>Live Streaming</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Target Audience Age</label>
+            <select id="match-age" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="runMatching()">
+              <option value="">Any</option>
+              <option>18-24</option>
+              <option>25-34</option>
+              <option>35-44</option>
+              <option>45-54</option>
+              <option>55+</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Min Followers</label>
+            <input type="number" id="match-followers" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="e.g., 10000" oninput="runMatching()">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Max Budget (per post)</label>
+            <input type="number" id="match-budget" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="e.g., 2000" oninput="runMatching()">
+          </div>
+        </div>
+      </div>
+
+      <div id="match-results" class="space-y-4">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Messages Page -->
+  <div id="page-messages" class="page">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 class="text-3xl font-bold mb-6">Messages & Deals</h1>
+      <div class="grid md:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+        <!-- Conversation List -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div class="p-4 border-b border-gray-100">
+            <input type="text" placeholder="Search conversations..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div id="conversation-list" class="overflow-y-auto" style="max-height: calc(100vh - 300px);">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="md:col-span-2 bg-white rounded-2xl border border-gray-200 flex flex-col overflow-hidden">
+          <div id="chat-header" class="p-4 border-b border-gray-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700" id="chat-avatar">?</div>
+              <div>
+                <div class="font-semibold" id="chat-name">Select a conversation</div>
+                <div class="text-xs text-gray-500" id="chat-status"></div>
+              </div>
+            </div>
+            <div id="deal-actions" class="hidden">
+              <button onclick="updateDealStatus('accepted')" class="bg-pickle-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-pickle-700">Accept Deal</button>
+              <button onclick="updateDealStatus('declined')" class="border border-red-300 text-red-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-50 ml-2">Decline</button>
+            </div>
+          </div>
+          <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4" style="max-height: calc(100vh - 380px);">
+            <div class="text-center text-gray-400 text-sm py-10">Select a conversation to start messaging</div>
+          </div>
+          <div class="p-4 border-t border-gray-100">
+            <div class="flex gap-2">
+              <input type="text" id="message-input" placeholder="Type a message..." class="flex-1 border border-gray-300 rounded-lg px-4 py-2.5" onkeypress="if(event.key==='Enter')sendMessage()">
+              <button onclick="sendMessage()" class="bg-pickle-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-pickle-700 transition">Send</button>
+              <button onclick="openModal('deal-modal')" class="border border-pickle-300 text-pickle-700 px-4 py-2.5 rounded-lg font-medium hover:bg-pickle-50 transition text-sm" title="Propose Deal">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Creator Detail Modal -->
+  <div id="creator-detail-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('creator-detail-modal')">
+    <div class="modal-content max-w-2xl">
+      <div class="flex justify-between items-start mb-4">
+        <div class="flex items-center gap-4">
+          <div class="w-16 h-16 rounded-2xl bg-pickle-100 flex items-center justify-center text-2xl font-bold text-pickle-700" id="detail-avatar"></div>
+          <div>
+            <h2 class="text-2xl font-bold" id="detail-name"></h2>
+            <p class="text-gray-500" id="detail-location"></p>
+          </div>
+        </div>
+        <button onclick="closeModal('creator-detail-modal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+      </div>
+      <div id="detail-content"></div>
+      <div class="flex gap-3 mt-6">
+        <button onclick="startConversation()" class="bg-pickle-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-pickle-700 transition flex-1">Message Creator</button>
+        <button onclick="closeModal('creator-detail-modal')" class="border border-gray-300 text-gray-600 px-6 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Campaign Post Modal -->
+  <div id="campaign-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('campaign-modal')">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold">Post a Campaign Brief</h2>
+        <button onclick="closeModal('campaign-modal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+      </div>
+      <form onsubmit="postCampaign(event)" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Campaign Title</label>
+          <input type="text" id="camp-title" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="e.g., Summer Paddle Launch" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
+          <input type="text" id="camp-brand" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Your brand name" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Campaign Description</label>
+          <textarea id="camp-desc" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Describe the campaign goals, deliverables, and expectations..." required></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
+            <select id="camp-budget" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+              <option>$500 - $1,000</option>
+              <option>$1,000 - $2,500</option>
+              <option>$2,500 - $5,000</option>
+              <option>$5,000 - $10,000</option>
+              <option>$10,000+</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Content Type Needed</label>
+            <select id="camp-content" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+              <option>Short Form Video (Reels/TikTok)</option>
+              <option>Long Form Video (YouTube)</option>
+              <option>UGC Content</option>
+              <option>Photography</option>
+              <option>Live Stream</option>
+              <option>Multi-format Package</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Target Audience</label>
+            <select id="camp-audience" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+              <option>Recreational Players</option>
+              <option>Competitive Players</option>
+              <option>Beginners</option>
+              <option>All Levels</option>
+              <option>Fitness Enthusiasts</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+            <input type="date" id="camp-deadline" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Required Creator Skills</label>
+          <div class="flex flex-wrap gap-2" id="camp-skills">
+            <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" value="Short Form Video" class="accent-brand-600"> Short Form</label>
+            <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" value="Editing" class="accent-brand-600"> Editing</label>
+            <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" value="Voice Overs" class="accent-brand-600"> Voice Overs</label>
+            <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" value="Photography" class="accent-brand-600"> Photography</label>
+            <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" value="UGC" class="accent-brand-600"> UGC</label>
+            <label class="flex items-center gap-1.5 text-sm"><input type="checkbox" value="Live Streaming" class="accent-brand-600"> Live Stream</label>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 transition">Post Campaign</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Deal Proposal Modal -->
+  <div id="deal-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('deal-modal')">
+    <div class="modal-content max-w-md">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold">Propose a Deal</h2>
+        <button onclick="closeModal('deal-modal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+      </div>
+      <form onsubmit="proposeDeal(event)" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Deliverables</label>
+          <textarea id="deal-deliverables" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="e.g., 2x Instagram Reels + 1x TikTok + 3x Story posts" required></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Total Amount ($)</label>
+            <input type="number" id="deal-amount" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="2500" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Timeline</label>
+            <input type="text" id="deal-timeline" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="e.g., 2 weeks">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <textarea id="deal-notes" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Any additional terms or notes..."></textarea>
+        </div>
+        <button type="submit" class="w-full bg-pickle-600 text-white py-3 rounded-xl font-semibold hover:bg-pickle-700 transition">Send Proposal</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Payments Page -->
+  <div id="page-payments" class="page">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+      <!-- Brand View -->
+      <div class="brand-only">
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold">Payment Center</h1>
+          <p class="text-gray-500 mt-1">Manage payments and track your campaign spend</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-gray-500">Total Spent</span>
+              <div class="w-10 h-10 bg-pickle-100 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-pickle-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-gray-900">$24,800</div>
+            <div class="text-sm text-gray-400 mt-1">Across all campaigns</div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-gray-500">Active Deals</span>
+              <div class="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-gray-900">3</div>
+            <div class="text-sm text-gray-400 mt-1">Currently in progress</div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-gray-500">Pending Release</span>
+              <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-gray-900">$6,400</div>
+            <div class="text-sm text-gray-400 mt-1">Held in escrow</div>
+          </div>
+        </div>
+
+        <!-- Make a Payment -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-8">
+          <h2 class="text-xl font-bold mb-6">Make a Payment</h2>
+          <form id="payment-form" class="space-y-4" onsubmit="submitPayment(event)">
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Select Creator</label>
+                <select id="pay-creator" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                  <option value="">Choose a creator...</option>
+                  <option>Dink Dynasty</option>
+                  <option>PicklePro Sarah</option>
+                  <option>The Kitchen King</option>
+                  <option>Paddle Review Pro</option>
+                  <option>Court & Cocktails</option>
+                  <option>PickleNews Daily</option>
+                  <option>Tiny Dinkers</option>
+                  <option>Smash Brothers PB</option>
+                  <option>Zen & the Art of Dinking</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Select Campaign</label>
+                <select id="pay-campaign" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                  <option value="">Choose a campaign...</option>
+                  <option>Summer Slam Paddle Launch</option>
+                  <option>Pickleball Apparel — Spring Collection</option>
+                  <option>Beginner's Guide Sponsorship</option>
+                  <option>Tournament Live Coverage</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Deal Amount ($)</label>
+                <input type="number" id="deal-amount-pay" min="0" step="1" placeholder="e.g., 2500" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Platform Fee (15%)</label>
+                <input type="text" id="platform-fee-display" readonly value="$0.00" class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-gray-500 cursor-not-allowed">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Creator Receives</label>
+                <input type="text" id="creator-payout-display" readonly value="$0.00" class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-pickle-50 text-pickle-700 font-semibold cursor-not-allowed">
+              </div>
+            </div>
+            <div>
+              <button type="submit" class="bg-pickle-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition">Send Payment</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-100">
+          <h2 class="text-xl font-bold mb-6">Transaction History</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left border-b border-gray-100">
+                  <th class="pb-3 font-semibold text-gray-500">Date</th>
+                  <th class="pb-3 font-semibold text-gray-500">Creator</th>
+                  <th class="pb-3 font-semibold text-gray-500">Campaign</th>
+                  <th class="pb-3 font-semibold text-gray-500">Deal Amount</th>
+                  <th class="pb-3 font-semibold text-gray-500">Platform Fee</th>
+                  <th class="pb-3 font-semibold text-gray-500">Creator Payout</th>
+                  <th class="pb-3 font-semibold text-gray-500">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Mar 22, 2026</td>
+                  <td class="py-3 font-medium">Court & Cocktails</td>
+                  <td class="py-3 text-gray-600">Spring Collection</td>
+                  <td class="py-3 font-medium">$2,200</td>
+                  <td class="py-3 text-gray-500">$330</td>
+                  <td class="py-3 font-medium text-pickle-700">$1,870</td>
+                  <td class="py-3"><span class="tag bg-pickle-100 text-pickle-700">Paid</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Mar 20, 2026</td>
+                  <td class="py-3 font-medium">Dink Dynasty</td>
+                  <td class="py-3 text-gray-600">Summer Slam Paddle Launch</td>
+                  <td class="py-3 font-medium">$3,500</td>
+                  <td class="py-3 text-gray-500">$525</td>
+                  <td class="py-3 font-medium text-pickle-700">$2,975</td>
+                  <td class="py-3"><span class="tag bg-yellow-100 text-yellow-700">Escrow</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Mar 15, 2026</td>
+                  <td class="py-3 font-medium">Paddle Review Pro</td>
+                  <td class="py-3 text-gray-600">Court Shoe Review Campaign</td>
+                  <td class="py-3 font-medium">$4,000</td>
+                  <td class="py-3 text-gray-500">$600</td>
+                  <td class="py-3 font-medium text-pickle-700">$3,400</td>
+                  <td class="py-3"><span class="tag bg-pickle-100 text-pickle-700">Paid</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Mar 10, 2026</td>
+                  <td class="py-3 font-medium">PicklePro Sarah</td>
+                  <td class="py-3 text-gray-600">Tournament Live Coverage</td>
+                  <td class="py-3 font-medium">$5,000</td>
+                  <td class="py-3 text-gray-500">$750</td>
+                  <td class="py-3 font-medium text-pickle-700">$4,250</td>
+                  <td class="py-3"><span class="tag bg-yellow-100 text-yellow-700">Escrow</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Mar 5, 2026</td>
+                  <td class="py-3 font-medium">The Kitchen King</td>
+                  <td class="py-3 text-gray-600">Beginner's Guide Series</td>
+                  <td class="py-3 font-medium">$1,800</td>
+                  <td class="py-3 text-gray-500">$270</td>
+                  <td class="py-3 font-medium text-pickle-700">$1,530</td>
+                  <td class="py-3"><span class="tag bg-gray-100 text-gray-600">Pending</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Creator View -->
+      <div class="creator-only">
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold">Earnings Dashboard</h1>
+          <p class="text-gray-500 mt-1">Track your earnings and manage your payout method</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-gray-500">Total Earned</span>
+              <div class="w-10 h-10 bg-pickle-100 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-pickle-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-gray-900">$18,340</div>
+            <div class="text-sm text-gray-400 mt-1">Lifetime earnings</div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-gray-500">Pending Payout</span>
+              <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-gray-900">$2,400</div>
+            <div class="text-sm text-gray-400 mt-1">Awaiting content approval</div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-gray-500">This Month</span>
+              <div class="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-gray-900">$3,200</div>
+            <div class="text-sm text-gray-400 mt-1">March 2026</div>
+          </div>
+        </div>
+
+        <!-- Payout Method -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-8">
+          <h2 class="text-xl font-bold mb-4">Payout Method</h2>
+          <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 bg-pickle-100 rounded-xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-pickle-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+              </div>
+              <div>
+                <div class="font-semibold">Bank Account</div>
+                <div class="text-sm text-gray-500">••••••••4821 · Chase Bank</div>
+              </div>
+            </div>
+            <button onclick="alert('Update payout method — coming soon!')" class="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 transition">Update</button>
+          </div>
+          <p class="text-xs text-gray-400 mt-3">Payouts are processed within 3-5 business days after content is approved by the brand.</p>
+        </div>
+
+        <!-- Earnings History -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-100">
+          <h2 class="text-xl font-bold mb-6">Earnings History</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left border-b border-gray-100">
+                  <th class="pb-3 font-semibold text-gray-500">Date</th>
+                  <th class="pb-3 font-semibold text-gray-500">Brand</th>
+                  <th class="pb-3 font-semibold text-gray-500">Campaign</th>
+                  <th class="pb-3 font-semibold text-gray-500">Gross Amount</th>
+                  <th class="pb-3 font-semibold text-gray-500">Platform Fee (15%)</th>
+                  <th class="pb-3 font-semibold text-gray-500">Your Payout</th>
+                  <th class="pb-3 font-semibold text-gray-500">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Mar 20, 2026</td>
+                  <td class="py-3 font-medium">VoltDrive Paddles</td>
+                  <td class="py-3 text-gray-600">Summer Slam Launch</td>
+                  <td class="py-3 font-medium">$3,500</td>
+                  <td class="py-3 text-gray-500">$525</td>
+                  <td class="py-3 font-bold text-pickle-700">$2,975</td>
+                  <td class="py-3"><span class="tag bg-yellow-100 text-yellow-700">Escrow</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Mar 12, 2026</td>
+                  <td class="py-3 font-medium">Selkirk Sport</td>
+                  <td class="py-3 text-gray-600">Paddle of the Year</td>
+                  <td class="py-3 font-medium">$2,800</td>
+                  <td class="py-3 text-gray-500">$420</td>
+                  <td class="py-3 font-bold text-pickle-700">$2,380</td>
+                  <td class="py-3"><span class="tag bg-pickle-100 text-pickle-700">Paid</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Feb 28, 2026</td>
+                  <td class="py-3 font-medium">Franklin Sports</td>
+                  <td class="py-3 text-gray-600">Ball Drop Campaign</td>
+                  <td class="py-3 font-medium">$1,600</td>
+                  <td class="py-3 text-gray-500">$240</td>
+                  <td class="py-3 font-bold text-pickle-700">$1,360</td>
+                  <td class="py-3"><span class="tag bg-pickle-100 text-pickle-700">Paid</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Feb 14, 2026</td>
+                  <td class="py-3 font-medium">Joola</td>
+                  <td class="py-3 text-gray-600">Ambassador Q1</td>
+                  <td class="py-3 font-medium">$4,200</td>
+                  <td class="py-3 text-gray-500">$630</td>
+                  <td class="py-3 font-bold text-pickle-700">$3,570</td>
+                  <td class="py-3"><span class="tag bg-pickle-100 text-pickle-700">Paid</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="py-3 text-gray-500">Jan 30, 2026</td>
+                  <td class="py-3 font-medium">ONIX Sports</td>
+                  <td class="py-3 text-gray-600">Winter Collection</td>
+                  <td class="py-3 font-medium">$1,200</td>
+                  <td class="py-3 text-gray-500">$180</td>
+                  <td class="py-3 font-bold text-pickle-700">$1,020</td>
+                  <td class="py-3"><span class="tag bg-gray-100 text-gray-600">Pending</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Contact Page -->
+  <div id="page-contact" class="page">
+    <div class="gradient-bg text-white py-16">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Get in Touch</h1>
+        <p class="text-lg text-pickle-100 max-w-xl mx-auto">Have a question, partnership idea, or need support? We'd love to hear from you. Our team typically responds within 24 hours.</p>
+      </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+      <!-- Success Banner -->
+      <div id="contact-success" class="hidden mb-6 bg-pickle-100 border border-pickle-300 text-pickle-800 rounded-xl px-6 py-4 font-medium">
+        Thanks! We'll get back to you within 24 hours.
+      </div>
+
+      <!-- Contact Form -->
+      <div class="bg-white rounded-2xl p-8 border border-gray-100 card-hover mb-10">
+        <h2 class="text-2xl font-bold mb-6">Send Us a Message</h2>
+        <form id="contact-form" class="space-y-5" onsubmit="submitContact(event)">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input type="text" id="contact-name" class="w-full border border-gray-300 rounded-lg px-3 py-2.5" placeholder="Your full name" required>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input type="email" id="contact-email" class="w-full border border-gray-300 rounded-lg px-3 py-2.5" placeholder="you@example.com" required>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">I am a:</label>
+              <select id="contact-role" class="w-full border border-gray-300 rounded-lg px-3 py-2.5">
+                <option value="">Select...</option>
+                <option>Creator</option>
+                <option>Brand</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+              <select id="contact-subject" class="w-full border border-gray-300 rounded-lg px-3 py-2.5">
+                <option value="">Select a topic...</option>
+                <option>Partnership Inquiry</option>
+                <option>Campaign Question</option>
+                <option>Creator Application</option>
+                <option>Technical Support</option>
+                <option>General Question</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <textarea id="contact-message" rows="5" class="w-full border border-gray-300 rounded-lg px-3 py-2.5" placeholder="Tell us what's on your mind..." required></textarea>
+          </div>
+          <button type="submit" class="bg-pickle-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-pickle-700 transition w-full md:w-auto">Send Message</button>
+        </form>
+      </div>
+
+      <!-- Info Cards -->
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover text-center">
+          <div class="w-12 h-12 bg-pickle-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6 text-pickle-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <h3 class="font-bold mb-1">Email</h3>
+          <p class="text-sm text-gray-500">team@courtcollab.com</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover text-center">
+          <div class="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <h3 class="font-bold mb-1">Response Time</h3>
+          <p class="text-sm text-gray-500">Within 24 hours on business days</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover text-center">
+          <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <h3 class="font-bold mb-1">Community</h3>
+          <p class="text-sm text-gray-500"><a href="#" class="text-pickle-600 hover:underline">Join our Discord</a> for real-time help</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-lg hidden transition-all transform translate-y-2 opacity-0 z-50">
+    <span id="toast-text"></span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

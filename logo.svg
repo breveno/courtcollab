@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <!-- Back paddle (lighter green) -->
+    <g id="paddle-back">
+      <!-- Head: rounded rect centered at (0,0), 32×46 -->
+      <rect x="-16" y="-46" width="32" height="46" rx="13" ry="13" fill="#4f8a4f"/>
+      <!-- Handle: centered below head, 12×38 -->
+      <rect x="-6" y="0" width="12" height="38" rx="4" ry="4" fill="#4f8a4f"/>
+      <!-- Grip wrapping lines near bottom of handle -->
+      <line x1="-6" y1="26" x2="6" y2="26" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="-6" y1="31" x2="6" y2="31" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="-6" y1="36" x2="6" y2="36" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/>
+    </g>
+    <!-- Front paddle (white) -->
+    <g id="paddle-front">
+      <!-- Head: rounded rect centered at (0,0), 32×46 -->
+      <rect x="-16" y="-46" width="32" height="46" rx="13" ry="13" fill="#ffffff"/>
+      <!-- Handle: centered below head, 12×38 -->
+      <rect x="-6" y="0" width="12" height="38" rx="4" ry="4" fill="#ffffff"/>
+      <!-- Grip wrapping lines near bottom of handle -->
+      <line x1="-6" y1="26" x2="6" y2="26" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="-6" y1="31" x2="6" y2="31" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="-6" y1="36" x2="6" y2="36" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <!-- Circular badge background -->
+  <circle cx="100" cy="100" r="96" fill="#2F4F2F"/>
+
+  <!-- Thin inner ring for depth -->
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#3d6b3d" stroke-width="1.5"/>
+
+  <!-- BACK paddle: head upper-right, handle lower-left → rotated +38° -->
+  <use href="#paddle-back" transform="translate(100,100) rotate(38)"/>
+
+  <!-- FRONT paddle: head upper-left, handle lower-right → rotated -38° -->
+  <use href="#paddle-front" transform="translate(100,100) rotate(-38)"/>
+
+  <!-- Accent circle at center crossing point -->
+  <circle cx="100" cy="100" r="7" fill="#2F4F2F" stroke="#7db07d" stroke-width="2"/>
+</svg>
