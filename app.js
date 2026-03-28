@@ -3,20 +3,30 @@
 // ============================================================
 
 // --- Auth ---
-function getAuthUsers() {
-  try { return JSON.parse(localStorage.getItem('cc_users') || '[]'); } catch { return []; }
+const API = 'http://localhost:8000';
+
+function getToken() { return localStorage.getItem('cc_jwt'); }
+function setToken(t) { localStorage.setItem('cc_jwt', t); }
+function clearToken() { localStorage.removeItem('cc_jwt'); }
+
+async function apiPost(path, body) {
+  const res = await fetch(API + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Request failed');
+  return data;
 }
-function saveAuthUsers(users) {
-  localStorage.setItem('cc_users', JSON.stringify(users));
-}
-function getCurrentUser() {
-  try { return JSON.parse(localStorage.getItem('cc_current_user') || 'null'); } catch { return null; }
-}
-function setCurrentUser(user) {
-  localStorage.setItem('cc_current_user', JSON.stringify(user));
-}
-function clearCurrentUser() {
-  localStorage.removeItem('cc_current_user');
+
+async function apiGet(path) {
+  const token = getToken();
+  const res = await fetch(API + path, {
+    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+  });
+  if (!res.ok) throw new Error('Unauthorized');
+  return res.json();
 }
 
 function showAuthGate() {
@@ -52,44 +62,55 @@ function showAuthError(msg) {
   el.classList.remove('hidden');
 }
 
-function handleLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
-  const password = document.getElementById('login-password').value;
-  const users = getAuthUsers();
-  const user = users.find(u => u.email === email && u.password === password);
-  if (!user) { showAuthError('Incorrect email or password. Try again or create an account.'); return; }
-  setCurrentUser(user);
-  onAuthSuccess(user);
+function setAuthBtnLoading(formId, loading) {
+  const btn = document.querySelector(`#${formId} button[type="submit"]`);
+  if (btn) { btn.disabled = loading; btn.textContent = loading ? 'Please wait…' : (formId === 'login-form' ? 'Sign In' : 'Create Account'); }
 }
 
-function handleSignup(e) {
+async function handleLogin(e) {
   e.preventDefault();
-  const name = document.getElementById('signup-name').value.trim();
-  const email = document.getElementById('signup-email').value.trim().toLowerCase();
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  setAuthBtnLoading('login-form', true);
+  try {
+    const { token, user } = await apiPost('/api/login', { email, password });
+    setToken(token);
+    onAuthSuccess(user);
+  } catch (err) {
+    showAuthError(err.message);
+  } finally {
+    setAuthBtnLoading('login-form', false);
+  }
+}
+
+async function handleSignup(e) {
+  e.preventDefault();
+  const name     = document.getElementById('signup-name').value.trim();
+  const email    = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
-  const role = document.querySelector('input[name="signup-role"]:checked').value;
-  const users = getAuthUsers();
-  if (users.find(u => u.email === email)) { showAuthError('An account with that email already exists. Sign in instead.'); return; }
-  const user = { name, email, password, role, initials: name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) };
-  users.push(user);
-  saveAuthUsers(users);
-  setCurrentUser(user);
-  onAuthSuccess(user);
+  const role     = document.querySelector('input[name="signup-role"]:checked').value;
+  setAuthBtnLoading('signup-form', true);
+  try {
+    const { token, user } = await apiPost('/api/signup', { name, email, password, role });
+    setToken(token);
+    onAuthSuccess(user);
+  } catch (err) {
+    showAuthError(err.message);
+  } finally {
+    setAuthBtnLoading('signup-form', false);
+  }
 }
 
 function onAuthSuccess(user) {
   hideAuthGate();
-  // Sync role to match account type
   switchRole(user.role);
-  // Update nav user display
-  document.getElementById('nav-user-initials').textContent = user.initials || user.name.slice(0,2).toUpperCase();
+  document.getElementById('nav-user-initials').textContent = user.initials || user.name.slice(0, 2).toUpperCase();
   document.getElementById('nav-user-name').textContent = user.name;
   navigate('landing');
 }
 
 function handleLogout() {
-  clearCurrentUser();
+  clearToken();
   showAuthGate();
   showAuthTab('login');
   document.getElementById('login-email').value = '';
@@ -992,12 +1013,18 @@ function submitContact(e) {
 }
 
 // --- Init ---
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('user-role').value = state.role;
   highlightRole();
-  const user = getCurrentUser();
-  if (user) {
-    onAuthSuccess(user);
+  // Restore session via /api/me if a JWT is stored
+  if (getToken()) {
+    try {
+      const user = await apiGet('/api/me');
+      onAuthSuccess(user);
+    } catch {
+      clearToken();
+      showAuthGate();
+    }
   } else {
     showAuthGate();
   }
