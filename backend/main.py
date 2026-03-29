@@ -71,10 +71,9 @@ Stripe Connect
 import json
 import logging
 import os
-import smtplib
 import sqlite3
 import stripe
-from email.mime.text import MIMEText
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from pathlib import Path
@@ -277,46 +276,38 @@ def _rows(conn, sql: str, params: tuple = ()) -> List[dict]:
 
 def _send_email(to_email: str, subject: str, body: str, event_type: str = ""):
     """
-    Send notification email in a background thread so it never blocks the request.
-    Requires SMTP_HOST to be set; silently skips if not configured.
+    Send notification email via SendGrid HTTP API in a background thread.
+    Requires SENDGRID_API_KEY to be set; silently skips if not configured.
     """
     import threading
     def _send():
-        host = os.environ.get("SMTP_HOST")
-        if not host:
-            logging.debug("SMTP not configured — skipping email to %s (%s)", to_email, subject)
+        api_key = os.environ.get("SENDGRID_API_KEY")
+        if not api_key:
+            logging.debug("SendGrid not configured — skipping email to %s (%s)", to_email, subject)
             return
 
         all_recipients = list({to_email} | set(ADMIN_EMAILS))
 
         try:
-            msg             = MIMEText(body, "plain")
-            msg["Subject"]  = subject
-            msg["From"]     = FROM_EMAIL
-            msg["To"]       = to_email
+            personalizations = [{"to": [{"email": r} for r in all_recipients]}]
+            payload = json.dumps({
+                "personalizations": personalizations,
+                "from": {"email": FROM_EMAIL, "name": "CourtCollab"},
+                "subject": subject,
+                "content": [{"type": "text/plain", "value": body}]
+            }).encode("utf-8")
 
-            bcc_list = [a for a in ADMIN_EMAILS if a != to_email]
-            if bcc_list:
-                msg["Bcc"] = ", ".join(bcc_list)
-
-            port    = int(os.environ.get("SMTP_PORT", 587))
-            use_ssl = os.environ.get("SMTP_SSL", "false").lower() in ("true", "1", "yes")
-            user    = os.environ.get("SMTP_USER", "")
-            pw      = os.environ.get("SMTP_PASS", "")
-
-            if use_ssl:
-                with smtplib.SMTP_SSL(host, port, timeout=10) as s:
-                    if user:
-                        s.login(user, pw)
-                    s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
-            else:
-                with smtplib.SMTP(host, port, timeout=10) as s:
-                    s.starttls()
-                    if user:
-                        s.login(user, pw)
-                    s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
-
-            logging.info("Email sent to %s — %s", to_email, subject)
+            req = urllib.request.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                data=payload,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                logging.info("Email sent to %s — %s (status %s)", to_email, subject, resp.status)
         except Exception as exc:
             logging.warning("Email delivery failed for %s: %s", to_email, exc)
 
