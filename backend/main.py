@@ -1091,6 +1091,22 @@ async def create_deal(body: DealIn, user: dict = Depends(current_user)):
         data       = {"deal_id": did, "campaign_id": body.campaign_id},
         email      = creator["email"],
     )
+
+    # Notify admins — new deal created
+    admin_subject = f"[New Deal] {user['name']} → {creator['name']} — ${body.amount:,}"
+    admin_body = (
+        f"A new deal has been created on CourtCollab.\n\n"
+        f"  Deal ID  : #{did}\n"
+        f"  Brand    : {user['name']} ({user['email']})\n"
+        f"  Creator  : {creator['name']} ({creator['email']})\n"
+        f"  Campaign : {campaign['title']}\n"
+        f"  Amount   : ${body.amount:,}\n"
+        f"  Terms    : {body.terms or 'None provided'}\n\n"
+        f"— CourtCollab Platform"
+    )
+    for admin in ADMIN_EMAILS:
+        _send_email(admin, admin_subject, admin_body, event_type="new_deal")
+
     return deal
 
 
@@ -1459,6 +1475,25 @@ def release_payment(payment_id: int, user: dict = Depends(current_user)):
             (payment["deal_id"],)
         )
         conn.commit()
+
+    # Notify admins — payment released / deal completed
+    with get_conn() as conn:
+        creator_user = _row(conn, "SELECT name, email FROM users WHERE id = ?", (payment["creator_id"],))
+    admin_subject = f"[Payment Released] Deal #{payment['deal_id']} — ${payment['creator_payout']:,} to creator"
+    admin_body = (
+        f"A payment has been released on CourtCollab.\n\n"
+        f"  Deal ID        : #{payment['deal_id']}\n"
+        f"  Brand          : {user['name']} ({user['email']})\n"
+        f"  Creator        : {creator_user['name'] if creator_user else payment['creator_id']} "
+        f"({creator_user['email'] if creator_user else ''})\n"
+        f"  Total Amount   : ${payment['amount']:,}\n"
+        f"  Creator Payout : ${payment['creator_payout']:,} (85%)\n"
+        f"  Platform Fee   : ${payment['amount'] - payment['creator_payout']:,} (15%)\n"
+        f"  Stripe Transfer: {stripe_transfer_id or 'Manual'}\n\n"
+        f"— CourtCollab Platform"
+    )
+    for admin in ADMIN_EMAILS:
+        _send_email(admin, admin_subject, admin_body, event_type="payment_released")
 
     return {
         "ok": True,
