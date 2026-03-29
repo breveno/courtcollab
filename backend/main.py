@@ -282,8 +282,9 @@ def _send_email(to_email: str, subject: str, body: str, event_type: str = ""):
     import threading
     def _send():
         api_key = os.environ.get("SENDGRID_API_KEY")
+        logging.warning("EMAIL THREAD: SENDGRID_API_KEY present=%s to=%s subject=%s", bool(api_key), to_email, subject)
         if not api_key:
-            logging.debug("SendGrid not configured — skipping email to %s (%s)", to_email, subject)
+            logging.warning("SendGrid not configured — skipping email to %s (%s)", to_email, subject)
             return
 
         all_recipients = list({to_email} | set(ADMIN_EMAILS))
