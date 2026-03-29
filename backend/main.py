@@ -197,6 +197,8 @@ async def add_cors_headers(request: Request, call_next):
 @app.on_event("startup")
 def startup():
     init_db()
+    sg_key = os.environ.get("SENDGRID_API_KEY", "")
+    print(f"[STARTUP] SENDGRID_API_KEY present={bool(sg_key)} prefix={sg_key[:8] if sg_key else 'NONE'}", flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -282,9 +284,9 @@ def _send_email(to_email: str, subject: str, body: str, event_type: str = ""):
     import threading
     def _send():
         api_key = os.environ.get("SENDGRID_API_KEY")
-        logging.warning("EMAIL THREAD: SENDGRID_API_KEY present=%s to=%s subject=%s", bool(api_key), to_email, subject)
+        print(f"[EMAIL] key_present={bool(api_key)} to={to_email} subject={subject}", flush=True)
         if not api_key:
-            logging.warning("SendGrid not configured — skipping email to %s (%s)", to_email, subject)
+            print(f"[EMAIL] SENDGRID_API_KEY not set — skipping", flush=True)
             return
 
         all_recipients = list({to_email} | set(ADMIN_EMAILS))
