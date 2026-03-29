@@ -3,7 +3,7 @@
 // ============================================================
 
 // --- Auth & API Helpers ---
-const API = 'http://localhost:8000';
+const API = 'https://courtcollab-production.up.railway.app';
 
 function getToken() { return localStorage.getItem('cc_jwt'); }
 function setToken(t) { localStorage.setItem('cc_jwt', t); }
