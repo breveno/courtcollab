@@ -277,52 +277,50 @@ def _rows(conn, sql: str, params: tuple = ()) -> List[dict]:
 
 def _send_email(to_email: str, subject: str, body: str, event_type: str = ""):
     """
-    Send notification email to `to_email` and BCC platform admins.
-
-    Requires SMTP_HOST to be set; silently skips in dev if not configured.
-    Admin BCC list: ADMIN_EMAILS (ben@courtcollab.com, julia@courtcollab.com).
+    Send notification email in a background thread so it never blocks the request.
+    Requires SMTP_HOST to be set; silently skips if not configured.
     """
-    host = os.environ.get("SMTP_HOST")
-    if not host:
-        logging.debug("SMTP not configured — skipping email to %s (%s)", to_email, subject)
-        return
+    import threading
+    def _send():
+        host = os.environ.get("SMTP_HOST")
+        if not host:
+            logging.debug("SMTP not configured — skipping email to %s (%s)", to_email, subject)
+            return
 
-    # Deduplicate: if the recipient IS an admin, don't double-deliver
-    all_recipients = list({to_email} | set(ADMIN_EMAILS))
+        all_recipients = list({to_email} | set(ADMIN_EMAILS))
 
-    try:
-        msg             = MIMEText(body, "plain")
-        msg["Subject"]  = subject
-        msg["From"]     = FROM_EMAIL
-        msg["To"]       = to_email
+        try:
+            msg             = MIMEText(body, "plain")
+            msg["Subject"]  = subject
+            msg["From"]     = FROM_EMAIL
+            msg["To"]       = to_email
 
-        # Admins receive as BCC so the primary recipient doesn't see them
-        bcc_list = [a for a in ADMIN_EMAILS if a != to_email]
-        if bcc_list:
-            msg["Bcc"] = ", ".join(bcc_list)
+            bcc_list = [a for a in ADMIN_EMAILS if a != to_email]
+            if bcc_list:
+                msg["Bcc"] = ", ".join(bcc_list)
 
-        port    = int(os.environ.get("SMTP_PORT", 587))
-        use_ssl = os.environ.get("SMTP_SSL", "false").lower() in ("true", "1", "yes")
-        user    = os.environ.get("SMTP_USER", "")
-        pw      = os.environ.get("SMTP_PASS", "")
+            port    = int(os.environ.get("SMTP_PORT", 587))
+            use_ssl = os.environ.get("SMTP_SSL", "false").lower() in ("true", "1", "yes")
+            user    = os.environ.get("SMTP_USER", "")
+            pw      = os.environ.get("SMTP_PASS", "")
 
-        if use_ssl:
-            # Port 465 — SSL from the start (Zoho, etc.)
-            with smtplib.SMTP_SSL(host, port) as s:
-                if user:
-                    s.login(user, pw)
-                s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
-        else:
-            # Port 587 — plaintext then STARTTLS upgrade
-            with smtplib.SMTP(host, port) as s:
-                s.starttls()
-                if user:
-                    s.login(user, pw)
-                s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
+            if use_ssl:
+                with smtplib.SMTP_SSL(host, port, timeout=10) as s:
+                    if user:
+                        s.login(user, pw)
+                    s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
+            else:
+                with smtplib.SMTP(host, port, timeout=10) as s:
+                    s.starttls()
+                    if user:
+                        s.login(user, pw)
+                    s.sendmail(FROM_EMAIL, all_recipients, msg.as_string())
 
-        logging.info("Email sent to %s (BCC: %s) — %s", to_email, bcc_list, subject)
-    except Exception as exc:
-        logging.warning("Email delivery failed for %s: %s", to_email, exc)
+            logging.info("Email sent to %s — %s", to_email, subject)
+        except Exception as exc:
+            logging.warning("Email delivery failed for %s: %s", to_email, exc)
+
+    threading.Thread(target=_send, daemon=True).start()
 
 
 def _admin_email_body(
