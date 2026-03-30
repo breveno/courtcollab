@@ -56,16 +56,18 @@
     font-weight: 500;
     letter-spacing: 0.02em;
   }
-  @keyframes paddle-spin {
-    0%   { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  @keyframes paddle-open {
+    0%   { transform: rotate(38deg); }
+    50%  { transform: rotate(80deg); }
+    100% { transform: rotate(38deg); }
   }
-  @keyframes paddle-spin-reverse {
-    0%   { transform: rotate(0deg); }
-    100% { transform: rotate(-360deg); }
+  @keyframes paddle-close {
+    0%   { transform: rotate(-38deg); }
+    50%  { transform: rotate(-80deg); }
+    100% { transform: rotate(-38deg); }
   }
-  .paddle-spinner { animation: paddle-spin 1.4s linear infinite; transform-origin: center; }
-  .paddle-spinner-reverse { animation: paddle-spin-reverse 1.4s linear infinite; transform-origin: center; }
+  .paddle-spinner { animation: paddle-open 1.1s ease-in-out infinite; transform-origin: center; }
+  .paddle-spinner-reverse { animation: paddle-close 1.1s ease-in-out infinite; transform-origin: center; }
   /* Auth gate */
   html, body { overflow-x: hidden; max-width: 100vw; }
   #auth-gate { position:fixed; inset:0; z-index:9999; display:flex; }

@@ -10,7 +10,7 @@ function setToken(t) { localStorage.setItem('cc_jwt', t); }
 function clearToken() { localStorage.removeItem('cc_jwt'); }
 
 async function apiPost(path, body, opts = {}) {
-  if (!opts.silent) showLoading(opts.msg || 'Please wait…');
+  if (opts.loading) showLoading(opts.msg || 'Please wait…');
   try {
     const token = getToken();
     const res = await fetch(API + path, {
@@ -24,11 +24,11 @@ async function apiPost(path, body, opts = {}) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Request failed');
     return data;
-  } finally { if (!opts.silent) hideLoading(); }
+  } finally { if (opts.loading) hideLoading(); }
 }
 
 async function apiGet(path, opts = {}) {
-  if (!opts.silent) showLoading(opts.msg || 'Loading…');
+  if (opts.loading) showLoading(opts.msg || 'Loading…');
   try {
     const token = getToken();
     const res = await fetch(API + path, {
@@ -39,11 +39,11 @@ async function apiGet(path, opts = {}) {
       throw new Error(data.detail || 'Request failed');
     }
     return res.json();
-  } finally { if (!opts.silent) hideLoading(); }
+  } finally { if (opts.loading) hideLoading(); }
 }
 
 async function apiPut(path, body, opts = {}) {
-  if (!opts.silent) showLoading(opts.msg || 'Saving…');
+  if (opts.loading) showLoading(opts.msg || 'Saving…');
   try {
     const token = getToken();
     const res = await fetch(API + path, {
@@ -57,11 +57,11 @@ async function apiPut(path, body, opts = {}) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Request failed');
     return data;
-  } finally { if (!opts.silent) hideLoading(); }
+  } finally { if (opts.loading) hideLoading(); }
 }
 
 async function apiPatch(path, body = {}, opts = {}) {
-  if (!opts.silent) showLoading(opts.msg || 'Updating…');
+  if (opts.loading) showLoading(opts.msg || 'Updating…');
   try {
     const token = getToken();
     const res = await fetch(API + path, {
@@ -75,7 +75,7 @@ async function apiPatch(path, body = {}, opts = {}) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Request failed');
     return data;
-  } finally { if (!opts.silent) hideLoading(); }
+  } finally { if (opts.loading) hideLoading(); }
 }
 
 // --- Loading Overlay ---
@@ -146,7 +146,7 @@ async function handleLogin(e) {
   const password = document.getElementById('login-password').value;
   setAuthBtnLoading('login-form', true);
   try {
-    const { token, user } = await apiPost('/api/login', { email, password });
+    const { token, user } = await apiPost('/api/login', { email, password }, { loading: true, msg: 'Signing in…' });
     setToken(token);
     onAuthSuccess(user);
   } catch (err) {
@@ -164,7 +164,7 @@ async function handleSignup(e) {
   const role     = document.querySelector('input[name="signup-role"]:checked').value;
   setAuthBtnLoading('signup-form', true);
   try {
-    const { token, user } = await apiPost('/api/signup', { name, email, password, role });
+    const { token, user } = await apiPost('/api/signup', { name, email, password, role }, { loading: true, msg: 'Creating your account…' });
     setToken(token);
     // Save social handles for creators right after signup (non-blocking)
     if (role === 'creator') {
