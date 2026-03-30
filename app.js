@@ -297,6 +297,8 @@ function onAuthSuccess(user) {
   document.getElementById('nav-user-initials').textContent = initials;
   document.getElementById('nav-user-initials-mobile').textContent = initials;
   document.getElementById('nav-user-name').textContent = user.name;
+  const badge = document.getElementById('nav-role-badge');
+  if (badge) badge.textContent = user.role === 'creator' ? '🎥 Creator' : '🏢 Brand';
   updateLandingHeroButtons(user.role);
   // Show admin nav link only for platform admins
   const isAdmin = ADMIN_EMAILS.includes(user.email);

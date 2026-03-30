@@ -351,11 +351,10 @@
           <button id="nav-admin-link" onclick="navigate('admin')" class="nav-link px-4 py-5 text-sm font-medium text-red-600 hover:text-red-700 border-b-2 border-transparent hidden" data-page="admin">⚙ Admin</button>
         </div>
         <div class="flex items-center gap-2">
-          <!-- Desktop: role switcher + user info + signout -->
-          <select id="user-role" onchange="switchRole(this.value)" class="hidden md:block text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white">
-            <option value="brand">I'm a Brand</option>
-            <option value="creator">I'm a Creator</option>
-          </select>
+          <!-- Desktop: role badge (read-only) -->
+          <span id="nav-role-badge" class="hidden md:inline-block text-xs font-semibold px-3 py-1.5 rounded-lg bg-pickle-100 text-pickle-700"></span>
+          <!-- Hidden selects kept for JS compatibility -->
+          <select id="user-role" class="hidden"></select>
           <div class="hidden md:flex items-center gap-2">
             <div class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center" title="Account">
               <span id="nav-user-initials" class="text-xs font-bold text-pickle-700"></span>
@@ -391,12 +390,8 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           Sign Out
         </button>
-        <div class="px-5 py-3 border-t border-gray-100">
-          <select onchange="switchRole(this.value); document.getElementById('user-role').value=this.value; closeMobileMenu();" id="user-role-mobile" class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
-            <option value="brand">I'm a Brand</option>
-            <option value="creator">I'm a Creator</option>
-          </select>
-        </div>
+          <!-- Hidden select kept for JS compatibility -->
+          <select id="user-role-mobile" class="hidden"></select>
       </div>
     </div>
   </nav>
