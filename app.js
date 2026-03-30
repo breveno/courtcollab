@@ -137,16 +137,18 @@ async function handleSignup(e) {
   try {
     const { token, user } = await apiPost('/api/signup', { name, email, password, role });
     setToken(token);
-    // Save social handles for creators right after signup
+    // Save social handles for creators right after signup (non-blocking)
     if (role === 'creator') {
-      const ig = (document.getElementById('signup-instagram').value || '').trim().replace(/^@/, '');
-      const tt = (document.getElementById('signup-tiktok').value || '').trim().replace(/^@/, '');
-      if (ig || tt) {
-        const handles = {};
-        if (ig) handles.instagram = ig;
-        if (tt) handles.tiktok = tt;
-        await apiPut('/api/creator/profile', { social_handles: JSON.stringify(handles) });
-      }
+      try {
+        const ig = (document.getElementById('signup-instagram').value || '').trim().replace(/^@/, '');
+        const tt = (document.getElementById('signup-tiktok').value || '').trim().replace(/^@/, '');
+        if (ig || tt) {
+          const handles = {};
+          if (ig) handles.instagram = ig;
+          if (tt) handles.tiktok = tt;
+          await apiPut('/api/creator/profile', { social_handles: JSON.stringify(handles) });
+        }
+      } catch (_) { /* handles save is best-effort, don't block signup */ }
     }
     onAuthSuccess(user);
   } catch (err) {
