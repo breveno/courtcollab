@@ -308,6 +308,7 @@ function onAuthSuccess(user) {
   if (adminLinkMobile) adminLinkMobile.classList.toggle('hidden', !isAdmin);
   navigate('landing');
   if (user.role === 'creator') loadStripeConnectStatus();
+  startNotifPolling();
 }
 
 function updateLandingHeroButtons(role) {
@@ -327,6 +328,7 @@ function updateLandingHeroButtons(role) {
 }
 
 function handleLogout() {
+  stopNotifPolling();
   state.currentUser = null;
   state.activePartner = null;
   state.selectedCreator = null;
@@ -335,6 +337,42 @@ function handleLogout() {
   showAuthTab('login');
   document.getElementById('login-email').value = '';
   document.getElementById('login-password').value = '';
+}
+
+// --- Notification dots ---
+let _notifPollTimer = null;
+
+async function refreshNotifDots() {
+  if (!getToken()) return;
+  try {
+    const [notifData, convos] = await Promise.all([
+      apiGet('/api/notifications', { silent: true }),
+      apiGet('/api/conversations', { silent: true }).catch(() => [])
+    ]);
+
+    // Unread messages
+    const unreadMessages = convos.some(c => c.unread_count > 0);
+    // Unread payment notifications
+    const unreadPayments = notifData.some(n => !n.read_at &&
+      (n.type === 'payment_received' || n.type === 'payment_released'));
+
+    const hasAny = unreadMessages || unreadPayments;
+
+    const dot        = document.getElementById('nav-activity-dot');
+    const msgDot     = document.getElementById('nav-messages-dot');
+    const payDot     = document.getElementById('nav-payments-dot');
+    if (dot)    dot.classList.toggle('hidden', !hasAny);
+    if (msgDot) msgDot.classList.toggle('hidden', !unreadMessages);
+    if (payDot) payDot.classList.toggle('hidden', !unreadPayments);
+  } catch { /* silent fail */ }
+}
+
+function startNotifPolling() {
+  refreshNotifDots();
+  _notifPollTimer = setInterval(refreshNotifDots, 30000);
+}
+function stopNotifPolling() {
+  if (_notifPollTimer) { clearInterval(_notifPollTimer); _notifPollTimer = null; }
 }
 
 // --- Nav dropdowns ---
@@ -389,8 +427,14 @@ function navigate(page) {
   if (page === 'creators')  renderCreators();
   if (page === 'campaigns') renderCampaigns();
   if (page === 'matching')  runMatching();
-  if (page === 'messages')  renderConversations();
-  if (page === 'payments')  renderPayments();
+  if (page === 'messages')  { renderConversations(); document.getElementById('nav-messages-dot')?.classList.add('hidden'); }
+  if (page === 'payments')  { renderPayments(); document.getElementById('nav-payments-dot')?.classList.add('hidden'); }
+  // Hide the activity dot if both sub-dots are now hidden
+  const msgDot = document.getElementById('nav-messages-dot');
+  const payDot = document.getElementById('nav-payments-dot');
+  if (msgDot?.classList.contains('hidden') && payDot?.classList.contains('hidden')) {
+    document.getElementById('nav-activity-dot')?.classList.add('hidden');
+  }
   if (page === 'contact')   renderContact();
   if (page === 'admin')     renderAdmin();
 }
