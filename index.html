@@ -928,106 +928,41 @@
 
   <!-- Payments Page -->
   <div id="page-payments" class="page">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
       <!-- Brand View -->
       <div class="brand-only">
         <div class="mb-8">
-          <h1 class="text-3xl font-bold">Payment Center</h1>
-          <p class="text-gray-500 mt-1">Manage payments and track your campaign spend</p>
+          <h1 class="text-3xl font-bold">Payments</h1>
+          <p class="text-gray-500 mt-1">Pay for active deals and track your transaction history</p>
         </div>
 
-        <!-- Summary Cards -->
-        <div class="grid md:grid-cols-3 gap-6 mb-8">
-          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-medium text-gray-500">Total Spent</span>
-              <div class="w-10 h-10 bg-pickle-100 rounded-xl flex items-center justify-center">
-                <svg class="w-5 h-5 text-pickle-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              </div>
+        <!-- Pay for a Deal -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-6">
+          <h2 class="text-lg font-bold mb-1">Pay for a Deal</h2>
+          <p class="text-sm text-gray-500 mb-5">Enter your deal ID to launch a secure Stripe checkout. The deal must be in <strong>active</strong> status first.</p>
+          <form id="payment-form" class="flex flex-col sm:flex-row gap-3 items-start" onsubmit="handleStripePaymentForm(event)">
+            <div class="flex-1">
+              <input type="number" id="pay-deal-id" min="1" placeholder="Deal ID  (e.g. 12)" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm" required>
+              <p class="text-xs text-gray-400 mt-1.5">Find the Deal ID in your Messages tab.</p>
             </div>
-            <div class="text-3xl font-extrabold text-gray-900">$24,800</div>
-            <div class="text-sm text-gray-400 mt-1">Across all campaigns</div>
-          </div>
-          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-medium text-gray-500">Active Deals</span>
-              <div class="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
-                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-              </div>
-            </div>
-            <div class="text-3xl font-extrabold text-gray-900">3</div>
-            <div class="text-sm text-gray-400 mt-1">Currently in progress</div>
-          </div>
-          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-medium text-gray-500">Pending Release</span>
-              <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
-                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              </div>
-            </div>
-            <div class="text-3xl font-extrabold text-gray-900">$6,400</div>
-            <div class="text-sm text-gray-400 mt-1">Held in escrow</div>
-          </div>
-        </div>
-
-        <!-- Make a Payment -->
-        <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-8">
-          <h2 class="text-xl font-bold mb-2">Make a Payment</h2>
-          <p class="text-sm text-gray-500 mb-6">Enter your active deal ID below to launch a secure Stripe checkout. The deal must be in <strong>active</strong> status before payment can be initiated.</p>
-          <form id="payment-form" class="space-y-4" onsubmit="handleStripePaymentForm(event)">
-            <div class="grid md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Deal ID</label>
-                <input type="number" id="pay-deal-id" min="1" placeholder="e.g., 42" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
-                <p class="text-xs text-gray-400 mt-1">Find your deal ID in the Messages &amp; Deals tab.</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Creator</label>
-                <select id="pay-creator" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                  <option value="">(auto-filled from deal)</option>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Select Campaign</label>
-                <select id="pay-campaign" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                  <option value="">Choose a campaign...</option>
-                  <option>Summer Slam Paddle Launch</option>
-                  <option>Pickleball Apparel — Spring Collection</option>
-                  <option>Beginner's Guide Sponsorship</option>
-                  <option>Tournament Live Coverage</option>
-                </select>
-              </div>
-            </div>
-            <div class="grid md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Deal Amount ($)</label>
-                <input type="number" id="deal-amount-pay" min="0" step="1" placeholder="e.g., 2500" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Platform Fee (15%)</label>
-                <input type="text" id="platform-fee-display" readonly value="$0.00" class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-gray-500 cursor-not-allowed">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Creator Receives</label>
-                <input type="text" id="creator-payout-display" readonly value="$0.00" class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-pickle-50 text-pickle-700 font-semibold cursor-not-allowed">
-              </div>
-            </div>
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-              <strong>How it works:</strong> Clicking "Pay with Stripe" opens a secure Stripe checkout page. Your card is charged, 85% is held in escrow for the creator, and 15% goes to CourtCollab. Funds release to the creator when you confirm content delivery.
-            </div>
-            <div>
-              <button type="submit" class="bg-[#635BFF] text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-[#4f49cc] transition">
-                💳 Pay with Stripe
-              </button>
-            </div>
+            <button type="submit" class="bg-[#635BFF] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-[#4f49cc] transition whitespace-nowrap">
+              💳 Pay with Stripe
+            </button>
           </form>
+        </div>
+
+        <!-- How it works info -->
+        <div class="bg-blue-50 border border-blue-100 rounded-xl px-5 py-4 text-sm text-blue-800 mb-6 flex gap-3">
+          <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Your card is charged, <strong>85%</strong> is held in escrow for the creator, and <strong>15%</strong> goes to CourtCollab. Funds release to the creator once you confirm content delivery.</span>
         </div>
 
         <!-- Transaction History -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100">
-          <h2 class="text-xl font-bold mb-6">Transaction History</h2>
+          <h2 class="text-lg font-bold mb-5">Transaction History</h2>
           <div id="payment-history">
-            <div class="text-center py-8 text-gray-400 text-sm">Loading payments…</div>
+            <div class="text-center py-10 text-gray-400 text-sm">Loading…</div>
           </div>
         </div>
       </div>
@@ -1035,121 +970,27 @@
       <!-- Creator View -->
       <div class="creator-only">
         <div class="mb-8">
-          <h1 class="text-3xl font-bold">Earnings Dashboard</h1>
-          <p class="text-gray-500 mt-1">Track your earnings and manage your payout method</p>
-        </div>
-
-        <!-- Summary Cards -->
-        <div class="grid md:grid-cols-3 gap-6 mb-8">
-          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-medium text-gray-500">Total Earned</span>
-              <div class="w-10 h-10 bg-pickle-100 rounded-xl flex items-center justify-center">
-                <svg class="w-5 h-5 text-pickle-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              </div>
-            </div>
-            <div class="text-3xl font-extrabold text-gray-900">$18,340</div>
-            <div class="text-sm text-gray-400 mt-1">Lifetime earnings</div>
-          </div>
-          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-medium text-gray-500">Pending Payout</span>
-              <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
-                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              </div>
-            </div>
-            <div class="text-3xl font-extrabold text-gray-900">$2,400</div>
-            <div class="text-sm text-gray-400 mt-1">Awaiting content approval</div>
-          </div>
-          <div class="bg-white rounded-2xl p-6 border border-gray-100 card-hover">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-medium text-gray-500">This Month</span>
-              <div class="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
-                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-              </div>
-            </div>
-            <div class="text-3xl font-extrabold text-gray-900">$3,200</div>
-            <div class="text-sm text-gray-400 mt-1">March 2026</div>
-          </div>
+          <h1 class="text-3xl font-bold">Earnings</h1>
+          <p class="text-gray-500 mt-1">Track your payouts and manage your payout method</p>
         </div>
 
         <!-- Stripe Connect Payout Setup -->
-        <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-8">
-          <h2 class="text-xl font-bold mb-4">Payout Method</h2>
-          <!-- Dynamic Stripe Connect status banner — loaded by loadStripeConnectStatus() -->
-          <div id="stripe-connect-banner" class="mb-4">
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-6">
+          <h2 class="text-lg font-bold mb-3">Payout Method</h2>
+          <div id="stripe-connect-banner" class="mb-2">
             <div class="flex items-center gap-3 text-gray-400 text-sm py-2">
               <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
               Checking Stripe status…
             </div>
           </div>
-          <p class="text-xs text-gray-400 mt-1">Payouts go directly to your bank via Stripe. CourtCollab never stores your banking details.</p>
+          <p class="text-xs text-gray-400">Payouts go directly to your bank via Stripe. CourtCollab never stores your banking details.</p>
         </div>
 
         <!-- Earnings History -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100">
-          <h2 class="text-xl font-bold mb-6">Earnings History</h2>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="text-left border-b border-gray-100">
-                  <th class="pb-3 font-semibold text-gray-500">Date</th>
-                  <th class="pb-3 font-semibold text-gray-500">Brand</th>
-                  <th class="pb-3 font-semibold text-gray-500">Campaign</th>
-                  <th class="pb-3 font-semibold text-gray-500">Gross Amount</th>
-                  <th class="pb-3 font-semibold text-gray-500">Platform Fee (15%)</th>
-                  <th class="pb-3 font-semibold text-gray-500">Your Payout</th>
-                  <th class="pb-3 font-semibold text-gray-500">Status</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-50">
-                <tr class="hover:bg-gray-50 transition">
-                  <td class="py-3 text-gray-500">Mar 20, 2026</td>
-                  <td class="py-3 font-medium">VoltDrive Paddles</td>
-                  <td class="py-3 text-gray-600">Summer Slam Launch</td>
-                  <td class="py-3 font-medium">$3,500</td>
-                  <td class="py-3 text-gray-500">$525</td>
-                  <td class="py-3 font-bold text-pickle-700">$2,975</td>
-                  <td class="py-3"><span class="tag bg-yellow-100 text-yellow-700">Escrow</span></td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition">
-                  <td class="py-3 text-gray-500">Mar 12, 2026</td>
-                  <td class="py-3 font-medium">Selkirk Sport</td>
-                  <td class="py-3 text-gray-600">Paddle of the Year</td>
-                  <td class="py-3 font-medium">$2,800</td>
-                  <td class="py-3 text-gray-500">$420</td>
-                  <td class="py-3 font-bold text-pickle-700">$2,380</td>
-                  <td class="py-3"><span class="tag bg-pickle-100 text-pickle-700">Paid</span></td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition">
-                  <td class="py-3 text-gray-500">Feb 28, 2026</td>
-                  <td class="py-3 font-medium">Franklin Sports</td>
-                  <td class="py-3 text-gray-600">Ball Drop Campaign</td>
-                  <td class="py-3 font-medium">$1,600</td>
-                  <td class="py-3 text-gray-500">$240</td>
-                  <td class="py-3 font-bold text-pickle-700">$1,360</td>
-                  <td class="py-3"><span class="tag bg-pickle-100 text-pickle-700">Paid</span></td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition">
-                  <td class="py-3 text-gray-500">Feb 14, 2026</td>
-                  <td class="py-3 font-medium">Joola</td>
-                  <td class="py-3 text-gray-600">Ambassador Q1</td>
-                  <td class="py-3 font-medium">$4,200</td>
-                  <td class="py-3 text-gray-500">$630</td>
-                  <td class="py-3 font-bold text-pickle-700">$3,570</td>
-                  <td class="py-3"><span class="tag bg-pickle-100 text-pickle-700">Paid</span></td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition">
-                  <td class="py-3 text-gray-500">Jan 30, 2026</td>
-                  <td class="py-3 font-medium">ONIX Sports</td>
-                  <td class="py-3 text-gray-600">Winter Collection</td>
-                  <td class="py-3 font-medium">$1,200</td>
-                  <td class="py-3 text-gray-500">$180</td>
-                  <td class="py-3 font-bold text-pickle-700">$1,020</td>
-                  <td class="py-3"><span class="tag bg-gray-100 text-gray-600">Pending</span></td>
-                </tr>
-              </tbody>
-            </table>
+          <h2 class="text-lg font-bold mb-5">Earnings History</h2>
+          <div id="payment-history">
+            <div class="text-center py-10 text-gray-400 text-sm">Loading…</div>
           </div>
         </div>
       </div>
