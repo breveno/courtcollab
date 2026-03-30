@@ -5,6 +5,20 @@
 // --- Auth & API Helpers ---
 const API = 'https://courtcollab-production.up.railway.app';
 
+// Slow-load detector: show spinner if any fetch takes > 500ms
+const _origFetch = window.fetch;
+window.fetch = function(...args) {
+  let _slowTimer = null;
+  const url = typeof args[0] === 'string' ? args[0] : '';
+  // Only intercept our own API calls (not Stripe etc.)
+  if (url.includes('railway.app')) {
+    _slowTimer = setTimeout(() => showLoading('Loading…'), 500);
+  }
+  return _origFetch.apply(this, args).finally(() => {
+    if (_slowTimer) { clearTimeout(_slowTimer); _slowTimer = null; hideLoading(); }
+  });
+};
+
 function getToken() { return localStorage.getItem('cc_jwt'); }
 function setToken(t) { localStorage.setItem('cc_jwt', t); }
 function clearToken() { localStorage.removeItem('cc_jwt'); }
@@ -80,8 +94,12 @@ async function apiPatch(path, body = {}, opts = {}) {
 
 // --- Loading Overlay ---
 let _loadingCount = 0;
+let _loadingShownAt = 0;
+const LOADING_MIN_MS = 3000; // show for at least one full animation cycle
+
 function showLoading(msg = 'Loading…') {
   _loadingCount++;
+  _loadingShownAt = Date.now();
   const el = document.getElementById('loading-overlay');
   const txt = document.getElementById('loading-message');
   if (el) el.classList.add('active');
@@ -90,8 +108,14 @@ function showLoading(msg = 'Loading…') {
 function hideLoading() {
   _loadingCount = Math.max(0, _loadingCount - 1);
   if (_loadingCount === 0) {
-    const el = document.getElementById('loading-overlay');
-    if (el) el.classList.remove('active');
+    const elapsed = Date.now() - _loadingShownAt;
+    const remaining = Math.max(0, LOADING_MIN_MS - elapsed);
+    setTimeout(() => {
+      if (_loadingCount === 0) {
+        const el = document.getElementById('loading-overlay');
+        if (el) el.classList.remove('active');
+      }
+    }, remaining);
   }
 }
 
