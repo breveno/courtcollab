@@ -92,7 +92,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from database import get_conn, init_db
 
@@ -177,6 +181,11 @@ manager = ConnectionManager()
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="CourtCollab API", version="2.0.0")
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -399,14 +408,14 @@ def require_role(role: str, user: dict):
 # ---------------------------------------------------------------------------
 
 class SignupIn(BaseModel):
-    name:     str
+    name:     str      = Field(min_length=2, max_length=100)
     email:    EmailStr
-    password: str
+    password: str      = Field(min_length=6, max_length=200)
     role:     str
 
 class LoginIn(BaseModel):
     email:    EmailStr
-    password: str
+    password: str      = Field(min_length=1)
 
 class UserOut(BaseModel):
     id:       int
@@ -424,7 +433,8 @@ class AuthOut(BaseModel):
 # ---------------------------------------------------------------------------
 
 @app.post("/api/signup", response_model=AuthOut, status_code=201)
-def signup(body: SignupIn):
+@limiter.limit("5/minute")
+def signup(request: Request, body: SignupIn):
     if body.role not in ("creator", "brand"):
         raise HTTPException(400, "role must be 'creator' or 'brand'")
     if len(body.password) < 6:
@@ -462,7 +472,8 @@ def signup(body: SignupIn):
 
 
 @app.post("/api/login", response_model=AuthOut)
-def login(body: LoginIn):
+@limiter.limit("10/minute")
+def login(request: Request, body: LoginIn):
     with get_conn() as conn:
         user = _row(conn, "SELECT * FROM users WHERE email = ?", (body.email.lower(),))
     if not user or not _verify(body.password, user["password"]):
@@ -479,24 +490,24 @@ def me(user: dict = Depends(current_user)):
 # ---------------------------------------------------------------------------
 
 class CreatorProfileIn(BaseModel):
-    name:            Optional[str] = None
-    niche:           Optional[str] = None
-    bio:             Optional[str] = None
-    location:        Optional[str] = None
-    skill_level:     Optional[str] = None
-    followers_ig:    Optional[int] = 0
-    followers_tt:    Optional[int] = 0
-    followers_yt:    Optional[int] = 0
-    engagement_rate: Optional[float] = 0
-    avg_views:       Optional[int] = 0
-    rate_ig:         Optional[int] = 0
-    rate_tiktok:     Optional[int] = 0
-    rate_yt:         Optional[int] = 0
-    rate_ugc:        Optional[int] = 0
-    rate_notes:      Optional[str] = None
+    name:            Optional[str]   = None
+    niche:           Optional[str]   = None
+    bio:             Optional[str]   = None
+    location:        Optional[str]   = None
+    skill_level:     Optional[str]   = None
+    followers_ig:    Optional[int]   = Field(default=0, ge=0)
+    followers_tt:    Optional[int]   = Field(default=0, ge=0)
+    followers_yt:    Optional[int]   = Field(default=0, ge=0)
+    engagement_rate: Optional[float] = Field(default=0, ge=0, le=100)
+    avg_views:       Optional[int]   = Field(default=0, ge=0)
+    rate_ig:         Optional[int]   = Field(default=0, ge=0)
+    rate_tiktok:     Optional[int]   = Field(default=0, ge=0)
+    rate_yt:         Optional[int]   = Field(default=0, ge=0)
+    rate_ugc:        Optional[int]   = Field(default=0, ge=0)
+    rate_notes:      Optional[str]   = None
     skills:          Optional[List[str]] = []
-    social_handles:  Optional[dict] = {}
-    demo_age:        Optional[str] = None
+    social_handles:  Optional[dict]  = {}
+    demo_age:        Optional[str]   = None
     demo_gender:     Optional[str] = None
     demo_locations:  Optional[str] = None
     demo_interests:  Optional[str] = None
@@ -674,14 +685,14 @@ def delete_brand_profile(user: dict = Depends(current_user)):
 # ---------------------------------------------------------------------------
 
 class CampaignIn(BaseModel):
-    title:         str
-    description:   Optional[str]       = None
-    budget:        Optional[int]        = 0
+    title:         str                  = Field(min_length=2, max_length=200)
+    description:   Optional[str]        = None
+    budget:        Optional[int]        = Field(default=0, ge=0)
     niche:         Optional[str]        = None
     skills:        Optional[List[str]]  = []
     target_age:    Optional[str]        = None   # e.g. "25-34"
-    min_followers: Optional[int]        = 0
-    max_rate:      Optional[int]        = 0      # max $/post brand will pay
+    min_followers: Optional[int]        = Field(default=0, ge=0)
+    max_rate:      Optional[int]        = Field(default=0, ge=0)      # max $/post brand will pay
 
 class CampaignUpdateIn(BaseModel):
     title:         Optional[str]       = None
@@ -1017,7 +1028,7 @@ def discover(
 class DealIn(BaseModel):
     campaign_id: int
     creator_id:  int
-    amount:      int
+    amount:      int            = Field(ge=0)
     terms:       Optional[str] = None
 
 class DealStatusIn(BaseModel):
@@ -1059,7 +1070,8 @@ def _deal_detail(conn, deal_id: int) -> Optional[dict]:
 
 
 @app.post("/api/deals", status_code=201)
-async def create_deal(body: DealIn, user: dict = Depends(current_user)):
+@limiter.limit("10/minute")
+async def create_deal(request: Request, body: DealIn, user: dict = Depends(current_user)):
     require_role("brand", user)
     with get_conn() as conn:
         campaign = _row(conn, "SELECT * FROM campaigns WHERE id = ? AND brand_id = ?",
@@ -1227,7 +1239,7 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
 
 class MessageIn(BaseModel):
     receiver_id: int
-    body:        str
+    body:        str            = Field(min_length=1, max_length=5000)
     deal_id:     Optional[int] = None
 
 # ---------------------------------------------------------------------------
@@ -1286,7 +1298,8 @@ def list_conversations(user: dict = Depends(current_user)):
 
 
 @app.post("/api/messages", status_code=201)
-async def send_message(body: MessageIn, user: dict = Depends(current_user)):
+@limiter.limit("30/minute")
+async def send_message(request: Request, body: MessageIn, user: dict = Depends(current_user)):
     if body.receiver_id == user["id"]:
         raise HTTPException(400, "Cannot message yourself")
 
@@ -1585,7 +1598,8 @@ def stripe_connect_status(user: dict = Depends(current_user)):
 
 
 @app.post("/api/stripe/checkout/{deal_id}")
-def stripe_checkout(deal_id: int, user: dict = Depends(current_user)):
+@limiter.limit("5/minute")
+def stripe_checkout(request: Request, deal_id: int, user: dict = Depends(current_user)):
     """
     Brand: create a Stripe Checkout Session for a deal.
     Returns a redirect URL to Stripe's hosted payment page.
