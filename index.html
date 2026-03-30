@@ -239,7 +239,7 @@
           <button onclick="navigate('contact')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="contact">Contact</button>
         </div>
         <div class="flex items-center gap-3">
-          <select id="user-role" onchange="switchRole(this.value)" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white">
+          <select id="user-role" onchange="switchRole(this.value)" class="hidden md:block text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white">
             <option value="brand">I'm a Brand</option>
             <option value="creator">I'm a Creator</option>
           </select>
@@ -268,6 +268,12 @@
         <button onclick="navigate('messages');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="messages">Messages</button>
         <button onclick="navigate('payments');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="payments">Payments</button>
         <button onclick="navigate('contact');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="contact">Contact</button>
+        <div class="px-5 py-3 border-t border-gray-100">
+          <select onchange="switchRole(this.value); document.getElementById('user-role').value=this.value; closeMobileMenu();" id="user-role-mobile" class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
+            <option value="brand">I'm a Brand</option>
+            <option value="creator">I'm a Creator</option>
+          </select>
+        </div>
       </div>
     </div>
     <!-- Mobile nav (scrollable tab bar - keep for legacy, hide since we now have dropdown) -->
