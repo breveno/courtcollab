@@ -163,6 +163,16 @@ function handleLogout() {
   document.getElementById('login-password').value = '';
 }
 
+// --- Mobile menu ---
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobile-menu-dropdown');
+  menu.classList.toggle('open');
+}
+function closeMobileMenu() {
+  const menu = document.getElementById('mobile-menu-dropdown');
+  menu.classList.remove('open');
+}
+
 // --- State ---
 let state = {
   role: 'brand',
