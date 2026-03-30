@@ -56,7 +56,18 @@
     font-weight: 500;
     letter-spacing: 0.02em;
   }
-  /* Paddle animation handled by SVG animateTransform — no CSS needed */
+  @keyframes ldr-a {
+    0%,  25% { transform: rotate(8deg); }
+    45%, 75% { transform: rotate(50deg); }
+    100%     { transform: rotate(8deg); }
+  }
+  @keyframes ldr-b {
+    0%,  25% { transform: rotate(-8deg); }
+    45%, 75% { transform: rotate(-50deg); }
+    100%     { transform: rotate(-8deg); }
+  }
+  .ldr-paddle-a { animation: ldr-a 3s ease-in-out infinite; transform-origin: 0px 0px; }
+  .ldr-paddle-b { animation: ldr-b 3s ease-in-out infinite; transform-origin: 0px 0px; }
   /* Auth gate */
   html, body { overflow-x: hidden; max-width: 100vw; }
   #auth-gate { position:fixed; inset:0; z-index:9999; display:flex; }
@@ -90,28 +101,22 @@
 
   <!-- Global loading overlay with paddle scissors animation -->
   <div id="loading-overlay">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="90" height="90">
-      <circle cx="60" cy="60" r="56" fill="#1a2e1a"/>
-      <circle cx="60" cy="60" r="52" fill="none" stroke="#2F4F2F" stroke-width="1.5"/>
-      <!-- Paddle A: parallel (+8°) → hold → cross (+50°) → hold → back -->
-      <g transform="translate(60,60) scale(0.4)">
-        <animateTransform attributeName="transform" type="rotate"
-          values="8; 8; 50; 50; 8" keyTimes="0; 0.25; 0.45; 0.75; 1"
-          calcMode="spline" keySplines="0 0 1 1; 0.4 0 0.2 1; 0 0 1 1; 0.4 0 0.2 1"
-          dur="3s" repeatCount="indefinite" additive="sum"/>
-        <rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/>
-        <rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/>
+    <!-- viewBox centered at 0,0 so transform-origin:0px 0px = center of circle -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="100" height="100">
+      <circle r="45" fill="#1a2e1a"/>
+      <circle r="41" fill="none" stroke="#2F4F2F" stroke-width="1.2"/>
+      <!-- Paddle A: blade above 0,0 (y=-18.4 to 0), handle below (y=0 to 15.2) -->
+      <!-- Rotates around 0,0 = center of circle -->
+      <g class="ldr-paddle-a">
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#4f8a4f"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#4f8a4f"/>
       </g>
-      <!-- Paddle B: parallel (-8°) → hold → cross (-50°) → hold → back -->
-      <g transform="translate(60,60) scale(0.4)">
-        <animateTransform attributeName="transform" type="rotate"
-          values="-8; -8; -50; -50; -8" keyTimes="0; 0.25; 0.45; 0.75; 1"
-          calcMode="spline" keySplines="0 0 1 1; 0.4 0 0.2 1; 0 0 1 1; 0.4 0 0.2 1"
-          dur="3s" repeatCount="indefinite" additive="sum"/>
-        <rect x="-16" y="-46" width="32" height="46" rx="13" fill="#7db07d"/>
-        <rect x="-6" y="0" width="12" height="38" rx="4" fill="#7db07d"/>
+      <!-- Paddle B: same shape, lighter green -->
+      <g class="ldr-paddle-b">
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#7db07d"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#7db07d"/>
       </g>
-      <circle cx="60" cy="60" r="7" fill="#1a2e1a" stroke="#4f8a4f" stroke-width="2"/>
+      <circle r="2.8" fill="#1a2e1a" stroke="#4f8a4f" stroke-width="0.8"/>
     </svg>
     <p id="loading-message">Loading…</p>
   </div>
