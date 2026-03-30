@@ -36,6 +36,36 @@
     input:focus, select:focus, textarea:focus { outline: none; ring: 2px; border-color: #2F4F2F; }
     .message-bubble-left { background: #f3f4f6; border-radius: 0 12px 12px 12px; }
     .message-bubble-right { background: #d6e8d6; border-radius: 12px 0 12px 12px; }
+  /* Loading overlay */
+  #loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(15, 28, 15, 0.72);
+    backdrop-filter: blur(3px);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  #loading-overlay.active { display: flex; }
+  #loading-overlay p {
+    color: #a7c4a7;
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  @keyframes paddle-spin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @keyframes paddle-spin-reverse {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(-360deg); }
+  }
+  .paddle-spinner { animation: paddle-spin 1.4s linear infinite; transform-origin: center; }
+  .paddle-spinner-reverse { animation: paddle-spin-reverse 1.4s linear infinite; transform-origin: center; }
   /* Auth gate */
   html, body { overflow-x: hidden; max-width: 100vw; }
   #auth-gate { position:fixed; inset:0; z-index:9999; display:flex; }
@@ -66,6 +96,26 @@
   </style>
 </head>
 <body class="font-sans bg-gray-50 text-gray-900 min-h-screen">
+
+  <!-- Global loading overlay with spinning paddle logo -->
+  <div id="loading-overlay">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="90" height="90">
+      <defs>
+        <g id="ldr-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/></g>
+        <g id="ldr-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#7db07d"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#7db07d"/></g>
+      </defs>
+      <circle cx="60" cy="60" r="56" fill="#1a2e1a"/>
+      <circle cx="60" cy="60" r="52" fill="none" stroke="#2F4F2F" stroke-width="1.5"/>
+      <g transform="translate(60,60) scale(0.4)" class="paddle-spinner">
+        <use href="#ldr-pb" transform="rotate(38)"/>
+      </g>
+      <g transform="translate(60,60) scale(0.4)" class="paddle-spinner-reverse">
+        <use href="#ldr-pf" transform="rotate(-38)"/>
+      </g>
+      <circle cx="60" cy="60" r="7" fill="#1a2e1a" stroke="#4f8a4f" stroke-width="2"/>
+    </svg>
+    <p id="loading-message">Loading…</p>
+  </div>
 
   <!-- Auth Gate -->
   <div id="auth-gate">

@@ -9,61 +9,90 @@ function getToken() { return localStorage.getItem('cc_jwt'); }
 function setToken(t) { localStorage.setItem('cc_jwt', t); }
 function clearToken() { localStorage.removeItem('cc_jwt'); }
 
-async function apiPost(path, body) {
-  const token = getToken();
-  const res = await fetch(API + path, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-    },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || 'Request failed');
-  return data;
+async function apiPost(path, body, opts = {}) {
+  if (!opts.silent) showLoading(opts.msg || 'Please wait…');
+  try {
+    const token = getToken();
+    const res = await fetch(API + path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    return data;
+  } finally { if (!opts.silent) hideLoading(); }
 }
 
-async function apiGet(path) {
-  const token = getToken();
-  const res = await fetch(API + path, {
-    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || 'Request failed');
+async function apiGet(path, opts = {}) {
+  if (!opts.silent) showLoading(opts.msg || 'Loading…');
+  try {
+    const token = getToken();
+    const res = await fetch(API + path, {
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || 'Request failed');
+    }
+    return res.json();
+  } finally { if (!opts.silent) hideLoading(); }
+}
+
+async function apiPut(path, body, opts = {}) {
+  if (!opts.silent) showLoading(opts.msg || 'Saving…');
+  try {
+    const token = getToken();
+    const res = await fetch(API + path, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    return data;
+  } finally { if (!opts.silent) hideLoading(); }
+}
+
+async function apiPatch(path, body = {}, opts = {}) {
+  if (!opts.silent) showLoading(opts.msg || 'Updating…');
+  try {
+    const token = getToken();
+    const res = await fetch(API + path, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    return data;
+  } finally { if (!opts.silent) hideLoading(); }
+}
+
+// --- Loading Overlay ---
+let _loadingCount = 0;
+function showLoading(msg = 'Loading…') {
+  _loadingCount++;
+  const el = document.getElementById('loading-overlay');
+  const txt = document.getElementById('loading-message');
+  if (el) el.classList.add('active');
+  if (txt) txt.textContent = msg;
+}
+function hideLoading() {
+  _loadingCount = Math.max(0, _loadingCount - 1);
+  if (_loadingCount === 0) {
+    const el = document.getElementById('loading-overlay');
+    if (el) el.classList.remove('active');
   }
-  return res.json();
-}
-
-async function apiPut(path, body) {
-  const token = getToken();
-  const res = await fetch(API + path, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-    },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || 'Request failed');
-  return data;
-}
-
-async function apiPatch(path, body = {}) {
-  const token = getToken();
-  const res = await fetch(API + path, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-    },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || 'Request failed');
-  return data;
 }
 
 // --- Auth Gate ---
@@ -1059,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (getToken()) {
     try {
-      const user = await apiGet('/api/me');
+      const user = await apiGet('/api/me', { silent: true });
       onAuthSuccess(user);
     } catch {
       clearToken();
