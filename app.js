@@ -162,7 +162,9 @@ function onAuthSuccess(user) {
   state.currentUser = user;
   hideAuthGate();
   switchRole(user.role);
-  document.getElementById('nav-user-initials').textContent = user.initials || user.name.slice(0, 2).toUpperCase();
+  const initials = user.initials || user.name.slice(0, 2).toUpperCase();
+  document.getElementById('nav-user-initials').textContent = initials;
+  document.getElementById('nav-user-initials-mobile').textContent = initials;
   document.getElementById('nav-user-name').textContent = user.name;
   updateLandingHeroButtons(user.role);
   navigate('landing');
