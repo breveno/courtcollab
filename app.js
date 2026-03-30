@@ -92,6 +92,9 @@ function highlightRole() {
   document.getElementById('role-brand-label').style.background = brandChecked ? '#f0f5f0' : '';
   document.getElementById('role-creator-label').style.borderColor = !brandChecked ? '#2F4F2F' : '#e5e7eb';
   document.getElementById('role-creator-label').style.background = !brandChecked ? '#f0f5f0' : '';
+  // Show/hide creator social handle fields
+  const socialFields = document.getElementById('creator-social-fields');
+  if (socialFields) socialFields.style.display = brandChecked ? 'none' : 'flex';
 }
 
 function showAuthError(msg) {
@@ -134,6 +137,17 @@ async function handleSignup(e) {
   try {
     const { token, user } = await apiPost('/api/signup', { name, email, password, role });
     setToken(token);
+    // Save social handles for creators right after signup
+    if (role === 'creator') {
+      const ig = (document.getElementById('signup-instagram').value || '').trim().replace(/^@/, '');
+      const tt = (document.getElementById('signup-tiktok').value || '').trim().replace(/^@/, '');
+      if (ig || tt) {
+        const handles = {};
+        if (ig) handles.instagram = ig;
+        if (tt) handles.tiktok = tt;
+        await apiPut('/api/creator/profile', { social_handles: JSON.stringify(handles) });
+      }
+    }
     onAuthSuccess(user);
   } catch (err) {
     showAuthError(err.message);
@@ -148,8 +162,25 @@ function onAuthSuccess(user) {
   switchRole(user.role);
   document.getElementById('nav-user-initials').textContent = user.initials || user.name.slice(0, 2).toUpperCase();
   document.getElementById('nav-user-name').textContent = user.name;
+  updateLandingHeroButtons(user.role);
   navigate('landing');
   if (user.role === 'creator') loadStripeConnectStatus();
+}
+
+function updateLandingHeroButtons(role) {
+  const browse   = document.getElementById('btn-browse-creators');
+  const join     = document.getElementById('btn-join-creator');
+  const dashboard = document.getElementById('btn-creator-dashboard');
+  if (!browse) return;
+  if (role === 'creator') {
+    browse.style.display = 'none';
+    join.style.display = 'none';
+    dashboard.style.display = '';
+  } else {
+    browse.style.display = '';
+    join.style.display = '';
+    dashboard.style.display = 'none';
+  }
 }
 
 function handleLogout() {

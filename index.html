@@ -182,6 +182,23 @@
                 </label>
               </div>
             </div>
+            <!-- Creator-only social handles (shown when Creator is selected) -->
+            <div id="creator-social-fields" style="display:none;flex-direction:column;gap:1rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Instagram Handle</label>
+                <div style="position:relative;">
+                  <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.95rem;">@</span>
+                  <input id="signup-instagram" type="text" class="auth-input" placeholder="yourhandle" style="padding-left:1.75rem;" />
+                </div>
+              </div>
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">TikTok Handle</label>
+                <div style="position:relative;">
+                  <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.95rem;">@</span>
+                  <input id="signup-tiktok" type="text" class="auth-input" placeholder="yourhandle" style="padding-left:1.75rem;" />
+                </div>
+              </div>
+            </div>
             <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Create Account</button>
           </div>
           <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Already have an account? <button type="button" onclick="showAuthTab('login')" style="color:#2F4F2F;font-weight:600;background:none;border:none;cursor:pointer;">Sign in</button></p>
@@ -271,9 +288,10 @@
           <div class="inline-block bg-white/10 backdrop-blur rounded-full px-4 py-1.5 text-sm font-medium mb-6">The #1 Pickleball Creator Marketplace</div>
           <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-6">Connect Pickleball <br>Creators with <span class="text-pickle-300">Top Brands</span></h1>
           <p class="text-lg md:text-xl text-pickle-100 mb-10 max-w-2xl">The marketplace where pickleball creators showcase their audience, skills, and rates — and brands discover the perfect partners for their campaigns.</p>
-          <div class="flex flex-wrap gap-4">
-            <button onclick="navigate('creators')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition">Browse Creators</button>
-            <button onclick="switchRole('creator');navigate('creator-profile')" class="border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-white/10 transition">Join as Creator</button>
+          <div class="flex flex-wrap gap-4" id="landing-hero-btns">
+            <button onclick="navigate('creators')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-browse-creators">Browse Creators</button>
+            <button onclick="switchRole('creator');navigate('creator-profile')" class="border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-white/10 transition" id="btn-join-creator">Join as Creator</button>
+            <button onclick="navigate('creator-profile')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-creator-dashboard" style="display:none;">My Creator Dashboard</button>
           </div>
         </div>
       </div>
