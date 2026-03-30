@@ -52,11 +52,10 @@
   .auth-error { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:0.5rem; padding:0.6rem 1rem; font-size:0.85rem; }
   @media(max-width:768px) {
     #auth-gate { flex-direction:column; overflow-y:auto; }
-    .auth-left { width:100%; padding:1.25rem 1.5rem; flex:0 0 auto; min-height:unset; order:2; }
-    .auth-right { width:100%; flex:0 0 auto; padding:2rem 1.5rem; order:1; }
+    .auth-left { width:100%; padding:1.5rem 1.5rem; flex:0 0 auto; min-height:unset; order:1; justify-content:flex-start; }
+    .auth-right { width:100%; flex:0 0 auto; padding:2rem 1.5rem; order:2; }
     .auth-left-features { display:none !important; }
     .auth-left-stats { display:none !important; }
-    .auth-left-tagline { display:none !important; }
     .auth-left-signin-hint { display:block !important; }
   }
   /* Mobile hamburger menu */
@@ -168,12 +167,12 @@
             <div>
               <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.5rem;">I am a…</label>
               <div style="display:flex;gap:0.75rem;">
-                <label style="flex:1;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-brand-label">
+                <label style="flex:1;min-width:0;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem 0.5rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-brand-label">
                   <input type="radio" name="signup-role" value="brand" id="role-brand" style="display:none;" onchange="highlightRole()" checked />
                   <span style="font-size:1.4rem;display:block;margin-bottom:0.2rem;">🏢</span>
                   <span style="font-weight:600;font-size:0.9rem;color:#374151;">Brand</span>
                 </label>
-                <label style="flex:1;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-creator-label">
+                <label style="flex:1;min-width:0;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem 0.5rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-creator-label">
                   <input type="radio" name="signup-role" value="creator" id="role-creator" style="display:none;" onchange="highlightRole()" />
                   <span style="font-size:1.4rem;display:block;margin-bottom:0.2rem;">🎥</span>
                   <span style="font-weight:600;font-size:0.9rem;color:#374151;">Creator</span>
