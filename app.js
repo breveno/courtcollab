@@ -337,6 +337,21 @@ function handleLogout() {
   document.getElementById('login-password').value = '';
 }
 
+// --- Nav dropdowns ---
+function toggleNavDropdown(id) {
+  const el = document.getElementById(id);
+  const isOpen = el.classList.contains('open');
+  closeNavDropdowns();
+  if (!isOpen) el.classList.add('open');
+}
+function closeNavDropdowns() {
+  document.querySelectorAll('.nav-dropdown-group.open').forEach(el => el.classList.remove('open'));
+}
+// Close dropdowns when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nav-dropdown-group')) closeNavDropdowns();
+});
+
 // --- Mobile menu ---
 function toggleMobileMenu() {
   const menu = document.getElementById('mobile-menu-dropdown');
