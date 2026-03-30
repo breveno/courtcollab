@@ -1040,7 +1040,7 @@ async function renderPayments() {
   }
 
   // Fetch and render real payment history
-  const historyEl = document.getElementById('payment-history');
+  const historyEl = document.getElementById(state.role === 'brand' ? 'payment-history-brand' : 'payment-history-creator');
   if (!historyEl) return;
   historyEl.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm">Loading payments…</div>';
 
