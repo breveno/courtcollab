@@ -224,6 +224,7 @@ function navigate(page) {
     target.classList.add('active');
     state.currentPage = page;
   }
+  window.scrollTo({ top: 0, behavior: 'instant' });
   document.querySelectorAll('.nav-link').forEach(link => {
     link.classList.toggle('active', link.dataset.page === page);
   });
