@@ -297,6 +297,9 @@ function onAuthSuccess(user) {
   document.getElementById('nav-user-initials').textContent = initials;
   document.getElementById('nav-user-initials-mobile').textContent = initials;
   document.getElementById('nav-user-name').textContent = user.name;
+  updateLandingHeroButtons(user.role);
+  // Show admin nav link only for platform admins
+  const isAdmin = ADMIN_EMAILS.includes(user.email);
   const badge = document.getElementById('nav-role-badge');
   if (badge) {
     if (isAdmin) {
@@ -306,9 +309,6 @@ function onAuthSuccess(user) {
       badge.classList.remove('hidden');
     }
   }
-  updateLandingHeroButtons(user.role);
-  // Show admin nav link only for platform admins
-  const isAdmin = ADMIN_EMAILS.includes(user.email);
   const adminLink = document.getElementById('nav-admin-link');
   const adminLinkMobile = document.getElementById('nav-admin-link-mobile');
   if (adminLink) adminLink.classList.toggle('hidden', !isAdmin);
