@@ -56,20 +56,7 @@
     font-weight: 500;
     letter-spacing: 0.02em;
   }
-  @keyframes paddle-to-cross {
-    0%   { transform: rotate(0deg); }
-    35%  { transform: rotate(38deg); }
-    65%  { transform: rotate(38deg); }
-    100% { transform: rotate(0deg); }
-  }
-  @keyframes paddle-to-cross-rev {
-    0%   { transform: rotate(0deg); }
-    35%  { transform: rotate(-38deg); }
-    65%  { transform: rotate(-38deg); }
-    100% { transform: rotate(0deg); }
-  }
-  .paddle-spin-a { animation: paddle-to-cross 1.4s ease-in-out infinite; transform-origin: 60px 60px; }
-  .paddle-spin-b { animation: paddle-to-cross-rev 1.4s ease-in-out infinite; transform-origin: 60px 60px; }
+  /* Paddle animation handled by SVG animateTransform — no CSS needed */
   /* Auth gate */
   html, body { overflow-x: hidden; max-width: 100vw; }
   #auth-gate { position:fixed; inset:0; z-index:9999; display:flex; }
@@ -106,19 +93,23 @@
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="90" height="90">
       <circle cx="60" cy="60" r="56" fill="#1a2e1a"/>
       <circle cx="60" cy="60" r="52" fill="none" stroke="#2F4F2F" stroke-width="1.5"/>
-      <!-- Paddle A: rotates 0→+38→0 (parallel to crossed and back) -->
-      <g class="paddle-spin-a">
-        <g transform="translate(60,60) scale(0.4)">
-          <rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/>
-          <rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/>
-        </g>
+      <!-- Paddle A: 0°→+38°→0° using SVG animateTransform (parallel→crossed→parallel) -->
+      <g transform="translate(60,60) scale(0.4)">
+        <animateTransform attributeName="transform" type="rotate"
+          values="0; 38; 38; 0" keyTimes="0; 0.35; 0.65; 1"
+          calcMode="spline" keySplines="0.4 0 0.6 1; 0 0 1 1; 0.4 0 0.6 1"
+          dur="1.4s" repeatCount="indefinite" additive="sum"/>
+        <rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/>
+        <rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/>
       </g>
-      <!-- Paddle B: rotates 0→-38→0 (opposite direction) -->
-      <g class="paddle-spin-b">
-        <g transform="translate(60,60) scale(0.4)">
-          <rect x="-16" y="-46" width="32" height="46" rx="13" fill="#7db07d"/>
-          <rect x="-6" y="0" width="12" height="38" rx="4" fill="#7db07d"/>
-        </g>
+      <!-- Paddle B: 0°→-38°→0° opposite direction -->
+      <g transform="translate(60,60) scale(0.4)">
+        <animateTransform attributeName="transform" type="rotate"
+          values="0; -38; -38; 0" keyTimes="0; 0.35; 0.65; 1"
+          calcMode="spline" keySplines="0.4 0 0.6 1; 0 0 1 1; 0.4 0 0.6 1"
+          dur="1.4s" repeatCount="indefinite" additive="sum"/>
+        <rect x="-16" y="-46" width="32" height="46" rx="13" fill="#7db07d"/>
+        <rect x="-6" y="0" width="12" height="38" rx="4" fill="#7db07d"/>
       </g>
       <circle cx="60" cy="60" r="7" fill="#1a2e1a" stroke="#4f8a4f" stroke-width="2"/>
     </svg>
