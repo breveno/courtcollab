@@ -52,9 +52,11 @@
   .auth-error { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:0.5rem; padding:0.6rem 1rem; font-size:0.85rem; }
   @media(max-width:768px) {
     #auth-gate { flex-direction:column; overflow-y:auto; }
-    .auth-left { width:100%; padding:1.5rem 1.5rem; flex:0 0 auto; min-height:unset; order:1; justify-content:flex-start; }
+    .auth-left { width:100%; padding:1.5rem 1.5rem; flex:0 0 auto; min-height:unset; order:1; justify-content:flex-start; align-items:center; text-align:center; }
     .auth-right { width:100%; flex:0 0 auto; padding:2rem 1.5rem; order:2; }
     .auth-left-stats { display:none !important; }
+    .auth-left-features { margin-top:2rem !important; margin-bottom:1.5rem !important; align-items:center; }
+    .auth-left-features > div { width:100%; max-width:320px; }
     .auth-left-signin-hint { display:flex !important; }
   }
   /* Mobile hamburger menu */
