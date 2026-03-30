@@ -150,7 +150,9 @@ def _init_pg():
                 role       TEXT   NOT NULL CHECK(role IN ('creator','brand')),
                 name       TEXT   NOT NULL,
                 initials   TEXT   NOT NULL,
-                created_at TEXT   NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS')
+                created_at          TEXT   NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                reset_token         TEXT,
+                reset_token_expires TEXT
             )
         """)
         conn.execute("""
@@ -297,6 +299,10 @@ def _init_pg():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_deal    ON payments(deal_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_brand   ON payments(brand_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_creator ON payments(creator_id)")
+
+        # Migrations — add columns to existing tables if they don't exist yet
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token         TEXT")
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TEXT")
 
         conn.commit()
 
@@ -462,6 +468,8 @@ def _init_sqlite():
     _add_column_if_missing("creator_profiles", "stripe_onboarded",     "INTEGER DEFAULT 0")
     _add_column_if_missing("payments",         "checkout_session_id",  "TEXT")
     _add_column_if_missing("payments",         "stripe_transfer_id",   "TEXT")
+    _add_column_if_missing("users",            "reset_token",          "TEXT")
+    _add_column_if_missing("users",            "reset_token_expires",  "TEXT")
 
 
 def _migrate_deal_statuses():

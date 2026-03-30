@@ -1829,6 +1829,87 @@ def mark_one_read(notif_id: int, user: dict = Depends(current_user)):
 
 
 # ---------------------------------------------------------------------------
+# Routes — Password Reset
+# ---------------------------------------------------------------------------
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    password: str = Field(min_length=6, max_length=200)
+
+
+@app.post("/api/forgot-password", status_code=200)
+@limiter.limit("3/minute")
+def forgot_password(request: Request, body: ForgotPasswordIn):
+    import secrets as _secrets
+    import datetime as _dt
+
+    with get_conn() as conn:
+        user = _row(conn, "SELECT * FROM users WHERE email = ?", (body.email.lower(),))
+
+    # Always return success to avoid email enumeration
+    if not user:
+        return {"ok": True}
+
+    token   = _secrets.token_urlsafe(32)
+    expires = (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?",
+            (token, expires, user["id"]),
+        )
+        conn.commit()
+
+    reset_url  = f"https://www.courtcollab.com/?reset_token={token}"
+    email_body = (
+        f"Hi {user['name']},\n\n"
+        f"Someone requested a password reset for your CourtCollab account.\n\n"
+        f"Click the link below to set a new password (expires in 1 hour):\n"
+        f"{reset_url}\n\n"
+        f"If you didn't request this, you can safely ignore this email.\n\n"
+        f"— The CourtCollab Team"
+    )
+    _send_email(body.email.lower(), "Reset your CourtCollab password", email_body)
+    return {"ok": True}
+
+
+@app.post("/api/reset-password", status_code=200)
+@limiter.limit("5/minute")
+def reset_password(request: Request, body: ResetPasswordIn):
+    with get_conn() as conn:
+        user = _row(conn,
+            "SELECT * FROM users WHERE reset_token = ?", (body.token,))
+
+    if not user:
+        raise HTTPException(400, "Invalid or expired reset link")
+
+    # Check expiry
+    expires_str = user.get("reset_token_expires")
+    if not expires_str:
+        raise HTTPException(400, "Invalid or expired reset link")
+
+    try:
+        expires_dt = datetime.strptime(expires_str[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        raise HTTPException(400, "Invalid or expired reset link")
+
+    if datetime.now(timezone.utc) > expires_dt:
+        raise HTTPException(400, "This reset link has expired. Please request a new one.")
+
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?",
+            (_hash(body.password), user["id"]),
+        )
+        conn.commit()
+
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
 # Routes — Admin
 # ---------------------------------------------------------------------------
 
