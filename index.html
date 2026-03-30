@@ -292,6 +292,7 @@
           <button onclick="navigate('messages')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="messages">Messages</button>
           <button onclick="navigate('payments')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="payments">Payments</button>
           <button onclick="navigate('contact')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="contact">Contact</button>
+          <button id="nav-admin-link" onclick="navigate('admin')" class="nav-link px-4 py-5 text-sm font-medium text-red-600 hover:text-red-700 border-b-2 border-transparent hidden" data-page="admin">⚙ Admin</button>
         </div>
         <div class="flex items-center gap-2">
           <!-- Desktop: role switcher + user info + signout -->
@@ -329,6 +330,7 @@
         <button onclick="navigate('messages');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="messages">Messages</button>
         <button onclick="navigate('payments');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="payments">Payments</button>
         <button onclick="navigate('contact');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="contact">Contact</button>
+        <button id="nav-admin-link-mobile" onclick="navigate('admin');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-red-600 hover:bg-red-50 border-b-0 border-transparent hidden" data-page="admin">⚙ Admin</button>
         <div class="px-5 py-3 border-t border-gray-100">
           <select onchange="switchRole(this.value); document.getElementById('user-role').value=this.value; closeMobileMenu();" id="user-role-mobile" class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
             <option value="brand">I'm a Brand</option>
@@ -1198,6 +1200,61 @@
           </div>
           <h3 class="font-bold mb-1">Community</h3>
           <p class="text-sm text-gray-500"><a href="#" class="text-pickle-600 hover:underline">Join our Discord</a> for real-time help</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="page-admin" class="page">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h1 class="text-3xl font-extrabold text-gray-900">Admin Dashboard</h1>
+          <p class="text-gray-500 mt-1">Manage all platform users</p>
+        </div>
+        <button id="admin-delete-btn" onclick="deleteSelectedUsers()"
+          class="hidden bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-xl transition flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Delete Selected (<span id="admin-selected-count">0</span>)
+        </button>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="admin-stats">
+        <div class="bg-white rounded-xl p-5 border border-gray-100">
+          <p class="text-sm text-gray-500 mb-1">Total Users</p>
+          <p class="text-2xl font-bold text-gray-900" id="admin-stat-total">—</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-gray-100">
+          <p class="text-sm text-gray-500 mb-1">Creators</p>
+          <p class="text-2xl font-bold text-pickle-600" id="admin-stat-creators">—</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-gray-100">
+          <p class="text-sm text-gray-500 mb-1">Brands</p>
+          <p class="text-2xl font-bold text-brand-600" id="admin-stat-brands">—</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-gray-100">
+          <p class="text-sm text-gray-500 mb-1">Selected</p>
+          <p class="text-2xl font-bold text-red-500" id="admin-stat-selected">0</p>
+        </div>
+      </div>
+
+      <!-- User Table -->
+      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="admin-select-all" onchange="adminToggleAll(this.checked)"
+              class="w-4 h-4 rounded border-gray-300 text-pickle-600 cursor-pointer">
+            <label for="admin-select-all" class="text-sm font-medium text-gray-700 cursor-pointer">Select All</label>
+          </div>
+          <button onclick="renderAdmin()" class="text-sm text-gray-400 hover:text-pickle-600 transition flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh
+          </button>
+        </div>
+        <div id="admin-user-list" class="divide-y divide-gray-50">
+          <div class="px-6 py-12 text-center text-gray-400">Loading users…</div>
         </div>
       </div>
     </div>

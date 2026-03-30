@@ -211,6 +211,9 @@ async function handleSignup(e) {
   }
 }
 
+// Platform admin emails — must match ADMIN_EMAILS on the backend
+const ADMIN_EMAILS = ['benreveno@gmail.com', 'juliacono@gmail.com'];
+
 function onAuthSuccess(user) {
   state.currentUser = user;
   hideAuthGate();
@@ -220,6 +223,12 @@ function onAuthSuccess(user) {
   document.getElementById('nav-user-initials-mobile').textContent = initials;
   document.getElementById('nav-user-name').textContent = user.name;
   updateLandingHeroButtons(user.role);
+  // Show admin nav link only for platform admins
+  const isAdmin = ADMIN_EMAILS.includes(user.email);
+  const adminLink = document.getElementById('nav-admin-link');
+  const adminLinkMobile = document.getElementById('nav-admin-link-mobile');
+  if (adminLink) adminLink.classList.toggle('hidden', !isAdmin);
+  if (adminLinkMobile) adminLinkMobile.classList.toggle('hidden', !isAdmin);
   navigate('landing');
   if (user.role === 'creator') loadStripeConnectStatus();
 }
@@ -291,6 +300,7 @@ function navigate(page) {
   if (page === 'messages')  renderConversations();
   if (page === 'payments')  renderPayments();
   if (page === 'contact')   renderContact();
+  if (page === 'admin')     renderAdmin();
 }
 
 // --- Role Switch ---
@@ -1101,6 +1111,139 @@ function submitContact(e) {
     banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   e.target.reset();
+}
+
+// --- Admin Dashboard ---
+let _adminUsers = [];
+
+async function renderAdmin() {
+  const listEl = document.getElementById('admin-user-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="px-6 py-12 text-center text-gray-400">Loading users…</div>';
+
+  try {
+    _adminUsers = await apiGet('/api/admin/users');
+  } catch (err) {
+    listEl.innerHTML = `<div class="px-6 py-10 text-center text-red-500">Failed to load users: ${err.message}</div>`;
+    return;
+  }
+
+  // Update stat cards
+  const creators = _adminUsers.filter(u => u.role === 'creator').length;
+  const brands   = _adminUsers.filter(u => u.role === 'brand').length;
+  const totalEl    = document.getElementById('admin-stat-total');
+  const creatorsEl = document.getElementById('admin-stat-creators');
+  const brandsEl   = document.getElementById('admin-stat-brands');
+  if (totalEl)    totalEl.textContent    = _adminUsers.length;
+  if (creatorsEl) creatorsEl.textContent = creators;
+  if (brandsEl)   brandsEl.textContent   = brands;
+
+  if (!_adminUsers.length) {
+    listEl.innerHTML = '<div class="px-6 py-12 text-center text-gray-400">No users found.</div>';
+    return;
+  }
+
+  listEl.innerHTML = _adminUsers.map(u => {
+    const isAdmin  = ADMIN_EMAILS.includes(u.email);
+    const roleColor = u.role === 'creator' ? 'bg-pickle-100 text-pickle-700' : 'bg-brand-100 text-brand-700';
+    const followers = u.role === 'creator'
+      ? [u.followers_ig, u.followers_tt, u.followers_yt].filter(Boolean)
+      : [];
+    const followerStr = followers.length ? `· ${fmtNum(Math.max(...followers))} followers` : '';
+    const subtext = u.role === 'brand'
+      ? (u.company_name || 'No company name') + (u.niche ? ` · ${u.niche}` : '')
+      : (u.niche || 'No niche set') + followerStr;
+
+    return `
+    <div class="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition" id="admin-row-${u.id}">
+      <input type="checkbox" class="admin-user-check w-4 h-4 rounded border-gray-300 text-red-500 cursor-pointer flex-shrink-0"
+        value="${u.id}" onchange="adminUpdateSelection()" ${isAdmin ? 'disabled title="Cannot delete admin"' : ''}>
+      <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm
+        ${u.role === 'creator' ? 'bg-pickle-100 text-pickle-700' : 'bg-brand-100 text-brand-700'}">
+        ${(u.name || '?').slice(0, 2).toUpperCase()}
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="font-semibold text-gray-900 truncate">${escHtml(u.name)}</span>
+          <span class="tag ${roleColor} text-xs">${u.role}</span>
+          ${isAdmin ? '<span class="tag bg-red-100 text-red-700 text-xs">admin</span>' : ''}
+        </div>
+        <p class="text-xs text-gray-400 truncate">${escHtml(u.email)} · ${escHtml(subtext)}</p>
+      </div>
+      <div class="text-xs text-gray-400 flex-shrink-0 hidden sm:block">
+        #${u.id} · ${u.created_at ? u.created_at.slice(0, 10) : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  adminUpdateSelection();
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function adminToggleAll(checked) {
+  document.querySelectorAll('.admin-user-check:not([disabled])').forEach(cb => {
+    cb.checked = checked;
+  });
+  adminUpdateSelection();
+}
+
+function adminUpdateSelection() {
+  const checked = [...document.querySelectorAll('.admin-user-check:checked')];
+  const count   = checked.length;
+  const deleteBtn  = document.getElementById('admin-delete-btn');
+  const countEl    = document.getElementById('admin-selected-count');
+  const statSelEl  = document.getElementById('admin-stat-selected');
+  if (deleteBtn)  deleteBtn.classList.toggle('hidden', count === 0);
+  if (countEl)    countEl.textContent   = count;
+  if (statSelEl)  statSelEl.textContent = count;
+}
+
+async function deleteSelectedUsers() {
+  const checked = [...document.querySelectorAll('.admin-user-check:checked')];
+  const ids     = checked.map(cb => parseInt(cb.value));
+  if (!ids.length) return;
+
+  const names = ids.map(id => {
+    const u = _adminUsers.find(u => u.id === id);
+    return u ? u.name : `#${id}`;
+  });
+
+  const ok = confirm(
+    `Permanently delete ${ids.length} user${ids.length > 1 ? 's' : ''}?\n\n` +
+    names.join(', ') +
+    '\n\nThis cannot be undone. All their profiles, deals, and messages will be removed.'
+  );
+  if (!ok) return;
+
+  try {
+    const result = await apiDelete('/api/admin/users', { ids });
+    showToast(`✓ Deleted ${result.deleted} user${result.deleted !== 1 ? 's' : ''}`);
+    renderAdmin();
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Delete failed'));
+  }
+}
+
+async function apiDelete(path, body, opts = {}) {
+  if (opts.loading) showLoading(opts.msg || 'Deleting…');
+  try {
+    const token = getToken();
+    const res = await fetch(API + path, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    return data;
+  } finally { if (opts.loading) hideLoading(); }
 }
 
 // --- Init ---

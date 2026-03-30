@@ -1829,6 +1829,72 @@ def mark_one_read(notif_id: int, user: dict = Depends(current_user)):
 
 
 # ---------------------------------------------------------------------------
+# Routes — Admin
+# ---------------------------------------------------------------------------
+
+def require_admin(user: dict = Depends(current_user)) -> dict:
+    """Only allow platform admins (ADMIN_EMAILS list) to call this endpoint."""
+    if user["email"] not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
+class AdminDeleteIn(BaseModel):
+    ids: List[int]
+
+
+@app.get("/api/admin/users")
+def admin_list_users(admin: dict = Depends(require_admin)):
+    """Return all users with basic profile info for the admin dashboard."""
+    with get_conn() as conn:
+        users = _rows(conn, """
+            SELECT
+                u.id,
+                u.name,
+                u.email,
+                u.role,
+                u.created_at,
+                cp.niche,
+                cp.followers_ig,
+                cp.followers_tt,
+                cp.followers_yt,
+                bp.company_name
+            FROM users u
+            LEFT JOIN creator_profiles cp ON cp.user_id = u.id
+            LEFT JOIN brand_profiles   bp ON bp.user_id = u.id
+            ORDER BY u.id DESC
+        """)
+    return users
+
+
+@app.delete("/api/admin/users", status_code=200)
+def admin_delete_users(body: AdminDeleteIn, admin: dict = Depends(require_admin)):
+    """
+    Permanently delete users by ID.
+    All child rows (profiles, deals, messages, etc.) are removed via CASCADE.
+    """
+    if not body.ids:
+        raise HTTPException(400, "No user IDs provided")
+
+    # Never let an admin accidentally delete themselves
+    safe_ids = [i for i in body.ids if i != admin["id"]]
+    if not safe_ids:
+        raise HTTPException(400, "Cannot delete your own admin account")
+
+    with get_conn() as conn:
+        # Use PostgreSQL ANY() or a simple IN clause that works for both modes.
+        # The compat layer translates ? → %s automatically, so we need one ? per id.
+        placeholders = ",".join(["?" for _ in safe_ids])
+        conn.execute(
+            f"DELETE FROM users WHERE id IN ({placeholders})",
+            tuple(safe_ids),
+        )
+        conn.commit()
+
+    return {"deleted": len(safe_ids), "ids": safe_ids}
+
+
+# ---------------------------------------------------------------------------
 # Run directly
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
