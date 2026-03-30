@@ -1,2 +1,7 @@
 courtcollab.db
 __pycache__/
+backend/.env
+*.env
+
+# Local Netlify folder
+.netlify

@@ -17,6 +17,10 @@ import re
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 _USE_PG = bool(DATABASE_URL)
 
+# Startup diagnostic — always visible in Railway deploy logs
+print(f"[DB] Mode: {'PostgreSQL/Supabase' if _USE_PG else 'SQLite (local)'}")
+print(f"[DB] DATABASE_URL set: {bool(DATABASE_URL)}")
+
 # ---------------------------------------------------------------------------
 # SQLite path (local dev)
 # ---------------------------------------------------------------------------
