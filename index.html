@@ -211,7 +211,11 @@
                 </button>
               </div>
             </div>
-            <button type="submit" class="auth-btn" style="margin-top:0.5rem;">Sign In</button>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <input type="checkbox" id="remember-me" style="width:1rem;height:1rem;accent-color:#2F4F2F;cursor:pointer;" checked />
+              <label for="remember-me" style="font-size:0.85rem;color:#374151;cursor:pointer;">Remember me for 30 days</label>
+            </div>
+            <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Sign In</button>
           </div>
           <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Don't have an account? <button type="button" onclick="showAuthTab('signup')" style="color:#2F4F2F;font-weight:600;background:none;border:none;cursor:pointer;">Create one</button></p>
         </form>

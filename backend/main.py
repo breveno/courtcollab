@@ -106,7 +106,8 @@ from database import get_conn, init_db
 
 SECRET_KEY     = os.environ.get("JWT_SECRET", "change-me-in-production-use-a-long-random-string")
 ALGORITHM      = "HS256"
-TOKEN_TTL_HRS  = 72
+TOKEN_TTL_HRS        = 72
+TOKEN_TTL_REMEMBER   = 24 * 30   # 30 days
 PLATFORM_FEE   = 0.15          # 15 % taken by CourtCollab
 
 # ---------------------------------------------------------------------------
@@ -416,6 +417,7 @@ class SignupIn(BaseModel):
 class LoginIn(BaseModel):
     email:    EmailStr
     password: str      = Field(min_length=1)
+    remember: bool     = False
 
 class UserOut(BaseModel):
     id:       int
@@ -478,7 +480,10 @@ def login(request: Request, body: LoginIn):
         user = _row(conn, "SELECT * FROM users WHERE email = ?", (body.email.lower(),))
     if not user or not _verify(body.password, user["password"]):
         raise HTTPException(401, "Incorrect email or password")
-    return {"token": _make_token(user["id"]), "user": UserOut(**user)}
+    ttl = TOKEN_TTL_REMEMBER if body.remember else TOKEN_TTL_HRS
+    exp = datetime.now(timezone.utc) + timedelta(hours=ttl)
+    token = jwt.encode({"sub": str(user["id"]), "exp": exp}, SECRET_KEY, algorithm=ALGORITHM)
+    return {"token": token, "user": UserOut(**user)}
 
 
 @app.get("/api/me", response_model=UserOut)

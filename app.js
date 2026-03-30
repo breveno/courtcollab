@@ -19,9 +19,22 @@ window.fetch = function(...args) {
   });
 };
 
-function getToken() { return localStorage.getItem('cc_jwt'); }
-function setToken(t) { localStorage.setItem('cc_jwt', t); }
-function clearToken() { localStorage.removeItem('cc_jwt'); }
+function getToken() {
+  return localStorage.getItem('cc_jwt') || sessionStorage.getItem('cc_jwt');
+}
+function setToken(t, remember = true) {
+  if (remember) {
+    localStorage.setItem('cc_jwt', t);
+    sessionStorage.removeItem('cc_jwt');
+  } else {
+    sessionStorage.setItem('cc_jwt', t);
+    localStorage.removeItem('cc_jwt');
+  }
+}
+function clearToken() {
+  localStorage.removeItem('cc_jwt');
+  sessionStorage.removeItem('cc_jwt');
+}
 
 async function apiPost(path, body, opts = {}) {
   if (opts.loading) showLoading(opts.msg || 'Please wait…');
@@ -229,10 +242,11 @@ async function handleLogin(e) {
   e.preventDefault();
   const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
+  const remember = document.getElementById('remember-me')?.checked ?? true;
   setAuthBtnLoading('login-form', true);
   try {
-    const { token, user } = await apiPost('/api/login', { email, password }, { loading: true, msg: 'Signing in…' });
-    setToken(token);
+    const { token, user } = await apiPost('/api/login', { email, password, remember }, { loading: true, msg: 'Signing in…' });
+    setToken(token, remember);
     onAuthSuccess(user);
   } catch (err) {
     showAuthError(err.message);
