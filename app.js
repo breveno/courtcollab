@@ -212,7 +212,7 @@ async function handleSignup(e) {
 }
 
 // Platform admin emails — must match ADMIN_EMAILS on the backend
-const ADMIN_EMAILS = ['benreveno@gmail.com', 'juliacono@gmail.com'];
+const ADMIN_EMAILS = ['benreveno@gmail.com', 'juliacono@gmail.com', 'ben@courtcollab.com', 'julia@courtcollab.com'];
 
 function onAuthSuccess(user) {
   state.currentUser = user;
