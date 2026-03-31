@@ -483,6 +483,7 @@
             <button onclick="navigate('creators')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-browse-creators">Browse Creators</button>
             <button onclick="switchRole('creator');navigate('creator-profile')" class="border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-white/10 transition" id="btn-join-creator">Join as Creator</button>
             <button onclick="navigate('creator-profile')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-creator-dashboard" style="display:none;">My Creator Dashboard</button>
+            <button onclick="navigate('brand-portal')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-brand-dashboard" style="display:none;">My Brand Portal</button>
           </div>
         </div>
       </div>
@@ -1161,6 +1162,54 @@
           </div>
           <h3 class="font-bold mb-1">Community</h3>
           <p class="text-sm text-gray-500"><a href="#" class="text-pickle-600 hover:underline">Join our Discord</a> for real-time help</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Brand Portal -->
+  <div id="page-brand-portal" class="page">
+    <div class="gradient-bg text-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+        <div class="max-w-2xl">
+          <div class="inline-block bg-white/10 backdrop-blur rounded-full px-4 py-1.5 text-sm font-medium mb-5">Brand Dashboard</div>
+          <h1 class="text-4xl md:text-5xl font-extrabold leading-tight mb-4">Welcome to Your <span class="text-pickle-300">Brand Portal</span></h1>
+          <p class="text-lg text-pickle-100 mb-10">Launch campaigns, discover creators, and manage all your partnerships in one place.</p>
+          <div class="flex flex-wrap gap-4">
+            <button onclick="navigate('campaigns')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Create Campaign
+            </button>
+            <button onclick="navigate('creators')" class="border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-white/10 transition flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              Browse Creators
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl p-7 border border-gray-100 card-hover cursor-pointer" onclick="navigate('campaigns')">
+          <div class="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+          </div>
+          <h3 class="font-bold text-lg mb-1">My Campaigns</h3>
+          <p class="text-gray-500 text-sm">View and manage your active and past campaigns.</p>
+        </div>
+        <div class="bg-white rounded-2xl p-7 border border-gray-100 card-hover cursor-pointer" onclick="navigate('creators')">
+          <div class="w-12 h-12 bg-pickle-100 rounded-xl flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-pickle-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+          <h3 class="font-bold text-lg mb-1">Find Creators</h3>
+          <p class="text-gray-500 text-sm">Browse the marketplace and discover your perfect partners.</p>
+        </div>
+        <div class="bg-white rounded-2xl p-7 border border-gray-100 card-hover cursor-pointer" onclick="navigate('messages')">
+          <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          </div>
+          <h3 class="font-bold text-lg mb-1">Messages</h3>
+          <p class="text-gray-500 text-sm">Stay in touch with creators and manage your deals.</p>
         </div>
       </div>
     </div>

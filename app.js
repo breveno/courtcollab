@@ -313,24 +313,32 @@ function onAuthSuccess(user) {
   const adminLinkMobile = document.getElementById('nav-admin-link-mobile');
   if (adminLink) adminLink.classList.toggle('hidden', !isAdmin);
   if (adminLinkMobile) adminLinkMobile.classList.toggle('hidden', !isAdmin);
-  navigate('landing');
+  navigate(user.role === 'brand' ? 'brand-portal' : 'landing');
   if (user.role === 'creator') loadStripeConnectStatus();
   startNotifPolling();
 }
 
 function updateLandingHeroButtons(role) {
-  const browse   = document.getElementById('btn-browse-creators');
-  const join     = document.getElementById('btn-join-creator');
-  const dashboard = document.getElementById('btn-creator-dashboard');
+  const browse          = document.getElementById('btn-browse-creators');
+  const join            = document.getElementById('btn-join-creator');
+  const creatorDash     = document.getElementById('btn-creator-dashboard');
+  const brandDash       = document.getElementById('btn-brand-dashboard');
   if (!browse) return;
   if (role === 'creator') {
     browse.style.display = 'none';
     join.style.display = 'none';
-    dashboard.style.display = '';
+    creatorDash.style.display = '';
+    if (brandDash) brandDash.style.display = 'none';
+  } else if (role === 'brand') {
+    browse.style.display = 'none';
+    join.style.display = 'none';
+    creatorDash.style.display = 'none';
+    if (brandDash) brandDash.style.display = '';
   } else {
     browse.style.display = '';
     join.style.display = '';
-    dashboard.style.display = 'none';
+    creatorDash.style.display = 'none';
+    if (brandDash) brandDash.style.display = 'none';
   }
 }
 
