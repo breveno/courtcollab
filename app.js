@@ -439,6 +439,7 @@ function navigate(page) {
   document.querySelectorAll('.nav-link').forEach(link => {
     link.classList.toggle('active', link.dataset.page === page);
   });
+  if (page === 'brand-portal') renderBrandPortal();
   if (page === 'creators')  renderCreators();
   if (page === 'campaigns') renderCampaigns();
   if (page === 'matching')  runMatching();
@@ -492,10 +493,199 @@ function closeModal(id) {
     const list  = document.getElementById('camp-attachment-list');
     if (input) input.value = '';
     if (list)  list.innerHTML = '';
+    const coverInput = document.getElementById('camp-cover');
+    if (coverInput) coverInput.value = '';
+    const coverPreview = document.getElementById('camp-cover-preview');
+    if (coverPreview) coverPreview.innerHTML = `<svg class="w-6 h-6 text-white opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`;
   }
 }
 
 // --- Render Creator Cards ---
+// --- Time helper ---
+function timeSince(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return 'recently';
+  const secs = Math.floor((Date.now() - d) / 1000);
+  if (secs < 60)   return 'just now';
+  if (secs < 3600) return Math.floor(secs/60) + ' min ago';
+  if (secs < 86400) return Math.floor(secs/3600) + ' hr ago';
+  return Math.floor(secs/86400) + ' day' + (Math.floor(secs/86400)>1?'s':'') + ' ago';
+}
+
+// --- Brand Fit Score ---
+function calcBrandFitScore(creator) {
+  let score = 0;
+  // Followers (0-25 pts)
+  const f = creator.total_followers || 0;
+  if      (f >= 500000) score += 25;
+  else if (f >= 100000) score += 20;
+  else if (f >= 50000)  score += 15;
+  else if (f >= 10000)  score += 10;
+  else if (f >= 1000)   score += 5;
+  // Engagement rate (0-25 pts)
+  const eng = parseFloat(creator.engagement_rate) || 0;
+  if      (eng >= 8)   score += 25;
+  else if (eng >= 5)   score += 20;
+  else if (eng >= 3)   score += 15;
+  else if (eng >= 1.5) score += 10;
+  else if (eng > 0)    score += 5;
+  // Avg views (0-20 pts)
+  const v = creator.avg_views || 0;
+  if      (v >= 100000) score += 20;
+  else if (v >= 50000)  score += 16;
+  else if (v >= 10000)  score += 12;
+  else if (v >= 5000)   score += 8;
+  else if (v > 0)       score += 4;
+  // Skills (0-15 pts)
+  const skills = Array.isArray(creator.skills) ? creator.skills : [];
+  score += Math.min(skills.length * 3, 15);
+  // Profile completeness (0-15 pts)
+  if (creator.bio)      score += 5;
+  if (creator.location) score += 3;
+  if (creator.niche)    score += 4;
+  if (creator.rate_ig || creator.rate_tiktok || creator.rate_ugc) score += 3;
+  return Math.min(score, 100);
+}
+
+function fitScoreMeta(score) {
+  if (score >= 80) return { color: '#22c55e', bg: 'bg-green-50',  text: 'text-green-700',  label: 'Great match' };
+  if (score >= 60) return { color: '#eab308', bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Good match' };
+  if (score >= 40) return { color: '#f97316', bg: 'bg-orange-50', text: 'text-orange-700', label: 'Fair match' };
+  return               { color: '#9ca3af', bg: 'bg-gray-50',   text: 'text-gray-500',   label: 'Low match' };
+}
+
+function fitScoreBadgeHtml(creator) {
+  if (state.role !== 'brand') return '';
+  const score = calcBrandFitScore(creator);
+  const m = fitScoreMeta(score);
+  const r = 20, circ = 2 * Math.PI * r;
+  const dash = ((score / 100) * circ).toFixed(1);
+  return `
+    <div class="${m.bg} rounded-xl px-3 py-2.5 flex items-center gap-3 mt-3 border border-white">
+      <div class="relative w-11 h-11 shrink-0">
+        <svg class="w-11 h-11 -rotate-90" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="4"/>
+          <circle cx="24" cy="24" r="${r}" fill="none" stroke="${m.color}" stroke-width="4"
+            stroke-dasharray="${dash} ${circ.toFixed(1)}" stroke-linecap="round"/>
+        </svg>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <span class="text-[10px] font-bold ${m.text}">${score}%</span>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs font-bold ${m.text}">Brand Fit Score</div>
+        <div class="text-xs ${m.text} opacity-80">${m.label}</div>
+        <div class="text-[10px] text-gray-400 mt-0.5">Only visible to you</div>
+      </div>
+    </div>
+  `;
+}
+
+// --- Brand Portal ---
+let _brandPortalAllCampaigns = [];
+
+async function renderBrandPortal() {
+  const greeting = document.getElementById('brand-portal-greeting');
+  if (greeting && state.currentUser) {
+    const name = state.currentUser.company_name || state.currentUser.name || 'Brand';
+    greeting.textContent = 'Welcome back, ' + name.split(' ')[0];
+  }
+  const grid = document.getElementById('brand-portal-campaign-grid');
+  const statsEl = document.getElementById('brand-portal-stats');
+  if (!grid) return;
+
+  try {
+    const campaigns = await apiGet('/api/campaigns');
+    _brandPortalAllCampaigns = campaigns;
+
+    // Stats
+    const active = campaigns.filter(c => (c.status || 'open') === 'open').length;
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <div class="bg-white rounded-2xl border border-gray-100 p-5">
+          <div class="text-3xl font-bold text-gray-900">${campaigns.length}</div>
+          <div class="text-sm text-gray-500 mt-1">Total Campaigns</div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-5">
+          <div class="text-3xl font-bold text-pickle-700">${active}</div>
+          <div class="text-sm text-gray-500 mt-1">Active Campaigns</div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-5">
+          <div class="text-3xl font-bold text-brand-700">${campaigns.length - active}</div>
+          <div class="text-sm text-gray-500 mt-1">Closed Campaigns</div>
+        </div>
+      `;
+    }
+    renderBrandPortalGrid(campaigns);
+  } catch (err) {
+    grid.innerHTML = `<div class="col-span-full text-center py-8 text-red-400">${err.message}</div>`;
+  }
+}
+
+function renderBrandPortalGrid(campaigns) {
+  const grid = document.getElementById('brand-portal-campaign-grid');
+  if (!grid) return;
+  if (campaigns.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-full flex flex-col items-center py-12 text-center">
+        <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+        </div>
+        <p class="text-gray-500 mb-4 text-sm">No campaigns yet</p>
+        <button onclick="openModal('campaign-modal')" class="bg-pickle-700 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-pickle-800 text-sm">Post Your First Campaign</button>
+      </div>
+    `;
+    return;
+  }
+  grid.innerHTML = campaigns.map(c => {
+    const isActive = (c.status || 'open') === 'open';
+    const cover = c.cover_image || localStorage.getItem('camp_cover_' + c.id) || null;
+    const initials = (c.title || 'C').slice(0, 2).toUpperCase();
+    return `
+      <div class="group rounded-2xl overflow-hidden border border-gray-100 cursor-pointer card-hover bg-white" onclick="navigate('campaigns')">
+        <div class="relative" style="aspect-ratio:4/3">
+          ${cover
+            ? `<img src="${cover}" class="w-full h-full object-cover" alt="${c.title}">`
+            : `<div class="w-full h-full bg-gradient-to-br from-pickle-400 to-brand-500 flex items-center justify-center">
+                 <span class="text-white text-2xl font-bold opacity-60">${initials}</span>
+               </div>`
+          }
+          <span class="absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${isActive ? 'Active' : 'Closed'}</span>
+          <div class="absolute bottom-2 left-2 w-7 h-7 bg-white/90 backdrop-blur rounded-lg flex items-center justify-center shadow-sm">
+            <svg class="w-3.5 h-3.5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+          </div>
+        </div>
+        <div class="p-3">
+          <h3 class="font-semibold text-sm text-gray-900 truncate">${c.title}</h3>
+          <p class="text-xs text-gray-400 mt-0.5">Last Modified: ${timeSince(c.created_at)}</p>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterBrandPortal(filter, btn) {
+  document.querySelectorAll('.portal-pill').forEach(p => {
+    p.className = p.className.replace('bg-gray-900 text-white', 'bg-gray-100 text-gray-600');
+  });
+  if (btn) { btn.className = btn.className.replace('bg-gray-100 text-gray-600', 'bg-gray-900 text-white'); }
+  let list = _brandPortalAllCampaigns;
+  if (filter === 'active') list = list.filter(c => (c.status || 'open') === 'open');
+  if (filter === 'closed') list = list.filter(c => c.status === 'closed');
+  renderBrandPortalGrid(list);
+}
+
+// --- Cover photo preview ---
+function previewCampCover(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('camp-cover-preview');
+    preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
 async function renderCreators() {
   const grid = document.getElementById('creator-grid');
   if (!grid) return;
@@ -580,7 +770,8 @@ async function renderCreators() {
             <div class="flex flex-wrap gap-1 mb-4">
               ${skills.map(s => `<span class="tag bg-gray-100 text-gray-600">${s}</span>`).join('')}
             </div>
-            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+            ${fitScoreBadgeHtml(c)}
+            <div class="flex items-center justify-between pt-3 border-t border-gray-100 mt-3">
               <span class="text-sm text-gray-500">From <span class="font-semibold text-gray-900">${minRate !== '—' ? '$' + minRate : '—'}</span>/post</span>
               <span class="text-sm font-medium text-pickle-600 hover:text-pickle-700">View Profile →</span>
             </div>
@@ -826,6 +1017,7 @@ function removeCampAttachment(index) {
 async function postCampaign(e) {
   e.preventDefault();
   const skills = Array.from(document.querySelectorAll('#camp-skills input:checked')).map(i => i.value);
+  const coverInput = document.getElementById('camp-cover');
   const body = {
     title:       document.getElementById('camp-title').value,
     description: document.getElementById('camp-desc').value,
@@ -834,11 +1026,25 @@ async function postCampaign(e) {
     deadline:    document.getElementById('camp-deadline').value,
     skills,
   };
+  // Read cover image as base64 if provided
+  const coverFile = coverInput?.files[0];
+  const saveCover = (campaignId, dataUrl) => {
+    if (dataUrl && campaignId) localStorage.setItem('camp_cover_' + campaignId, dataUrl);
+  };
   try {
-    await apiPost('/api/campaigns', body);
+    if (coverFile) {
+      await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = ev => { body.cover_image = ev.target.result; resolve(); };
+        reader.readAsDataURL(coverFile);
+      });
+    }
+    const result = await apiPost('/api/campaigns', body);
+    if (coverFile && body.cover_image) saveCover(result?.id || result?.campaign?.id, body.cover_image);
     closeModal('campaign-modal');
     showToast('Campaign brief posted!');
     renderCampaigns();
+    if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
     showToast('⚠ ' + err.message);
   }
