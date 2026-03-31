@@ -483,7 +483,15 @@ function showToast(text) {
 
 // --- Modal ---
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+  if (id === 'campaign-modal') {
+    const input = document.getElementById('camp-attachments');
+    const list  = document.getElementById('camp-attachment-list');
+    if (input) input.value = '';
+    if (list)  list.innerHTML = '';
+  }
+}
 
 // --- Render Creator Cards ---
 async function renderCreators() {
@@ -785,6 +793,31 @@ function applyCampaign(id) {
   } else {
     showToast('Applicant view coming soon.');
   }
+}
+
+// --- Campaign Attachments Preview ---
+function renderCampAttachments() {
+  const input = document.getElementById('camp-attachments');
+  const list  = document.getElementById('camp-attachment-list');
+  if (!input || !list) return;
+  list.innerHTML = Array.from(input.files).map((f, i) => `
+    <li class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+      <div class="flex items-center gap-2 min-w-0">
+        <svg class="w-4 h-4 text-brand-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+        <span class="truncate text-gray-700">${f.name}</span>
+        <span class="text-gray-400 shrink-0">${(f.size / 1024 / 1024).toFixed(1)} MB</span>
+      </div>
+      <button type="button" onclick="removeCampAttachment(${i})" class="text-gray-400 hover:text-red-500 ml-2 shrink-0">&times;</button>
+    </li>
+  `).join('');
+}
+
+function removeCampAttachment(index) {
+  const input = document.getElementById('camp-attachments');
+  const dt = new DataTransfer();
+  Array.from(input.files).forEach((f, i) => { if (i !== index) dt.items.add(f); });
+  input.files = dt.files;
+  renderCampAttachments();
 }
 
 // --- Post Campaign ---
