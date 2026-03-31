@@ -459,6 +459,8 @@ function switchRole(role) {
   state.role = role;
   const el = document.getElementById('user-role');
   if (el) el.value = role;
+  document.querySelectorAll('.brand-only').forEach(e => { e.style.display = role === 'brand' ? '' : 'none'; });
+  document.querySelectorAll('.creator-only').forEach(e => { e.style.display = role === 'creator' ? '' : 'none'; });
 }
 
 // --- Format Numbers ---
