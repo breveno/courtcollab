@@ -525,6 +525,9 @@ function showToast(text) {
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
+  if (id === 'creator-detail-modal') {
+    document.getElementById('admin-detail-meta')?.classList.add('hidden');
+  }
   if (id === 'campaign-modal') {
     const input = document.getElementById('camp-attachments');
     const list  = document.getElementById('camp-attachment-list');
@@ -824,6 +827,69 @@ async function renderCreators() {
 function filterCreators() { renderCreators(); }
 
 // --- Creator Detail ---
+// --- Admin: view any user's profile ---
+async function adminViewUser(userId) {
+  const u = _adminUsers.find(u => u.id === userId);
+  if (!u) return;
+
+  // Populate admin meta strip
+  const metaEl   = document.getElementById('admin-detail-meta');
+  const emailEl  = document.getElementById('admin-detail-email');
+  const joinedEl = document.getElementById('admin-detail-joined');
+  const idEl     = document.getElementById('admin-detail-id');
+  if (metaEl)   metaEl.classList.remove('hidden');
+  if (emailEl)  emailEl.textContent  = u.email;
+  if (joinedEl) joinedEl.textContent = u.created_at ? u.created_at.slice(0, 10) : '—';
+  if (idEl)     idEl.textContent     = u.id;
+
+  const msgBtn = document.getElementById('detail-message-btn');
+
+  if (u.role === 'creator') {
+    if (msgBtn) { msgBtn.textContent = 'Message Creator'; msgBtn.classList.remove('hidden'); }
+    await showCreatorDetail(userId);
+    // Re-inject meta in case showCreatorDetail reset the modal
+    if (metaEl)   metaEl.classList.remove('hidden');
+    if (emailEl)  emailEl.textContent  = u.email;
+    if (joinedEl) joinedEl.textContent = u.created_at ? u.created_at.slice(0, 10) : '—';
+    if (idEl)     idEl.textContent     = u.id;
+  } else {
+    // Brand profile view
+    if (msgBtn) { msgBtn.textContent = 'Message Brand'; msgBtn.classList.remove('hidden'); }
+    const modal = document.getElementById('creator-detail-modal');
+    if (!modal) return;
+    const initials = (u.name || 'B').slice(0, 2).toUpperCase();
+    const avatarEl = document.getElementById('detail-avatar');
+    if (avatarEl) {
+      avatarEl.textContent = initials;
+      avatarEl.className = 'w-16 h-16 rounded-2xl bg-brand-100 flex items-center justify-center text-2xl font-bold text-brand-700';
+    }
+    document.getElementById('detail-name').textContent     = u.name || 'Brand';
+    document.getElementById('detail-location').textContent = u.company_name || '';
+    document.getElementById('detail-content').innerHTML = `
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="p-3 bg-gray-50 rounded-xl col-span-2">
+          <div class="text-xs text-gray-500 mb-1">Company Name</div>
+          <div class="font-semibold">${escHtml(u.company_name || '—')}</div>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-xl">
+          <div class="text-xs text-gray-500 mb-1">Industry / Niche</div>
+          <div class="font-semibold">${escHtml(u.niche || '—')}</div>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-xl">
+          <div class="text-xs text-gray-500 mb-1">Website</div>
+          <div class="font-semibold">${u.website ? `<a href="${escHtml(u.website)}" target="_blank" class="text-pickle-600 hover:underline">${escHtml(u.website)}</a>` : '—'}</div>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-xl col-span-2">
+          <div class="text-xs text-gray-500 mb-1">Bio / About</div>
+          <div class="font-semibold">${escHtml(u.bio || '—')}</div>
+        </div>
+      </div>
+    `;
+    state.selectedCreator = u;
+    openModal('creator-detail-modal');
+  }
+}
+
 async function showCreatorDetail(userId) {
   const modal = document.getElementById('creator-detail-modal');
   if (!modal) return;
@@ -1686,8 +1752,14 @@ async function renderAdmin() {
         </div>
         <p class="text-xs text-gray-400 truncate">${escHtml(u.email)} · ${escHtml(subtext)}</p>
       </div>
-      <div class="text-xs text-gray-400 flex-shrink-0 hidden sm:block">
-        #${u.id} · ${u.created_at ? u.created_at.slice(0, 10) : ''}
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <div class="text-xs text-gray-400 hidden sm:block">
+          #${u.id} · ${u.created_at ? u.created_at.slice(0, 10) : ''}
+        </div>
+        <button onclick="adminViewUser(${u.id})"
+          class="text-xs font-medium text-pickle-600 hover:text-pickle-800 border border-pickle-200 hover:border-pickle-400 bg-pickle-50 hover:bg-pickle-100 px-3 py-1.5 rounded-lg transition whitespace-nowrap">
+          View Profile
+        </button>
       </div>
     </div>`;
   }).join('');

@@ -898,9 +898,15 @@
         </div>
         <button onclick="closeModal('creator-detail-modal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
       </div>
+      <!-- Admin-only meta strip -->
+      <div id="admin-detail-meta" class="hidden bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+        <span>📧 <span id="admin-detail-email" class="font-medium text-gray-700"></span></span>
+        <span>🗓 Joined <span id="admin-detail-joined" class="font-medium text-gray-700"></span></span>
+        <span>🆔 User #<span id="admin-detail-id" class="font-medium text-gray-700"></span></span>
+      </div>
       <div id="detail-content"></div>
       <div class="flex gap-3 mt-6">
-        <button onclick="startConversation()" class="bg-pickle-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-pickle-700 transition flex-1">Message Creator</button>
+        <button id="detail-message-btn" onclick="startConversation()" class="bg-pickle-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-pickle-700 transition flex-1">Message Creator</button>
         <button onclick="closeModal('creator-detail-modal')" class="border border-gray-300 text-gray-600 px-6 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">Close</button>
       </div>
     </div>
