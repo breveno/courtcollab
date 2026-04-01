@@ -1542,7 +1542,7 @@ async function renderAdmin() {
   const completedPayments = payments.filter(p => p.status === 'completed' || p.status === 'released' || p.status === 'held');
   const failedPayments    = payments.filter(p => p.status === 'failed' || p.status === 'refunded');
   const totalRevenue = completedPayments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-  const platformFees = totalRevenue * 0.10;
+  const platformFees = totalRevenue * 0.15;
 
   const revenueEl = document.getElementById('admin-stat-revenue');
   const feesEl    = document.getElementById('admin-stat-fees');
