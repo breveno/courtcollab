@@ -426,10 +426,9 @@
           <button id="nav-admin-link" onclick="navigate('admin')" class="nav-link px-4 py-5 text-sm font-medium text-red-600 hover:text-red-700 border-b-2 border-transparent hidden" data-page="admin">⚙ Admin</button>
         </div>
         <div class="flex items-center gap-2">
-          <!-- Desktop: role badge (read-only) -->
-          <span id="nav-role-badge" class="hidden md:inline-block text-xs font-semibold px-3 py-1.5 rounded-lg bg-pickle-100 text-pickle-700"></span>
           <!-- Hidden selects kept for JS compatibility -->
-          <select id="user-role" class="hidden"></select>
+          <select id="user-role" class="hidden" style="display:none!important"></select>
+          <span id="nav-role-badge" class="hidden" style="display:none!important"></span>
           <div class="hidden md:flex items-center gap-2">
             <div class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center" title="Account">
               <span id="nav-user-initials" class="text-xs font-bold text-pickle-700"></span>
@@ -466,7 +465,7 @@
           Sign Out
         </button>
           <!-- Hidden select kept for JS compatibility -->
-          <select id="user-role-mobile" class="hidden"></select>
+          <select id="user-role-mobile" class="hidden" style="display:none!important"></select>
       </div>
     </div>
   </nav>
