@@ -546,10 +546,18 @@ function timeSince(dateStr) {
   const d = new Date(dateStr);
   if (isNaN(d)) return 'recently';
   const secs = Math.floor((Date.now() - d) / 1000);
-  if (secs < 60)   return 'just now';
-  if (secs < 3600) return Math.floor(secs/60) + ' min ago';
+  if (secs < 60)    return 'just now';
+  if (secs < 3600)  return Math.floor(secs/60) + ' min ago';
   if (secs < 86400) return Math.floor(secs/3600) + ' hr ago';
   return Math.floor(secs/86400) + ' day' + (Math.floor(secs/86400)>1?'s':'') + ' ago';
+}
+
+// Always format dates in UTC so timezone offsets never shift the displayed day
+function fmtDateUTC(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr.slice(0, 10);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 // --- Brand Fit Score ---
@@ -839,7 +847,7 @@ async function adminViewUser(userId) {
   const idEl     = document.getElementById('admin-detail-id');
   if (metaEl)   metaEl.classList.remove('hidden');
   if (emailEl)  emailEl.textContent  = u.email;
-  if (joinedEl) joinedEl.textContent = u.created_at ? u.created_at.slice(0, 10) : '—';
+  if (joinedEl) joinedEl.textContent = fmtDateUTC(u.created_at);
   if (idEl)     idEl.textContent     = u.id;
 
   const msgBtn = document.getElementById('detail-message-btn');
@@ -861,7 +869,7 @@ async function adminViewUser(userId) {
     // Inject admin meta right away
     if (metaEl)   metaEl.classList.remove('hidden');
     if (emailEl)  emailEl.textContent  = u.email;
-    if (joinedEl) joinedEl.textContent = u.created_at ? u.created_at.slice(0, 10) : '—';
+    if (joinedEl) joinedEl.textContent = fmtDateUTC(u.created_at);
     if (idEl)     idEl.textContent     = u.id;
 
     try {
@@ -1813,14 +1821,22 @@ async function renderAdmin() {
         </div>
         <p class="text-xs text-gray-400 truncate">${escHtml(u.email)} · ${escHtml(subtext)}</p>
       </div>
-      <div class="flex items-center gap-3 flex-shrink-0">
-        <div class="text-xs text-gray-400 hidden sm:block">
-          #${u.id} · ${u.created_at ? u.created_at.slice(0, 10) : ''}
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="text-xs text-gray-400 hidden sm:block whitespace-nowrap">
+          #${u.id} · ${fmtDateUTC(u.created_at)}
         </div>
         <button onclick="adminViewUser(${u.id})"
           class="text-xs font-medium text-pickle-600 hover:text-pickle-800 border border-pickle-200 hover:border-pickle-400 bg-pickle-50 hover:bg-pickle-100 px-3 py-1.5 rounded-lg transition whitespace-nowrap">
           View Profile
         </button>
+        ${isAdmin
+          ? `<span class="text-xs text-gray-300 px-2 py-1.5 border border-gray-200 rounded-lg cursor-not-allowed" title="Admin accounts cannot be deleted">🔒</span>`
+          : `<button onclick="adminDeleteOne(${u.id})"
+              class="text-xs font-medium text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition whitespace-nowrap"
+              title="Delete this user">
+              Delete
+             </button>`
+        }
       </div>
     </div>`;
   }).join('');
@@ -1871,6 +1887,24 @@ async function deleteSelectedUsers() {
   try {
     const result = await apiDelete('/api/admin/users', { ids });
     showToast(`✓ Deleted ${result.deleted} user${result.deleted !== 1 ? 's' : ''}`);
+    renderAdmin();
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Delete failed'));
+  }
+}
+
+async function adminDeleteOne(userId) {
+  const u = _adminUsers.find(u => u.id === userId);
+  if (!u) return;
+  if (ADMIN_EMAILS.includes(u.email)) {
+    showToast('⚠ Admin accounts cannot be deleted.');
+    return;
+  }
+  const ok = confirm(`Permanently delete ${u.name}?\n\nThis cannot be undone. Their profile, deals, and messages will be removed.`);
+  if (!ok) return;
+  try {
+    const result = await apiDelete('/api/admin/users', { ids: [userId] });
+    showToast(`✓ ${u.name} has been deleted.`);
     renderAdmin();
   } catch (err) {
     showToast('⚠ ' + (err.message || 'Delete failed'));
