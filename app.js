@@ -846,12 +846,73 @@ async function adminViewUser(userId) {
 
   if (u.role === 'creator') {
     if (msgBtn) { msgBtn.textContent = 'Message Creator'; msgBtn.classList.remove('hidden'); }
-    await showCreatorDetail(userId);
-    // Re-inject meta in case showCreatorDetail reset the modal
+
+    // Set up modal with loading state
+    const avatarEl = document.getElementById('detail-avatar');
+    if (avatarEl) {
+      avatarEl.textContent = (u.name || 'C').slice(0,2).toUpperCase();
+      avatarEl.className = 'w-16 h-16 rounded-2xl bg-pickle-100 flex items-center justify-center text-2xl font-bold text-pickle-700';
+    }
+    document.getElementById('detail-name').textContent     = u.name || 'Creator';
+    document.getElementById('detail-location').textContent = u.niche || '';
+    document.getElementById('detail-content').innerHTML    = '<div class="text-center py-6 text-gray-400">Loading profile…</div>';
+    openModal('creator-detail-modal');
+
+    // Inject admin meta right away
     if (metaEl)   metaEl.classList.remove('hidden');
     if (emailEl)  emailEl.textContent  = u.email;
     if (joinedEl) joinedEl.textContent = u.created_at ? u.created_at.slice(0, 10) : '—';
     if (idEl)     idEl.textContent     = u.id;
+
+    try {
+      const c = await apiGet('/api/creators/' + userId);
+      state.selectedCreator = c;
+      const skills = Array.isArray(c.skills) ? c.skills : [];
+      document.getElementById('detail-avatar').textContent   = c.initials || (c.name||'CC').slice(0,2).toUpperCase();
+      document.getElementById('detail-name').textContent     = c.name || u.name;
+      document.getElementById('detail-location').textContent = [c.location, c.niche, c.skill_level].filter(Boolean).join(' · ');
+      document.getElementById('detail-content').innerHTML = `
+        <p class="text-gray-600 mb-6">${c.bio || '<span class="text-gray-400 italic">No bio added yet.</span>'}</p>
+        <h3 class="font-bold mb-3">Creator Skills</h3>
+        <div class="flex flex-wrap gap-1 mb-6">${skills.length ? skills.map(s=>`<span class="tag bg-pickle-100 text-pickle-700">${s}</span>`).join('') : '<span class="text-gray-400 text-sm">No skills listed</span>'}</div>
+        <h3 class="font-bold mb-3">Audience Stats</h3>
+        <div class="grid grid-cols-3 gap-3 mb-6">
+          <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Instagram</div><div class="font-bold text-lg">${fmtNum(c.followers_ig)}</div></div>
+          <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">TikTok</div><div class="font-bold text-lg">${fmtNum(c.followers_tt)}</div></div>
+          <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">YouTube</div><div class="font-bold text-lg">${fmtNum(c.followers_yt)}</div></div>
+          <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Engagement</div><div class="font-bold text-lg">${c.engagement_rate||0}%</div></div>
+          <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Avg Views</div><div class="font-bold text-lg">${fmtNum(c.avg_views)}</div></div>
+          <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Total</div><div class="font-bold text-lg">${fmtNum(c.total_followers)}</div></div>
+        </div>
+        <h3 class="font-bold mb-3">Demographics</h3>
+        <div class="grid grid-cols-2 gap-3 mb-6">
+          <div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Primary Age</div><div class="font-semibold">${c.demo_age||'—'}</div></div>
+          <div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Gender Split</div><div class="font-semibold">${c.demo_gender||'—'}</div></div>
+          <div class="p-3 bg-gray-50 rounded-xl col-span-2"><div class="text-xs text-gray-500 mb-1">Top Locations</div><div class="font-semibold">${c.demo_locations||'—'}</div></div>
+          <div class="p-3 bg-gray-50 rounded-xl col-span-2"><div class="text-xs text-gray-500 mb-1">Audience Interests</div><div class="font-semibold">${c.demo_interests||'—'}</div></div>
+        </div>
+        <h3 class="font-bold mb-3">Rates</h3>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div class="p-3 bg-pickle-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Instagram Post/Reel</div><div class="font-bold text-pickle-700">${c.rate_ig?'$'+c.rate_ig.toLocaleString():'—'}</div></div>
+          <div class="p-3 bg-pickle-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">TikTok</div><div class="font-bold text-pickle-700">${c.rate_tiktok?'$'+c.rate_tiktok.toLocaleString():'—'}</div></div>
+          <div class="p-3 bg-pickle-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">YouTube Video</div><div class="font-bold text-pickle-700">${c.rate_yt?'$'+c.rate_yt.toLocaleString():'—'}</div></div>
+          <div class="p-3 bg-pickle-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">UGC (per piece)</div><div class="font-bold text-pickle-700">${c.rate_ugc?'$'+c.rate_ugc.toLocaleString():'—'}</div></div>
+        </div>
+        ${c.rate_notes?`<p class="text-sm text-gray-500 italic mb-6">${c.rate_notes}</p>`:''}
+      `;
+    } catch (err) {
+      // Profile not filled out yet — show what we know from the admin user record
+      document.getElementById('detail-content').innerHTML = `
+        <div class="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mb-4 text-sm text-yellow-700">
+          ⚠ This creator hasn't completed their profile yet.
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="p-3 bg-gray-50 rounded-xl col-span-2"><div class="text-xs text-gray-500 mb-1">Niche</div><div class="font-semibold">${escHtml(u.niche||'—')}</div></div>
+          ${u.followers_ig ? `<div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Instagram</div><div class="font-bold">${fmtNum(u.followers_ig)}</div></div>` : ''}
+          ${u.followers_tt ? `<div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">TikTok</div><div class="font-bold">${fmtNum(u.followers_tt)}</div></div>` : ''}
+        </div>
+      `;
+    }
   } else {
     // Brand profile view
     if (msgBtn) { msgBtn.textContent = 'Message Brand'; msgBtn.classList.remove('hidden'); }
