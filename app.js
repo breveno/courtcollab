@@ -313,9 +313,45 @@ function onAuthSuccess(user) {
   const adminLinkMobile = document.getElementById('nav-admin-link-mobile');
   if (adminLink) adminLink.classList.toggle('hidden', !isAdmin);
   if (adminLinkMobile) adminLinkMobile.classList.toggle('hidden', !isAdmin);
-  navigate(user.role === 'brand' ? 'brand-portal' : 'landing');
+  // Show role toggle for admins
+  const roleToggle = document.getElementById('admin-role-toggle');
+  if (roleToggle) {
+    if (isAdmin) {
+      roleToggle.classList.remove('hidden');
+      roleToggle.classList.add('flex');
+      adminUpdateToggleButtons('creator');
+    } else {
+      roleToggle.classList.add('hidden');
+      roleToggle.classList.remove('flex');
+    }
+  }
+  navigate(isAdmin ? 'admin' : (user.role === 'brand' ? 'brand-portal' : 'landing'));
   if (user.role === 'creator') loadStripeConnectStatus();
   startNotifPolling();
+}
+
+// --- Admin role view switcher ---
+function adminSwitchView(role) {
+  switchRole(role);
+  adminUpdateToggleButtons(role);
+  navigate(role === 'brand' ? 'brand-portal' : 'landing');
+}
+
+function adminUpdateToggleButtons(role) {
+  const creatorBtn = document.getElementById('admin-toggle-creator');
+  const brandBtn   = document.getElementById('admin-toggle-brand');
+  if (!creatorBtn || !brandBtn) return;
+  const activeClass   = 'bg-white text-gray-900 shadow-sm';
+  const inactiveClass = 'text-gray-500 hover:text-gray-700';
+  if (role === 'creator') {
+    creatorBtn.className = creatorBtn.className.replace(inactiveClass, '').trim() + ' ' + activeClass;
+    brandBtn.className   = brandBtn.className.replace(activeClass, '').trim() + ' ' + inactiveClass;
+  } else {
+    brandBtn.className   = brandBtn.className.replace(inactiveClass, '').trim() + ' ' + activeClass;
+    creatorBtn.className = creatorBtn.className.replace(activeClass, '').trim() + ' ' + inactiveClass;
+  }
+  creatorBtn.className = creatorBtn.className.replace(/\s+/g, ' ').trim();
+  brandBtn.className   = brandBtn.className.replace(/\s+/g, ' ').trim();
 }
 
 function updateLandingHeroButtons(role) {
