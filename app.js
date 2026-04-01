@@ -1829,14 +1829,6 @@ async function renderAdmin() {
           class="text-xs font-medium text-pickle-600 hover:text-pickle-800 border border-pickle-200 hover:border-pickle-400 bg-pickle-50 hover:bg-pickle-100 px-3 py-1.5 rounded-lg transition whitespace-nowrap">
           View Profile
         </button>
-        ${isAdmin
-          ? `<span class="text-xs text-gray-300 px-2 py-1.5 border border-gray-200 rounded-lg cursor-not-allowed" title="Admin accounts cannot be deleted">🔒</span>`
-          : `<button onclick="adminDeleteOne(${u.id})"
-              class="text-xs font-medium text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition whitespace-nowrap"
-              title="Delete this user">
-              Delete
-             </button>`
-        }
       </div>
     </div>`;
   }).join('');
