@@ -334,7 +334,12 @@ function onAuthSuccess(user) {
 function adminSwitchView(role) {
   switchRole(role);
   adminUpdateToggleButtons(role);
-  navigate(role === 'brand' ? 'brand-portal' : 'landing');
+  if (role === 'brand') {
+    navigate('brand-portal');
+    renderBrandPortal();
+  } else {
+    navigate('landing');
+  }
 }
 
 function adminUpdateToggleButtons(role) {
