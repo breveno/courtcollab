@@ -1252,23 +1252,71 @@
         </button>
       </div>
 
-      <!-- Stats row -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="admin-stats">
+      <!-- Stats row — Users -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4" id="admin-stats">
         <div class="bg-white rounded-xl p-5 border border-gray-100">
-          <p class="text-sm text-gray-500 mb-1">Total Users</p>
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Total Users</p>
           <p class="text-2xl font-bold text-gray-900" id="admin-stat-total">—</p>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-100">
-          <p class="text-sm text-gray-500 mb-1">Creators</p>
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Creators</p>
           <p class="text-2xl font-bold text-pickle-600" id="admin-stat-creators">—</p>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-100">
-          <p class="text-sm text-gray-500 mb-1">Brands</p>
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Brands</p>
           <p class="text-2xl font-bold text-brand-600" id="admin-stat-brands">—</p>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-100">
-          <p class="text-sm text-gray-500 mb-1">Selected</p>
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Selected</p>
           <p class="text-2xl font-bold text-red-500" id="admin-stat-selected">0</p>
+        </div>
+      </div>
+
+      <!-- Stats row — Revenue & Activity -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-xl p-5 border border-gray-100">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Total Processed</p>
+          <p class="text-2xl font-bold text-gray-900" id="admin-stat-revenue">—</p>
+          <p class="text-xs text-gray-400 mt-1">All payments</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-gray-100">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Platform Fees</p>
+          <p class="text-2xl font-bold text-green-600" id="admin-stat-fees">—</p>
+          <p class="text-xs text-gray-400 mt-1">10% of processed</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-gray-100">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Active Deals</p>
+          <p class="text-2xl font-bold text-pickle-600" id="admin-stat-deals-active">—</p>
+          <p class="text-xs text-gray-400 mt-1" id="admin-stat-deals-done">— completed</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-gray-100">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Messages Sent</p>
+          <p class="text-2xl font-bold text-purple-600" id="admin-stat-messages">—</p>
+          <p class="text-xs text-gray-400 mt-1">Platform engagement</p>
+        </div>
+      </div>
+
+      <!-- Bottom grid: Recent Signups + Failed Payments -->
+      <div class="grid md:grid-cols-2 gap-6 mb-8">
+        <!-- Recent Signups -->
+        <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <h2 class="font-bold text-gray-900">Recent Signups</h2>
+            <span class="text-xs text-gray-400">Last 10 users</span>
+          </div>
+          <div id="admin-recent-signups" class="divide-y divide-gray-50">
+            <div class="px-6 py-8 text-center text-gray-400 text-sm">Loading…</div>
+          </div>
+        </div>
+        <!-- Failed Payments -->
+        <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <h2 class="font-bold text-gray-900">Failed Payments</h2>
+            <span class="text-xs text-red-400 font-medium" id="admin-failed-count">—</span>
+          </div>
+          <div id="admin-failed-payments" class="divide-y divide-gray-50">
+            <div class="px-6 py-8 text-center text-gray-400 text-sm">Loading…</div>
+          </div>
         </div>
       </div>
 

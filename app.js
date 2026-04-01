@@ -1513,14 +1513,21 @@ async function renderAdmin() {
   if (!listEl) return;
   listEl.innerHTML = '<div class="px-6 py-12 text-center text-gray-400">Loading users…</div>';
 
-  try {
-    _adminUsers = await apiGet('/api/admin/users');
-  } catch (err) {
-    listEl.innerHTML = `<div class="px-6 py-10 text-center text-red-500">Failed to load users: ${err.message}</div>`;
+  // Fetch all data in parallel
+  const [usersResult, paymentsResult, dealsResult, messagesResult] = await Promise.allSettled([
+    apiGet('/api/admin/users'),
+    apiGet('/api/payments'),
+    apiGet('/api/deals'),
+    apiGet('/api/messages'),
+  ]);
+
+  // ── Users ──
+  if (usersResult.status === 'rejected') {
+    listEl.innerHTML = `<div class="px-6 py-10 text-center text-red-500">Failed to load users: ${usersResult.reason?.message}</div>`;
     return;
   }
+  _adminUsers = usersResult.value;
 
-  // Update stat cards
   const creators = _adminUsers.filter(u => u.role === 'creator').length;
   const brands   = _adminUsers.filter(u => u.role === 'brand').length;
   const totalEl    = document.getElementById('admin-stat-total');
@@ -1529,6 +1536,86 @@ async function renderAdmin() {
   if (totalEl)    totalEl.textContent    = _adminUsers.length;
   if (creatorsEl) creatorsEl.textContent = creators;
   if (brandsEl)   brandsEl.textContent   = brands;
+
+  // ── Revenue & Payments ──
+  const payments = paymentsResult.status === 'fulfilled' ? (paymentsResult.value || []) : [];
+  const completedPayments = payments.filter(p => p.status === 'completed' || p.status === 'released' || p.status === 'held');
+  const failedPayments    = payments.filter(p => p.status === 'failed' || p.status === 'refunded');
+  const totalRevenue = completedPayments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+  const platformFees = totalRevenue * 0.10;
+
+  const revenueEl = document.getElementById('admin-stat-revenue');
+  const feesEl    = document.getElementById('admin-stat-fees');
+  if (revenueEl) revenueEl.textContent = '$' + totalRevenue.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  if (feesEl)    feesEl.textContent    = '$' + platformFees.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+
+  // Failed payments panel
+  const failedEl    = document.getElementById('admin-failed-payments');
+  const failedCount = document.getElementById('admin-failed-count');
+  if (failedCount) failedCount.textContent = failedPayments.length ? `${failedPayments.length} issue${failedPayments.length > 1 ? 's' : ''}` : 'None';
+  if (failedEl) {
+    if (!failedPayments.length) {
+      failedEl.innerHTML = '<div class="px-6 py-8 text-center text-gray-400 text-sm flex flex-col items-center gap-2"><span class="text-2xl">✅</span>No failed payments</div>';
+    } else {
+      failedEl.innerHTML = failedPayments.map(p => `
+        <div class="flex items-center gap-3 px-6 py-3">
+          <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">${escHtml(p.creator_name || p.brand_name || 'Unknown')}</p>
+            <p class="text-xs text-gray-400">${p.created_at ? p.created_at.slice(0,10) : ''} · ${escHtml(p.status)}</p>
+          </div>
+          <span class="text-sm font-bold text-red-500">$${(parseFloat(p.amount)||0).toLocaleString()}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // ── Deals ──
+  const deals = dealsResult.status === 'fulfilled' ? (dealsResult.value || []) : [];
+  const activeDeals    = deals.filter(d => d.status === 'active' || d.status === 'pending').length;
+  const completedDeals = deals.filter(d => d.status === 'completed').length;
+  const dealsActiveEl = document.getElementById('admin-stat-deals-active');
+  const dealsDoneEl   = document.getElementById('admin-stat-deals-done');
+  if (dealsActiveEl) dealsActiveEl.textContent = activeDeals;
+  if (dealsDoneEl)   dealsDoneEl.textContent   = `${completedDeals} completed`;
+
+  // ── Messages ──
+  const messages = messagesResult.status === 'fulfilled' ? (messagesResult.value || []) : [];
+  const msgCount = Array.isArray(messages) ? messages.length : 0;
+  const msgEl = document.getElementById('admin-stat-messages');
+  if (msgEl) msgEl.textContent = msgCount.toLocaleString();
+
+  // ── Recent Signups ──
+  const signupsEl = document.getElementById('admin-recent-signups');
+  if (signupsEl) {
+    const recent = [..._adminUsers]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 10);
+    if (!recent.length) {
+      signupsEl.innerHTML = '<div class="px-6 py-8 text-center text-gray-400 text-sm">No users yet</div>';
+    } else {
+      signupsEl.innerHTML = recent.map(u => {
+        const roleColor = u.role === 'creator' ? 'bg-pickle-100 text-pickle-700' : 'bg-brand-100 text-brand-700';
+        return `
+          <div class="flex items-center gap-3 px-6 py-3">
+            <div class="w-8 h-8 rounded-full ${roleColor} flex items-center justify-center flex-shrink-0 text-xs font-bold">
+              ${(u.name || '?').slice(0,2).toUpperCase()}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate">${escHtml(u.name)}</p>
+              <p class="text-xs text-gray-400 truncate">${escHtml(u.email)}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full ${roleColor}">${u.role}</span>
+              <p class="text-xs text-gray-400 mt-0.5">${u.created_at ? timeSince(u.created_at) : ''}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
 
   if (!_adminUsers.length) {
     listEl.innerHTML = '<div class="px-6 py-12 text-center text-gray-400">No users found.</div>';
