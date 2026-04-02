@@ -356,6 +356,7 @@ async function handleSignup(e) {
       } catch (_) { /* best-effort */ }
     }
     onAuthSuccess(user);
+    showToast('Welcome to CourtCollab, ' + name.split(' ')[0] + '!', 'success');
   } catch (err) {
     const msg = (err.message || '').toLowerCase();
     if (msg.includes('already') || msg.includes('registered') || (msg.includes('email') && msg.includes('exist'))) {
@@ -600,15 +601,16 @@ function fmtNum(n) {
 }
 
 // --- Toast ---
-function showToast(text) {
+function showToast(text, type = 'default') {
   const toast = document.getElementById('toast');
   document.getElementById('toast-text').textContent = text;
+  toast.style.background = type === 'success' ? '#16a34a' : '';
   toast.classList.remove('hidden', 'opacity-0', 'translate-y-2');
   toast.classList.add('opacity-100', 'translate-y-0');
   setTimeout(() => {
     toast.classList.add('opacity-0', 'translate-y-2');
-    setTimeout(() => toast.classList.add('hidden'), 300);
-  }, 3000);
+    setTimeout(() => { toast.classList.add('hidden'); toast.style.background = ''; }, 300);
+  }, 3500);
 }
 
 // --- Modal ---
@@ -1640,7 +1642,7 @@ async function proposeDeal(e) {
       body: `📋 Deal proposed: $${amount.toLocaleString()} for ${deliverables} — ${timeline} timeline`
     });
     closeModal('deal-modal');
-    showToast('Deal proposal sent!');
+    showToast('Deal proposal sent!', 'success');
     await openConversation(state.activePartner);
   } catch (err) {
     showToast('⚠ ' + err.message);
@@ -1668,7 +1670,7 @@ async function openDealModal() {
 async function updateDealStatus(dealId, status) {
   try {
     await apiPatch('/api/deals/' + dealId + '/status', { status });
-    showToast('Deal ' + status + '!');
+    showToast('Deal ' + status + '!', 'success');
     await openConversation(state.activePartner);
   } catch (err) {
     showToast('⚠ ' + err.message);
@@ -1753,7 +1755,7 @@ async function renderPayments() {
 async function releasePayment(paymentId) {
   try {
     await apiPatch('/api/payments/' + paymentId + '/release');
-    showToast('✓ Payment released to creator!');
+    showToast('✓ Payment released to creator!', 'success');
     renderPayments();
   } catch (err) {
     showToast('⚠ ' + err.message);
@@ -1832,7 +1834,7 @@ async function stripeCheckout(dealId) {
 function handleStripeReturn() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('stripe_onboard')) {
-    showToast('🎉 Stripe account connected! You\'re ready to receive payouts.');
+    showToast('🎉 Stripe account connected! You\'re ready to receive payouts.', 'success');
     history.replaceState({}, '', window.location.pathname);
     navigate('profile');
   }

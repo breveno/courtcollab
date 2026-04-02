@@ -22,7 +22,8 @@
   <style>
     [x-cloak] { display: none !important; }
     .page { display: none; }
-    .page.active { display: block; }
+    .page.active { display: block; animation: pageIn 0.18s ease; }
+    @keyframes pageIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .nav-link.active { color: #2F4F2F; border-bottom: 2px solid #2F4F2F; }
     .tag { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; margin: 2px; }
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; }
@@ -33,7 +34,9 @@
     .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); }
     .gradient-bg { background: linear-gradient(135deg, #0f1c0f 0%, #162816 50%, #1e351e 100%); }
     .match-score { background: linear-gradient(135deg, #4f8a4f, #2F4F2F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    input:focus, select:focus, textarea:focus { outline: none; ring: 2px; border-color: #2F4F2F; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #2F4F2F; box-shadow: 0 0 0 3px rgba(79,138,79,0.15); }
+    button { transition: transform 0.1s ease; }
+    button:active:not(:disabled) { transform: scale(0.96); }
     .message-bubble-left { background: #f3f4f6; border-radius: 0 12px 12px 12px; }
     .message-bubble-right { background: #d6e8d6; border-radius: 12px 0 12px 12px; }
     /* Nav dropdowns */
@@ -1469,6 +1472,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>
