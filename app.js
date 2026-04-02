@@ -215,6 +215,10 @@ function showAuthTab(tab) {
   document.getElementById('tab-login').classList.toggle('active', isLogin);
   document.getElementById('tab-signup').classList.toggle('active', !isLogin);
   document.getElementById('auth-error').classList.add('hidden');
+  const heading = document.querySelector('.auth-right h2');
+  const sub     = document.querySelector('.auth-right > div > p');
+  if (heading) heading.textContent = isLogin ? 'Welcome back' : 'Create your account';
+  if (sub)     sub.textContent     = isLogin ? 'Sign in to your CourtCollab account.' : 'Join the pickleball creator marketplace.';
   if (!isLogin) highlightRole();
 }
 
