@@ -351,11 +351,11 @@
   </div>
 
   <!-- Nav -->
-  <nav class="bg-white border-b border-gray-200 sticky top-0 z-40">
+  <nav class="bg-white border-b border-gray-200 sticky top-0 z-40 overflow-x-hidden">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16 pr-4 sm:pr-0">
         <div class="flex items-center cursor-pointer" onclick="navigate('landing')">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" height="36" aria-label="CourtCollab">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" height="36" style="max-width:180px;width:auto;" aria-label="CourtCollab">
             <defs>
               <g id="nav-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/></g>
               <g id="nav-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#fff"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#fff"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/></g>
@@ -429,8 +429,8 @@
           <!-- Hidden selects kept for JS compatibility -->
           <select id="user-role" class="hidden" style="display:none!important"></select>
           <span id="nav-role-badge" class="hidden" style="display:none!important"></span>
-          <!-- Admin-only role toggle -->
-          <div id="admin-role-toggle" class="hidden items-center bg-gray-100 rounded-lg p-0.5 gap-0.5">
+          <!-- Admin-only role toggle (desktop only) -->
+          <div id="admin-role-toggle" class="hidden md:hidden items-center bg-gray-100 rounded-lg p-0.5 gap-0.5">
             <button id="admin-toggle-creator" onclick="adminSwitchView('creator')"
               class="px-3 py-1.5 rounded-md text-xs font-semibold transition">
               🎥 Creator
@@ -475,6 +475,20 @@
         <button onclick="navigate('payments');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="payments">Payments</button>
         <button onclick="navigate('contact');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="contact">Contact</button>
         <button id="nav-admin-link-mobile" onclick="navigate('admin');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-red-600 hover:bg-red-50 border-b-0 border-transparent hidden" data-page="admin">⚙ Admin</button>
+        <!-- Admin role toggle in mobile menu -->
+        <div id="admin-role-toggle-mobile" class="hidden px-5 py-3 border-t border-gray-100">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">View As</p>
+          <div class="flex gap-2">
+            <button id="admin-toggle-creator-mobile" onclick="adminSwitchView('creator');closeMobileMenu()"
+              class="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-pickle-100 transition">
+              🎥 Creator
+            </button>
+            <button id="admin-toggle-brand-mobile" onclick="adminSwitchView('brand');closeMobileMenu()"
+              class="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-pickle-100 transition">
+              🏢 Brand
+            </button>
+          </div>
+        </div>
         <button onclick="handleLogout();closeMobileMenu()" class="text-left px-5 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-gray-100 flex items-center gap-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           Sign Out

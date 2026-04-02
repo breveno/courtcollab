@@ -313,17 +313,21 @@ function onAuthSuccess(user) {
   const adminLinkMobile = document.getElementById('nav-admin-link-mobile');
   if (adminLink) adminLink.classList.toggle('hidden', !isAdmin);
   if (adminLinkMobile) adminLinkMobile.classList.toggle('hidden', !isAdmin);
-  // Show role toggle for admins
+  // Show role toggle for admins (desktop nav + mobile hamburger)
   const roleToggle = document.getElementById('admin-role-toggle');
+  const roleToggleMobile = document.getElementById('admin-role-toggle-mobile');
   if (roleToggle) {
     if (isAdmin) {
-      roleToggle.classList.remove('hidden');
-      roleToggle.classList.add('flex');
+      roleToggle.classList.remove('hidden', 'md:hidden');
+      roleToggle.classList.add('md:flex');
       adminUpdateToggleButtons('creator');
     } else {
       roleToggle.classList.add('hidden');
-      roleToggle.classList.remove('flex');
+      roleToggle.classList.remove('md:flex');
     }
+  }
+  if (roleToggleMobile) {
+    roleToggleMobile.classList.toggle('hidden', !isAdmin);
   }
   navigate(isAdmin ? 'admin' : (user.role === 'brand' ? 'brand-portal' : 'landing'));
   if (user.role === 'creator') loadStripeConnectStatus();
