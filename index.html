@@ -450,13 +450,13 @@
             </button>
           </div>
           <!-- Mobile: user initials only + hamburger on far right -->
-          <div class="md:hidden flex items-center gap-2">
-            <button class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Open menu">
-              <span style="font-size:1.4rem;line-height:1;">☰</span>
-            </button>
+          <div class="md:hidden flex items-center gap-2 mr-3">
             <div class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center" title="Account">
               <span id="nav-user-initials-mobile" class="text-xs font-bold text-pickle-700"></span>
             </div>
+            <button class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Open menu">
+              <span style="font-size:1.4rem;line-height:1;">☰</span>
+            </button>
           </div>
         </div>
       </div>
@@ -464,6 +464,10 @@
     <!-- Mobile dropdown menu -->
     <div id="mobile-menu-dropdown" class="md:hidden border-t border-gray-100 bg-white shadow-lg">
       <div class="flex flex-col py-2">
+        <button onclick="navigate('home');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-2" data-page="home">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Home
+        </button>
         <button onclick="navigate('creators');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="creators">Browse Creators</button>
         <button onclick="navigate('campaigns');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="campaigns">Campaign Briefs</button>
         <button onclick="navigate('matching');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="matching">Discovery</button>
