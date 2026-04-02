@@ -768,10 +768,29 @@ function previewCampCover(input) {
   reader.readAsDataURL(input.files[0]);
 }
 
+function creatorSkeletonHtml() {
+  return Array(6).fill(0).map(() => `
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <div class="flex items-start gap-4 mb-4">
+        <div class="skeleton w-14 h-14 rounded-full flex-shrink-0"></div>
+        <div class="flex-1 min-w-0 pt-1">
+          <div class="skeleton h-4 w-32 mb-2"></div>
+          <div class="skeleton h-3 w-20"></div>
+        </div>
+      </div>
+      <div class="skeleton h-3 w-full mb-2"></div>
+      <div class="skeleton h-3 w-4/5 mb-4"></div>
+      <div class="flex gap-2">
+        <div class="skeleton h-6 w-16 rounded-full"></div>
+        <div class="skeleton h-6 w-20 rounded-full"></div>
+      </div>
+    </div>`).join('');
+}
+
 async function renderCreators() {
   const grid = document.getElementById('creator-grid');
   if (!grid) return;
-  grid.innerHTML = '<div class="col-span-full text-center py-16 text-gray-400">Loading creators…</div>';
+  grid.innerHTML = creatorSkeletonHtml();
 
   try {
     const params = new URLSearchParams();
@@ -1133,10 +1152,36 @@ async function saveCreatorProfile(e) {
 }
 
 // --- Render Campaigns ---
+function campaignSkeletonHtml() {
+  return Array(4).fill(0).map(() => `
+    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+      <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
+        <div class="flex-1">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="skeleton h-5 w-48"></div>
+            <div class="skeleton h-5 w-16 rounded-full"></div>
+          </div>
+          <div class="skeleton h-4 w-28"></div>
+        </div>
+        <div class="flex gap-4">
+          <div class="skeleton h-4 w-20"></div>
+          <div class="skeleton h-4 w-24"></div>
+        </div>
+      </div>
+      <div class="skeleton h-3 w-full mb-2"></div>
+      <div class="skeleton h-3 w-3/4 mb-4"></div>
+      <div class="flex gap-2">
+        <div class="skeleton h-6 w-16 rounded-full"></div>
+        <div class="skeleton h-6 w-20 rounded-full"></div>
+        <div class="skeleton h-6 w-14 rounded-full"></div>
+      </div>
+    </div>`).join('');
+}
+
 async function renderCampaigns() {
   const list = document.getElementById('campaign-list');
   if (!list) return;
-  list.innerHTML = '<div class="text-center py-16 text-gray-400">Loading campaigns…</div>';
+  list.innerHTML = campaignSkeletonHtml();
 
   try {
     const campaigns = await apiGet('/api/campaigns');
@@ -1232,6 +1277,11 @@ async function postCampaign(e) {
     deadline:    document.getElementById('camp-deadline').value,
     skills,
   };
+  // Disable submit button and show saving state
+  const submitBtn = document.querySelector('#campaign-modal button[type="submit"], #campaign-modal button[onclick*="postCampaign"]');
+  const origBtnText = submitBtn?.textContent || 'Post Campaign';
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
+
   // Read cover image as base64 if provided
   const coverFile = coverInput?.files[0];
   const saveCover = (campaignId, dataUrl) => {
@@ -1253,6 +1303,7 @@ async function postCampaign(e) {
     if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
     showToast('⚠ ' + err.message);
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origBtnText; }
   }
 }
 
@@ -1972,6 +2023,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // Dismiss splash after auth resolves
+  const dismissSplash = () => {
+    const splash = document.getElementById('app-splash');
+    if (!splash) return;
+    splash.classList.add('fade-out');
+    setTimeout(() => splash.remove(), 420);
+  };
+
   if (getToken()) {
     try {
       const user = await apiGet('/api/me', { silent: true });
@@ -1983,4 +2042,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     showAuthGate();
   }
+  dismissSplash();
 });

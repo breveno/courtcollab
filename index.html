@@ -130,9 +130,54 @@
   /* Mobile hamburger menu */
   #mobile-menu-dropdown { display:none; }
   #mobile-menu-dropdown.open { display:block; }
+  /* Skeleton loaders */
+  @keyframes shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position:  600px 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+    background-size: 600px 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: 0.5rem;
+  }
+  /* Initial app splash */
+  #app-splash {
+    position: fixed; inset: 0; z-index: 100000;
+    background: #0f1c0f;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem;
+  }
+  #app-splash.fade-out { animation: splashFade 0.4s ease forwards; }
+  @keyframes splashFade { to { opacity: 0; pointer-events: none; } }
+  #app-splash svg.splash-logo { filter: drop-shadow(0 0 24px rgba(47,79,47,0.6)); }
+  #app-splash .splash-spinner {
+    width: 36px; height: 36px; border: 3px solid #2F4F2F;
+    border-top-color: #7db07d; border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="font-sans bg-gray-50 text-gray-900 min-h-screen">
+
+  <!-- Initial app splash screen -->
+  <div id="app-splash">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" height="48" class="splash-logo" style="max-width:240px;" aria-label="CourtCollab">
+      <defs>
+        <g id="sp-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/></g>
+        <g id="sp-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#fff" opacity=".15"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#fff" opacity=".15"/></g>
+      </defs>
+      <g transform="translate(60,60) scale(0.4)">
+        <circle cx="0" cy="0" r="96" fill="#2F4F2F"/>
+        <circle cx="0" cy="0" r="90" fill="none" stroke="#3d6b3d" stroke-width="1.5"/>
+        <use href="#sp-pb" transform="rotate(38)"/>
+        <use href="#sp-pf" transform="rotate(-38)"/>
+        <circle cx="0" cy="0" r="7" fill="#2F4F2F" stroke="#7db07d" stroke-width="2"/>
+      </g>
+      <text x="118" y="68" font-family="'Inter',system-ui,sans-serif" font-weight="800" font-size="46" dominant-baseline="middle" text-anchor="start"><tspan fill="#7db07d">Court</tspan><tspan fill="#a7c4a7">Collab</tspan></text>
+    </svg>
+    <div class="splash-spinner"></div>
+  </div>
 
   <!-- Global loading overlay with paddle scissors animation -->
   <div id="loading-overlay">
