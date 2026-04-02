@@ -219,8 +219,10 @@ function highlightRole() {
   document.getElementById('role-brand-label').style.background = brandChecked ? '#f0f5f0' : '';
   document.getElementById('role-creator-label').style.borderColor = !brandChecked ? '#2F4F2F' : '#e5e7eb';
   document.getElementById('role-creator-label').style.background = !brandChecked ? '#f0f5f0' : '';
-  // Show/hide creator social handle fields
+  // Show brand fields for brands, social handle fields for creators
+  const brandFields = document.getElementById('brand-signup-fields');
   const socialFields = document.getElementById('creator-social-fields');
+  if (brandFields) brandFields.style.display = brandChecked ? 'flex' : 'none';
   if (socialFields) socialFields.style.display = brandChecked ? 'none' : 'flex';
 }
 
@@ -261,22 +263,50 @@ async function handleSignup(e) {
   const email    = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   const role     = document.querySelector('input[name="signup-role"]:checked').value;
+
+  // Role-specific validation
+  if (role === 'creator') {
+    const ig = (document.getElementById('signup-instagram').value || '').trim();
+    const tt = (document.getElementById('signup-tiktok').value || '').trim();
+    if (!ig && !tt) {
+      showAuthError('Please enter at least one social handle (Instagram or TikTok) so brands can find you.');
+      return;
+    }
+  }
+  if (role === 'brand') {
+    const company  = (document.getElementById('signup-company').value || '').trim();
+    const industry = (document.getElementById('signup-industry').value || '').trim();
+    if (!company) {
+      showAuthError('Please enter your company name.');
+      return;
+    }
+    if (!industry) {
+      showAuthError('Please select your industry.');
+      return;
+    }
+  }
+
   setAuthBtnLoading('signup-form', true);
   try {
     const { token, user } = await apiPost('/api/signup', { name, email, password, role }, { loading: true, msg: 'Creating your account…' });
     setToken(token);
-    // Save social handles for creators right after signup (non-blocking)
+    // Save role-specific data right after signup (non-blocking)
     if (role === 'creator') {
       try {
         const ig = (document.getElementById('signup-instagram').value || '').trim().replace(/^@/, '');
         const tt = (document.getElementById('signup-tiktok').value || '').trim().replace(/^@/, '');
-        if (ig || tt) {
-          const handles = {};
-          if (ig) handles.instagram = ig;
-          if (tt) handles.tiktok = tt;
-          await apiPut('/api/creator/profile', { social_handles: JSON.stringify(handles) });
-        }
-      } catch (_) { /* handles save is best-effort, don't block signup */ }
+        const handles = {};
+        if (ig) handles.instagram = ig;
+        if (tt) handles.tiktok = tt;
+        await apiPut('/api/creator/profile', { social_handles: JSON.stringify(handles) });
+      } catch (_) { /* best-effort */ }
+    }
+    if (role === 'brand') {
+      try {
+        const company  = (document.getElementById('signup-company').value || '').trim();
+        const industry = (document.getElementById('signup-industry').value || '').trim();
+        await apiPut('/api/brand/profile', { company_name: company, industry });
+      } catch (_) { /* best-effort */ }
     }
     onAuthSuccess(user);
   } catch (err) {
