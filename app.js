@@ -14,7 +14,12 @@ window.fetch = function(...args) {
   if (url.includes('railway.app')) {
     _slowTimer = setTimeout(() => showLoading('Loading…'), 500);
   }
-  return _origFetch.apply(this, args).finally(() => {
+  return _origFetch.apply(this, args).catch(err => {
+    if (err instanceof TypeError && url.includes('railway.app')) {
+      showToast('⚠ Connection failed. Please check your internet and try again.');
+    }
+    throw err;
+  }).finally(() => {
     if (_slowTimer) { clearTimeout(_slowTimer); _slowTimer = null; hideLoading(); }
   });
 };
@@ -232,6 +237,30 @@ function showAuthError(msg) {
   el.classList.remove('hidden');
 }
 
+function showFieldError(inputId, msg) {
+  clearFieldError(inputId);
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  let container = input.parentNode;
+  if (!container.querySelector('label')) container = container.parentNode;
+  const err = document.createElement('p');
+  err.className = 'field-error';
+  err.dataset.field = inputId;
+  err.style.cssText = 'color:#dc2626;font-size:0.78rem;margin-top:0.3rem;';
+  err.textContent = msg;
+  container.appendChild(err);
+  input.style.borderColor = '#fca5a5';
+}
+function clearFieldError(inputId) {
+  const input = document.getElementById(inputId);
+  if (input) input.style.borderColor = '';
+  document.querySelectorAll(`.field-error[data-field="${inputId}"]`).forEach(e => e.remove());
+}
+function clearAllFieldErrors() {
+  document.querySelectorAll('.field-error').forEach(e => e.remove());
+  document.querySelectorAll('.auth-input').forEach(i => { if (i.style.borderColor) i.style.borderColor = ''; });
+}
+
 function setAuthBtnLoading(formId, loading) {
   const btn = document.querySelector(`#${formId} button[type="submit"]`);
   if (btn) {
@@ -242,16 +271,27 @@ function setAuthBtnLoading(formId, loading) {
 
 async function handleLogin(e) {
   e.preventDefault();
+  clearAllFieldErrors();
+  document.getElementById('auth-error').classList.add('hidden');
   const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
   const remember = document.getElementById('remember-me')?.checked ?? true;
+  if (!email)    { showFieldError('login-email',    'Please enter your email.');    return; }
+  if (!password) { showFieldError('login-password', 'Please enter your password.'); return; }
   setAuthBtnLoading('login-form', true);
   try {
     const { token, user } = await apiPost('/api/login', { email, password, remember }, { loading: true, msg: 'Signing in…' });
     setToken(token, remember);
     onAuthSuccess(user);
   } catch (err) {
-    showAuthError(err.message);
+    const msg = (err.message || '').toLowerCase();
+    if (msg.includes('password') || msg.includes('incorrect') || msg.includes('invalid credentials')) {
+      showFieldError('login-password', 'Incorrect password. Please try again.');
+    } else if (msg.includes('not found') || msg.includes('no user') || msg.includes('no account')) {
+      showFieldError('login-email', 'No account found with this email.');
+    } else {
+      showAuthError(err.message || 'Sign in failed. Please try again.');
+    }
   } finally {
     setAuthBtnLoading('login-form', false);
   }
@@ -259,10 +299,17 @@ async function handleLogin(e) {
 
 async function handleSignup(e) {
   e.preventDefault();
+  clearAllFieldErrors();
+  document.getElementById('auth-error').classList.add('hidden');
   const name     = document.getElementById('signup-name').value.trim();
   const email    = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   const role     = document.querySelector('input[name="signup-role"]:checked').value;
+
+  if (password.length < 6) {
+    showFieldError('signup-password', 'Password must be at least 6 characters.');
+    return;
+  }
 
   // Role-specific validation
   if (role === 'creator') {
@@ -310,7 +357,12 @@ async function handleSignup(e) {
     }
     onAuthSuccess(user);
   } catch (err) {
-    showAuthError(err.message);
+    const msg = (err.message || '').toLowerCase();
+    if (msg.includes('already') || msg.includes('registered') || (msg.includes('email') && msg.includes('exist'))) {
+      showFieldError('signup-email', 'An account with this email already exists.');
+    } else {
+      showAuthError(err.message || 'Sign up failed. Please try again.');
+    }
   } finally {
     setAuthBtnLoading('signup-form', false);
   }
@@ -503,6 +555,10 @@ function navigate(page) {
   if (target) {
     target.classList.add('active');
     state.currentPage = page;
+  } else {
+    const notFound = document.getElementById('page-404');
+    if (notFound) notFound.classList.add('active');
+    return;
   }
   window.scrollTo(0, 0);
   document.body.scrollTop = 0;
@@ -834,7 +890,14 @@ async function renderCreators() {
     }
 
     if (creators.length === 0) {
-      grid.innerHTML = '<div class="col-span-full text-center py-16 text-gray-400">No creators match your filters. Try adjusting your search.</div>';
+      grid.innerHTML = `
+        <div class="col-span-full flex flex-col items-center py-16 text-center">
+          <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <p class="font-semibold text-gray-700 mb-1">No creators found</p>
+          <p class="text-gray-400 text-sm">Try adjusting your filters to see more results.</p>
+        </div>`;
       return;
     }
 
@@ -1187,7 +1250,22 @@ async function renderCampaigns() {
     const campaigns = await apiGet('/api/campaigns');
 
     if (campaigns.length === 0) {
-      list.innerHTML = '<div class="text-center py-16 text-gray-400">No campaigns posted yet.</div>';
+      list.innerHTML = state.role === 'brand'
+        ? `<div class="flex flex-col items-center py-16 text-center">
+             <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
+               <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+             </div>
+             <p class="font-semibold text-gray-700 mb-1">No campaigns yet</p>
+             <p class="text-gray-400 text-sm mb-5">Post your first campaign brief to start getting matched with creators.</p>
+             <button onclick="openModal('campaign-modal')" class="bg-brand-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-brand-700 transition text-sm">Post Your First Campaign</button>
+           </div>`
+        : `<div class="flex flex-col items-center py-16 text-center">
+             <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+               <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+             </div>
+             <p class="font-semibold text-gray-700 mb-1">No campaigns posted yet</p>
+             <p class="text-gray-400 text-sm">Brand campaigns will appear here. Check back soon!</p>
+           </div>`;
       return;
     }
 
@@ -1387,7 +1465,19 @@ async function renderConversations() {
     const convs = await apiGet('/api/conversations');
 
     if (convs.length === 0) {
-      list.innerHTML = '<div class="p-4 text-sm text-gray-400">No conversations yet.</div>';
+      const cta = state.role === 'brand'
+        ? `<p class="text-xs text-gray-400 mt-1">Browse creators to find the right match for your campaign.</p>
+           <button onclick="navigate('creators');closeMobileMenu()" class="mt-3 text-xs bg-pickle-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-pickle-700 transition">Browse Creators</button>`
+        : `<p class="text-xs text-gray-400 mt-1">Apply to campaigns to start a conversation with brands.</p>
+           <button onclick="navigate('campaigns');closeMobileMenu()" class="mt-3 text-xs bg-pickle-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-pickle-700 transition">Browse Campaigns</button>`;
+      list.innerHTML = `
+        <div class="p-6 text-center flex flex-col items-center">
+          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+          </div>
+          <p class="text-sm font-semibold text-gray-600">No conversations yet</p>
+          ${cta}
+        </div>`;
       return;
     }
 
@@ -1620,7 +1710,17 @@ async function renderPayments() {
     const payments = await apiGet('/api/payments');
 
     if (payments.length === 0) {
-      historyEl.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm">No payments yet.</div>';
+      historyEl.innerHTML = state.role === 'brand'
+        ? `<div class="py-10 text-center flex flex-col items-center gap-2">
+             <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+             <p class="text-sm font-medium text-gray-500">No payments yet</p>
+             <p class="text-xs text-gray-400">Payments will appear here once you've funded a deal with a creator.</p>
+           </div>`
+        : `<div class="py-10 text-center flex flex-col items-center gap-2">
+             <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+             <p class="text-sm font-medium text-gray-500">No payments yet</p>
+             <p class="text-xs text-gray-400">Your earnings from brand deals will appear here.</p>
+           </div>`;
       return;
     }
 
