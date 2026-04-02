@@ -325,14 +325,9 @@ async function handleSignup(e) {
     }
   }
   if (role === 'brand') {
-    const company  = (document.getElementById('signup-company').value || '').trim();
-    const industry = (document.getElementById('signup-industry').value || '').trim();
+    const company = (document.getElementById('signup-company').value || '').trim();
     if (!company) {
       showAuthError('Please enter your company name.');
-      return;
-    }
-    if (!industry) {
-      showAuthError('Please select your industry.');
       return;
     }
   }
@@ -354,9 +349,8 @@ async function handleSignup(e) {
     }
     if (role === 'brand') {
       try {
-        const company  = (document.getElementById('signup-company').value || '').trim();
-        const industry = (document.getElementById('signup-industry').value || '').trim();
-        await apiPut('/api/brand/profile', { company_name: company, industry });
+        const company = (document.getElementById('signup-company').value || '').trim();
+        await apiPut('/api/brand/profile', { company_name: company });
       } catch (_) { /* best-effort */ }
     }
     onAuthSuccess(user);
@@ -416,7 +410,7 @@ function onAuthSuccess(user) {
   if (roleToggleMobile) {
     roleToggleMobile.classList.toggle('hidden', !isAdmin);
   }
-  navigate(isAdmin ? 'admin' : (user.role === 'brand' ? 'brand-portal' : 'landing'));
+  navigate(isAdmin ? 'admin' : 'landing');
   if (user.role === 'creator') loadStripeConnectStatus();
   startNotifPolling();
 }
@@ -553,6 +547,10 @@ let state = {
 };
 
 // --- Navigation ---
+function navigateDashboard() {
+  navigate(state.role === 'brand' ? 'brand-portal' : 'landing');
+}
+
 function navigate(page) {
   if (!getToken()) { showAuthGate(); return; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
