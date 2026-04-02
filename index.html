@@ -150,12 +150,6 @@
   #app-splash.fade-out { animation: splashFade 0.4s ease forwards; }
   @keyframes splashFade { to { opacity: 0; pointer-events: none; } }
   #app-splash svg.splash-logo { filter: drop-shadow(0 0 24px rgba(47,79,47,0.6)); }
-  #app-splash .splash-spinner {
-    width: 36px; height: 36px; border: 3px solid #2F4F2F;
-    border-top-color: #7db07d; border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="font-sans bg-gray-50 text-gray-900 min-h-screen">
@@ -176,7 +170,19 @@
       </g>
       <text x="118" y="68" font-family="'Inter',system-ui,sans-serif" font-weight="800" font-size="46" dominant-baseline="middle" text-anchor="start"><tspan fill="#7db07d">Court</tspan><tspan fill="#a7c4a7">Collab</tspan></text>
     </svg>
-    <div class="splash-spinner"></div>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="80" height="80">
+      <circle r="45" fill="#1a2e1a"/>
+      <circle r="41" fill="none" stroke="#2F4F2F" stroke-width="1.2"/>
+      <g class="ldr-paddle-a">
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#4f8a4f"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#4f8a4f"/>
+      </g>
+      <g class="ldr-paddle-b">
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#7db07d"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#7db07d"/>
+      </g>
+      <circle r="2.8" fill="#1a2e1a" stroke="#4f8a4f" stroke-width="0.8"/>
+    </svg>
   </div>
 
   <!-- Global loading overlay with paddle scissors animation -->
