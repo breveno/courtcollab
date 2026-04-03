@@ -210,6 +210,10 @@ def startup():
     sg_key = os.environ.get("SENDGRID_API_KEY", "")
     print(f"[STARTUP] SENDGRID_API_KEY present={bool(sg_key)} prefix={sg_key[:8] if sg_key else 'NONE'}", flush=True)
 
+@app.get("/debug/version")
+def debug_version():
+    return {"version": "3ffa33e-plus-timeout", "db_mode": "pg" if os.environ.get("DATABASE_URL") else "sqlite"}
+
 
 # ---------------------------------------------------------------------------
 # WebSocket endpoint

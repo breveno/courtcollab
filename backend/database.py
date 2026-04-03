@@ -129,7 +129,7 @@ else:
         description = None
 
     def get_conn():
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
         return _CompatConn(conn)
 
 
