@@ -87,7 +87,7 @@ if _env_path.exists():
             _k, _v = _line.split("=", 1)
             os.environ.setdefault(_k.strip(), _v.strip())
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -716,8 +716,39 @@ class CampaignStatusIn(BaseModel):
 # Routes — Campaigns
 # ---------------------------------------------------------------------------
 
+async def _notify_campaign_matches(campaign: dict):
+    """
+    Run after a campaign is created. Score every creator; notify those ≥ 80%.
+    Runs as a FastAPI BackgroundTask so it never blocks the HTTP response.
+    """
+    with get_conn() as conn:
+        creators = _rows(conn, """
+            SELECT cp.*, u.email
+            FROM creator_profiles cp
+            JOIN users u ON u.id = cp.user_id
+        """)
+
+    for creator in creators:
+        score, reasons = _compute_score(creator, campaign)
+        if score < 80:
+            continue
+        title = f"New campaign match: {campaign['title']}"
+        body  = (
+            f"A brand just posted a campaign that matches your profile "
+            f"{score}% — \"{campaign['title']}\". Check it out on CourtCollab!"
+        )
+        await _notify(
+            user_id    = creator["user_id"],
+            notif_type = "campaign_match",
+            title      = title,
+            body       = body,
+            data       = {"campaign_id": campaign["id"], "match_score": score, "reasons": reasons},
+            email      = creator.get("email"),
+        )
+
+
 @app.post("/api/campaigns", status_code=201)
-def create_campaign(body: CampaignIn, user: dict = Depends(current_user)):
+def create_campaign(body: CampaignIn, background_tasks: BackgroundTasks, user: dict = Depends(current_user)):
     require_role("brand", user)
     with get_conn() as conn:
         cur = conn.execute("""
@@ -733,7 +764,8 @@ def create_campaign(body: CampaignIn, user: dict = Depends(current_user)):
     with get_conn() as conn:
         row = _row(conn, "SELECT * FROM campaigns WHERE id = ?", (cid,))
         row["skills"] = json.loads(row.get("skills") or "[]")
-        return row
+    background_tasks.add_task(_notify_campaign_matches, row)
+    return row
 
 
 @app.get("/api/campaigns")
