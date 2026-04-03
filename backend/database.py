@@ -84,11 +84,14 @@ else:
             sql = _RE_PLACEHOLDER.sub("%s", sql)
             sql = _RE_DATETIME_NOW.sub("NOW()", sql)
 
-            # Auto-add RETURNING id to plain INSERTs so .lastrowid works
+            # Auto-add RETURNING * to plain INSERTs so .lastrowid works.
+            # Use RETURNING * (not RETURNING id) so tables whose PK is not
+            # named "id" (e.g. creator_profiles.user_id) don't throw
+            # "column id does not exist".
             stripped = sql.strip().upper()
             is_insert = stripped.startswith("INSERT") and "RETURNING" not in stripped
             if is_insert:
-                sql = sql.rstrip().rstrip(";") + " RETURNING id"
+                sql = sql.rstrip().rstrip(";") + " RETURNING *"
 
             cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             cur.execute(sql, params if params else None)
@@ -96,7 +99,9 @@ else:
             compat = _CompatCursor(cur)
             if is_insert:
                 row = cur.fetchone()
-                compat._lastrowid = row["id"] if row else None
+                if row:
+                    # Prefer "id" column; fall back to first column value
+                    compat._lastrowid = row.get("id") or next(iter(row.values()), None)
 
             return compat
 
