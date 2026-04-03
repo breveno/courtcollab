@@ -987,6 +987,69 @@
     </div>
   </div>
 
+  <!-- Contract Modal -->
+  <div id="contract-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('contract-modal')">
+    <div class="modal-content max-w-2xl">
+      <!-- Header -->
+      <div class="flex justify-between items-start mb-4">
+        <div>
+          <h2 class="text-xl font-bold">Collaboration Agreement</h2>
+          <p class="text-sm text-gray-500 mt-0.5" id="contract-deal-label"></p>
+        </div>
+        <button onclick="closeModal('contract-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+
+      <!-- Signing status bar -->
+      <div class="flex gap-3 mb-4" id="contract-sig-status">
+        <div class="flex items-center gap-2 flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
+          <span id="contract-brand-sig-icon" class="text-lg">⬜</span>
+          <div>
+            <div class="text-xs text-gray-500">Brand</div>
+            <div class="text-sm font-medium" id="contract-brand-sig-label">Not signed</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
+          <span id="contract-creator-sig-icon" class="text-lg">⬜</span>
+          <div>
+            <div class="text-xs text-gray-500">Creator</div>
+            <div class="text-sm font-medium" id="contract-creator-sig-label">Not signed</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contract text -->
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 overflow-y-auto" style="max-height: 340px;">
+        <pre id="contract-body" class="text-xs text-gray-700 font-mono whitespace-pre-wrap leading-relaxed"></pre>
+      </div>
+
+      <!-- Agreement checkbox + sign button -->
+      <div id="contract-sign-area">
+        <label class="flex items-start gap-3 mb-4 cursor-pointer">
+          <input type="checkbox" id="contract-agree-check" class="mt-0.5 accent-pickle-600 w-4 h-4 flex-shrink-0">
+          <span class="text-sm text-gray-700">I have read and agree to all terms and conditions in this agreement. I understand this constitutes a legally binding digital signature.</span>
+        </label>
+        <div class="flex gap-3">
+          <button onclick="signContract()" class="flex-1 bg-pickle-600 text-white py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition text-sm">
+            ✍️ Sign Agreement
+          </button>
+          <button onclick="closeModal('contract-modal')" class="border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Close</button>
+        </div>
+      </div>
+
+      <!-- Already signed state -->
+      <div id="contract-signed-banner" class="hidden">
+        <div class="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-3">
+          <span class="text-2xl">✅</span>
+          <div>
+            <div class="font-semibold text-green-800 text-sm" id="contract-signed-msg">You have signed this agreement</div>
+            <div class="text-xs text-green-600" id="contract-cosign-msg"></div>
+          </div>
+        </div>
+        <button onclick="closeModal('contract-modal')" class="w-full border border-gray-300 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Rating Modal -->
   <div id="rating-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('rating-modal')">
     <div class="modal-content max-w-sm">

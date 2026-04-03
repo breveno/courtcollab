@@ -1582,7 +1582,7 @@ async function openConversation(partnerId) {
       ? `Deal: $${(deal.amount || 0).toLocaleString()} — ${deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}`
       : 'No active deal';
 
-    // Deal action buttons (creator accepts/declines; brand marks complete)
+    // Deal action buttons (creator accepts/declines; brand marks complete; both sign contract)
     const dealActions = document.getElementById('deal-actions');
     if (dealActions) {
       if (deal && deal.status === 'pending' && state.role === 'creator') {
@@ -1591,12 +1591,20 @@ async function openConversation(partnerId) {
           <button onclick="updateDealStatus(${deal.id}, 'active')"   class="bg-pickle-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-700 transition">Accept Deal</button>
           <button onclick="updateDealStatus(${deal.id}, 'declined')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-200 transition">Decline</button>
         `;
-      } else if (deal && deal.status === 'active' && state.role === 'brand') {
+      } else if (deal && deal.status === 'active') {
         dealActions.classList.remove('hidden');
-        dealActions.innerHTML = `
-          <button onclick="updateDealStatus(${deal.id}, 'completed')" class="bg-pickle-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-700 transition">Mark Complete</button>
-          <button onclick="stripeCheckout(${deal.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Pay with Stripe</button>
-        `;
+        // Check contract signing status for the badge
+        let contractBtnHtml = `<button onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition flex items-center gap-1.5">📄 View Contract</button>`;
+        apiGet(`/api/deals/${deal.id}/contract`).then(c => {
+          const badge = c.is_fully_signed ? '✅' : c.i_have_signed ? '⏳' : '✍️';
+          const btn = document.querySelector(`[data-contract-btn="${deal.id}"]`);
+          if (btn) btn.innerHTML = `${badge} ${c.is_fully_signed ? 'Contract Signed' : c.i_have_signed ? 'Awaiting Co-Sign' : 'Sign Contract'}`;
+        }).catch(() => {});
+        dealActions.innerHTML = state.role === 'brand'
+          ? `<button onclick="updateDealStatus(${deal.id}, 'completed')" class="bg-pickle-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-700 transition">Mark Complete</button>
+             <button onclick="stripeCheckout(${deal.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Pay with Stripe</button>
+             <button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>`
+          : `<button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>`;
       } else {
         dealActions.classList.add('hidden');
       }
@@ -1719,10 +1727,14 @@ async function updateDealStatus(dealId, status) {
   try {
     await apiPatch('/api/deals/' + dealId + '/status', { status });
     showToast('Deal ' + status + '!', 'success');
+    await openConversation(state.activePartner);
+    if (status === 'active') {
+      // Creator accepted — give the backend a moment to write the contract, then open it
+      setTimeout(() => openContractModal(dealId), 600);
+    }
     if (status === 'completed') {
       openRatingModal(dealId, 'How was your experience working with this creator?');
     }
-    await openConversation(state.activePartner);
   } catch (err) {
     showToast('⚠ ' + err.message);
   }
@@ -1963,6 +1975,87 @@ async function submitRating() {
     showToast('Rating submitted — thanks!', 'success');
   } catch (err) {
     showToast('⚠ ' + (err.message || 'Could not submit rating'));
+  }
+}
+
+// --- Contracts ---
+let _contractDealId = null;
+
+async function openContractModal(dealId) {
+  _contractDealId = dealId;
+  // Reset modal state
+  document.getElementById('contract-body').textContent        = 'Loading contract…';
+  document.getElementById('contract-deal-label').textContent  = `Deal #${dealId}`;
+  document.getElementById('contract-agree-check').checked     = false;
+  document.getElementById('contract-brand-sig-icon').textContent    = '⬜';
+  document.getElementById('contract-creator-sig-icon').textContent  = '⬜';
+  document.getElementById('contract-brand-sig-label').textContent   = 'Not signed';
+  document.getElementById('contract-creator-sig-label').textContent = 'Not signed';
+  document.getElementById('contract-sign-area').classList.remove('hidden');
+  document.getElementById('contract-signed-banner').classList.add('hidden');
+  openModal('contract-modal');
+
+  try {
+    const c = await apiGet(`/api/deals/${dealId}/contract`);
+    document.getElementById('contract-body').textContent = c.content || '(No contract content)';
+
+    // Brand signing status
+    if (c.is_brand_signed) {
+      document.getElementById('contract-brand-sig-icon').textContent  = '✅';
+      document.getElementById('contract-brand-sig-label').textContent =
+        'Signed ' + fmtDateUTC(c.brand_signed_at);
+    }
+    // Creator signing status
+    if (c.is_creator_signed) {
+      document.getElementById('contract-creator-sig-icon').textContent  = '✅';
+      document.getElementById('contract-creator-sig-label').textContent =
+        'Signed ' + fmtDateUTC(c.creator_signed_at);
+    }
+
+    // If current user has already signed, swap to the "already signed" view
+    if (c.i_have_signed) {
+      document.getElementById('contract-sign-area').classList.add('hidden');
+      document.getElementById('contract-signed-banner').classList.remove('hidden');
+      document.getElementById('contract-signed-msg').textContent = 'You have signed this agreement';
+      document.getElementById('contract-cosign-msg').textContent = c.is_fully_signed
+        ? '✅ Both parties have signed — agreement is complete.'
+        : '⏳ Waiting for the other party to sign.';
+    }
+  } catch (err) {
+    document.getElementById('contract-body').textContent = 'Could not load contract: ' + err.message;
+  }
+}
+
+async function signContract() {
+  if (!document.getElementById('contract-agree-check').checked) {
+    showToast('Please check the box to confirm you have read and agree to the terms.');
+    return;
+  }
+  try {
+    const c = await apiPost(`/api/deals/${_contractDealId}/contract/sign`, {});
+    // Update signing status icons
+    if (c.is_brand_signed) {
+      document.getElementById('contract-brand-sig-icon').textContent  = '✅';
+      document.getElementById('contract-brand-sig-label').textContent =
+        'Signed ' + fmtDateUTC(c.brand_signed_at);
+    }
+    if (c.is_creator_signed) {
+      document.getElementById('contract-creator-sig-icon').textContent  = '✅';
+      document.getElementById('contract-creator-sig-label').textContent =
+        'Signed ' + fmtDateUTC(c.creator_signed_at);
+    }
+    // Swap to signed state
+    document.getElementById('contract-sign-area').classList.add('hidden');
+    document.getElementById('contract-signed-banner').classList.remove('hidden');
+    document.getElementById('contract-signed-msg').textContent = 'You have signed this agreement';
+    document.getElementById('contract-cosign-msg').textContent = c.is_fully_signed
+      ? '✅ Both parties have signed — agreement is complete.'
+      : '⏳ Waiting for the other party to sign.';
+    showToast('Agreement signed successfully!', 'success');
+    // Refresh deal panel so "View Contract" button updates
+    if (state.activePartner) openConversation(state.activePartner);
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Could not sign contract'));
   }
 }
 

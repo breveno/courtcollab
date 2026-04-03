@@ -319,6 +319,20 @@ def _init_pg():
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_ratings_reviewee ON ratings(reviewee_id)")
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS contracts (
+                id                SERIAL PRIMARY KEY,
+                deal_id           INTEGER NOT NULL UNIQUE REFERENCES deals(id) ON DELETE CASCADE,
+                content           TEXT    NOT NULL,
+                brand_signed_at   TEXT,
+                creator_signed_at TEXT,
+                brand_ip          TEXT,
+                creator_ip        TEXT,
+                created_at        TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS')
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_contracts_deal ON contracts(deal_id)")
+
         # Migrations — add columns to existing tables if they don't exist yet
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token         TEXT")
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TEXT")
@@ -488,6 +502,19 @@ def _init_sqlite():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_ratings_reviewee ON ratings(reviewee_id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS contracts (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                deal_id           INTEGER NOT NULL UNIQUE REFERENCES deals(id) ON DELETE CASCADE,
+                content           TEXT    NOT NULL,
+                brand_signed_at   TEXT,
+                creator_signed_at TEXT,
+                brand_ip          TEXT,
+                creator_ip        TEXT,
+                created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_contracts_deal ON contracts(deal_id)")
         conn.commit()
 
     _migrate_deal_statuses()

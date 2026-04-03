@@ -1134,6 +1134,123 @@ _STATUS_LABELS = {
 }
 
 
+def _generate_contract(deal: dict, campaign: dict, brand_profile: dict, creator_profile: dict) -> str:
+    """
+    Render a plain-text collaboration agreement pre-filled with deal data.
+    Stored once when the creator accepts; both parties sign digitally.
+    """
+    today         = datetime.now().strftime("%B %d, %Y")
+    brand_name    = (brand_profile.get("company_name") or deal.get("brand_name") or "Brand").strip()
+    creator_name  = (creator_profile.get("name") or deal.get("creator_name") or "Creator").strip()
+    campaign_title = campaign.get("title") or deal.get("campaign_title") or "—"
+    deliverables  = (deal.get("terms") or "As mutually agreed upon by both parties").strip()
+    amount        = deal.get("amount") or 0
+    creator_payout = round(amount * 0.85)
+    platform_fee   = amount - creator_payout
+    niche          = campaign.get("niche") or "—"
+
+    return f"""CONTENT CREATOR COLLABORATION AGREEMENT
+════════════════════════════════════════════════════════
+Date:         {today}
+Agreement ID: CC-DEAL-{deal['id']}
+Platform:     CourtCollab (courtcollab.com)
+════════════════════════════════════════════════════════
+
+PARTIES
+───────────────────────────────────────────────────────
+Brand / Company:  {brand_name}
+Creator:          {creator_name}
+
+CAMPAIGN DETAILS
+───────────────────────────────────────────────────────
+Campaign Title:   {campaign_title}
+Content Category: {niche}
+Campaign ID:      #{campaign.get('id', '—')}
+
+DELIVERABLES
+───────────────────────────────────────────────────────
+{deliverables}
+
+COMPENSATION
+───────────────────────────────────────────────────────
+Total Deal Value:  ${amount:,}
+Platform Fee:      ${platform_fee:,}  (15% CourtCollab service fee)
+Creator Payout:    ${creator_payout:,}  (85% of deal value)
+
+Payment is held in escrow by CourtCollab until the Brand confirms that all
+deliverables have been received and approved. Funds are released to the
+Creator's connected bank account within 3–5 business days of confirmation.
+
+TERMS & CONDITIONS
+───────────────────────────────────────────────────────
+1. CONTENT RIGHTS
+   The Creator grants the Brand a non-exclusive, royalty-free, perpetual licence
+   to use, share, and repurpose the delivered content across all owned digital
+   channels (website, social media, email, paid advertising). The Creator retains
+   the right to display the content in their portfolio.
+
+2. EXCLUSIVITY
+   Unless explicitly stated in the Deliverables section above, this agreement
+   does not include category exclusivity. The Creator may work with other brands
+   in the same industry.
+
+3. FTC / ADVERTISING DISCLOSURE
+   The Creator agrees to clearly disclose this paid partnership in all published
+   content, consistent with FTC guidelines and each platform's policies
+   (e.g. #ad, #sponsored, or "Paid Partnership" label on Instagram/TikTok).
+
+4. CONTENT REVISIONS
+   The Creator will provide up to two (2) rounds of revisions at no additional
+   cost if submitted content does not materially match the agreed deliverables.
+   Additional revision rounds may be negotiated separately.
+
+5. DELIVERY TIMELINE
+   Content must be delivered within the timeframe specified above. Where no
+   timeline is stated, delivery is expected within thirty (30) days of the date
+   of this agreement.
+
+6. INTELLECTUAL PROPERTY
+   Original content created under this agreement remains the intellectual
+   property of the Creator until the full payout is received by the Creator.
+
+7. MORAL RIGHTS & BRAND SAFETY
+   The Brand may request removal of content that violates its brand guidelines,
+   contains factual inaccuracies, or breaches platform terms of service.
+
+8. CONFIDENTIALITY
+   Both parties agree to keep the financial terms of this agreement confidential
+   and not to disclose deal amounts to third parties without mutual consent.
+
+9. DISPUTE RESOLUTION
+   Any disputes will first be addressed through CourtCollab's platform mediation
+   process. Both parties commit to good-faith negotiation before pursuing any
+   external legal remedy.
+
+10. GOVERNING LAW
+    This agreement is governed by the laws of the United States. Any legal action
+    must be brought in a jurisdiction mutually agreed upon by both parties.
+
+11. PLATFORM TERMS
+    Both parties agree to comply with CourtCollab's Terms of Service, accessible
+    at courtcollab.com/terms, as amended from time to time.
+
+SIGNATURES
+───────────────────────────────────────────────────────
+By digitally signing below, each party confirms that they have read, understood,
+and agree to all terms and conditions stated in this agreement.
+
+Brand ({brand_name}):
+  Signature: ________________________________  Date: ____________
+
+Creator ({creator_name}):
+  Signature: ________________________________  Date: ____________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This agreement was generated automatically by CourtCollab.
+Deal Reference: #{deal['id']} | Generated: {today}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
+
+
 def _deal_detail(conn, deal_id: int) -> Optional[dict]:
     return _row(conn, """
         SELECT d.*,
@@ -1278,6 +1395,26 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
 
     label = _STATUS_LABELS.get(body.status, body.status)
 
+    # Auto-generate contract when deal goes active (creator accepted)
+    if body.status == "active":
+        try:
+            with get_conn() as conn:
+                campaign_row    = _row(conn, "SELECT * FROM campaigns WHERE id = ?",     (deal["campaign_id"],))
+                brand_profile   = _row(conn, "SELECT * FROM brand_profiles WHERE user_id = ?",   (deal["brand_id"],))
+                creator_profile = _row(conn, "SELECT * FROM creator_profiles WHERE user_id = ?", (deal["creator_id"],))
+            contract_text = _generate_contract(
+                deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
+            )
+            with get_conn() as conn:
+                # INSERT OR IGNORE so a re-accept doesn't overwrite an existing contract
+                conn.execute(
+                    "INSERT INTO contracts (deal_id, content) VALUES (?,?)",
+                    (deal_id, contract_text),
+                )
+                conn.commit()
+        except Exception:
+            pass  # contract generation is best-effort; deal status already committed
+
     # Notify the other party
     if body.status == "active":
         # Creator accepted → notify brand
@@ -1286,7 +1423,7 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
             notif_type = "deal_active",
             title      = f"{deal['creator_name']} accepted your deal",
             body       = (f"Your ${deal['amount']:,} deal for \"{deal['campaign_title']}\" "
-                          f"is now active. Payment can be released once content is delivered."),
+                          f"is now active. A contract has been generated — both parties should sign it."),
             data       = {"deal_id": deal_id, "campaign_id": deal["campaign_id"]},
             email      = deal["brand_email"],
         )
@@ -1347,6 +1484,67 @@ def rate_deal(deal_id: int, body: RatingIn, user: dict = Depends(current_user)):
         )
         conn.commit()
     return {"ok": True}
+
+
+@app.get("/api/deals/{deal_id}/contract")
+def get_contract(deal_id: int, request: Request, user: dict = Depends(current_user)):
+    """Return the contract for a deal, including signing status."""
+    with get_conn() as conn:
+        deal     = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+        if not deal:
+            raise HTTPException(404, "Deal not found")
+        if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+            raise HTTPException(403, "Not your deal")
+        contract = _row(conn, "SELECT * FROM contracts WHERE deal_id = ?", (deal_id,))
+    if not contract:
+        raise HTTPException(404, "Contract not generated yet")
+    contract["is_brand_signed"]   = bool(contract.get("brand_signed_at"))
+    contract["is_creator_signed"] = bool(contract.get("creator_signed_at"))
+    contract["is_fully_signed"]   = contract["is_brand_signed"] and contract["is_creator_signed"]
+    # Tell the caller whether *they* have signed
+    if user["id"] == deal["brand_id"]:
+        contract["i_have_signed"] = contract["is_brand_signed"]
+    else:
+        contract["i_have_signed"] = contract["is_creator_signed"]
+    return contract
+
+
+@app.post("/api/deals/{deal_id}/contract/sign", status_code=200)
+def sign_contract(deal_id: int, request: Request, user: dict = Depends(current_user)):
+    """Digitally sign the contract. Records timestamp and IP address."""
+    client_ip = request.client.host if request.client else "unknown"
+    with get_conn() as conn:
+        deal     = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+        if not deal:
+            raise HTTPException(404, "Deal not found")
+        if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+            raise HTTPException(403, "Not your deal")
+        contract = _row(conn, "SELECT * FROM contracts WHERE deal_id = ?", (deal_id,))
+        if not contract:
+            raise HTTPException(404, "Contract not found")
+
+        if user["id"] == deal["brand_id"]:
+            if contract.get("brand_signed_at"):
+                raise HTTPException(409, "You have already signed this contract")
+            conn.execute(
+                "UPDATE contracts SET brand_signed_at = datetime('now'), brand_ip = ? WHERE deal_id = ?",
+                (client_ip, deal_id),
+            )
+        else:
+            if contract.get("creator_signed_at"):
+                raise HTTPException(409, "You have already signed this contract")
+            conn.execute(
+                "UPDATE contracts SET creator_signed_at = datetime('now'), creator_ip = ? WHERE deal_id = ?",
+                (client_ip, deal_id),
+            )
+        conn.commit()
+        contract = _row(conn, "SELECT * FROM contracts WHERE deal_id = ?", (deal_id,))
+
+    contract["is_brand_signed"]   = bool(contract.get("brand_signed_at"))
+    contract["is_creator_signed"] = bool(contract.get("creator_signed_at"))
+    contract["is_fully_signed"]   = contract["is_brand_signed"] and contract["is_creator_signed"]
+    contract["i_have_signed"]     = True
+    return contract
 
 
 # ---------------------------------------------------------------------------
