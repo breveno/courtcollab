@@ -523,38 +523,43 @@ class CreatorProfileIn(BaseModel):
 
 @app.put("/api/creator/profile", status_code=200)
 def upsert_creator_profile(body: CreatorProfileIn, user: dict = Depends(current_user)):
+    import traceback as _tb
     require_role("creator", user)
-    with get_conn() as conn:
-        conn.execute("""
-            INSERT INTO creator_profiles
-              (user_id, name, niche, bio, location, skill_level,
-               followers_ig, followers_tt, followers_yt, engagement_rate, avg_views,
-               rate_ig, rate_tiktok, rate_yt, rate_ugc, rate_notes,
-               skills, social_handles,
-               demo_age, demo_gender, demo_locations, demo_interests, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
-            ON CONFLICT(user_id) DO UPDATE SET
-              name=excluded.name, niche=excluded.niche, bio=excluded.bio,
-              location=excluded.location, skill_level=excluded.skill_level,
-              followers_ig=excluded.followers_ig, followers_tt=excluded.followers_tt,
-              followers_yt=excluded.followers_yt, engagement_rate=excluded.engagement_rate,
-              avg_views=excluded.avg_views, rate_ig=excluded.rate_ig,
-              rate_tiktok=excluded.rate_tiktok, rate_yt=excluded.rate_yt,
-              rate_ugc=excluded.rate_ugc, rate_notes=excluded.rate_notes,
-              skills=excluded.skills, social_handles=excluded.social_handles,
-              demo_age=excluded.demo_age, demo_gender=excluded.demo_gender,
-              demo_locations=excluded.demo_locations, demo_interests=excluded.demo_interests,
-              updated_at=datetime('now')
-        """, (
-            user["id"], body.name, body.niche, body.bio, body.location, body.skill_level,
-            body.followers_ig, body.followers_tt, body.followers_yt,
-            body.engagement_rate, body.avg_views,
-            body.rate_ig, body.rate_tiktok, body.rate_yt, body.rate_ugc, body.rate_notes,
-            json.dumps(body.skills), json.dumps(body.social_handles),
-            body.demo_age, body.demo_gender, body.demo_locations, body.demo_interests
-        ))
-        conn.commit()
-    return {"ok": True}
+    try:
+        with get_conn() as conn:
+            conn.execute("""
+                INSERT INTO creator_profiles
+                  (user_id, name, niche, bio, location, skill_level,
+                   followers_ig, followers_tt, followers_yt, engagement_rate, avg_views,
+                   rate_ig, rate_tiktok, rate_yt, rate_ugc, rate_notes,
+                   skills, social_handles,
+                   demo_age, demo_gender, demo_locations, demo_interests, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+                ON CONFLICT(user_id) DO UPDATE SET
+                  name=excluded.name, niche=excluded.niche, bio=excluded.bio,
+                  location=excluded.location, skill_level=excluded.skill_level,
+                  followers_ig=excluded.followers_ig, followers_tt=excluded.followers_tt,
+                  followers_yt=excluded.followers_yt, engagement_rate=excluded.engagement_rate,
+                  avg_views=excluded.avg_views, rate_ig=excluded.rate_ig,
+                  rate_tiktok=excluded.rate_tiktok, rate_yt=excluded.rate_yt,
+                  rate_ugc=excluded.rate_ugc, rate_notes=excluded.rate_notes,
+                  skills=excluded.skills, social_handles=excluded.social_handles,
+                  demo_age=excluded.demo_age, demo_gender=excluded.demo_gender,
+                  demo_locations=excluded.demo_locations, demo_interests=excluded.demo_interests,
+                  updated_at=datetime('now')
+            """, (
+                user["id"], body.name, body.niche, body.bio, body.location, body.skill_level,
+                body.followers_ig, body.followers_tt, body.followers_yt,
+                body.engagement_rate, body.avg_views,
+                body.rate_ig, body.rate_tiktok, body.rate_yt, body.rate_ugc, body.rate_notes,
+                json.dumps(body.skills), json.dumps(body.social_handles),
+                body.demo_age, body.demo_gender, body.demo_locations, body.demo_interests
+            ))
+            conn.commit()
+        return {"ok": True}
+    except Exception as e:
+        print("[upsert_creator_profile ERROR]", _tb.format_exc())
+        raise HTTPException(500, detail=str(e))
 
 
 @app.get("/api/creator/profile")
