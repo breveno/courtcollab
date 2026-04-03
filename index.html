@@ -839,6 +839,9 @@
           <button type="button" onclick="navigate('creators')" class="border border-gray-300 text-gray-600 px-8 py-3 rounded-xl font-medium hover:bg-gray-50 transition">Cancel</button>
         </div>
       </form>
+
+      <!-- Deal History — auto-populated from completed deals -->
+      <div id="creator-deal-history" class="mt-6"></div>
     </div>
   </div>
 
@@ -980,6 +983,29 @@
       <div class="flex gap-3 mt-6">
         <button id="detail-message-btn" onclick="startConversation()" class="bg-pickle-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-pickle-700 transition flex-1">Message Creator</button>
         <button onclick="closeModal('creator-detail-modal')" class="border border-gray-300 text-gray-600 px-6 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rating Modal -->
+  <div id="rating-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('rating-modal')">
+    <div class="modal-content max-w-sm">
+      <div class="text-center mb-5">
+        <div class="text-5xl mb-3">⭐</div>
+        <h2 class="text-xl font-bold mb-1" id="rating-modal-title">Rate this deal</h2>
+        <p class="text-sm text-gray-500" id="rating-modal-subtitle">How was your experience working with this creator?</p>
+      </div>
+      <div class="flex justify-center gap-1 mb-5" id="star-picker">
+        <button class="star-btn text-5xl text-gray-200 hover:text-yellow-400 transition-colors leading-none" data-val="1">★</button>
+        <button class="star-btn text-5xl text-gray-200 hover:text-yellow-400 transition-colors leading-none" data-val="2">★</button>
+        <button class="star-btn text-5xl text-gray-200 hover:text-yellow-400 transition-colors leading-none" data-val="3">★</button>
+        <button class="star-btn text-5xl text-gray-200 hover:text-yellow-400 transition-colors leading-none" data-val="4">★</button>
+        <button class="star-btn text-5xl text-gray-200 hover:text-yellow-400 transition-colors leading-none" data-val="5">★</button>
+      </div>
+      <textarea id="rating-comment" rows="3" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="Optional: share a note about this collaboration…"></textarea>
+      <div class="flex gap-3">
+        <button onclick="submitRating()" class="flex-1 bg-pickle-600 text-white py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition text-sm">Submit Rating</button>
+        <button onclick="closeModal('rating-modal')" class="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Skip</button>
       </div>
     </div>
   </div>

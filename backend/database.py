@@ -305,6 +305,20 @@ def _init_pg():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_brand   ON payments(brand_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_creator ON payments(creator_id)")
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ratings (
+                id          SERIAL PRIMARY KEY,
+                deal_id     INTEGER NOT NULL REFERENCES deals(id)  ON DELETE CASCADE,
+                reviewer_id INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                reviewee_id INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                score       INTEGER NOT NULL CHECK(score >= 1 AND score <= 5),
+                comment     TEXT,
+                created_at  TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                UNIQUE(deal_id, reviewer_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ratings_reviewee ON ratings(reviewee_id)")
+
         # Migrations — add columns to existing tables if they don't exist yet
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token         TEXT")
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TEXT")
@@ -461,6 +475,19 @@ def _init_sqlite():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_deal    ON payments(deal_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_brand   ON payments(brand_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_payments_creator ON payments(creator_id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ratings (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                deal_id     INTEGER NOT NULL REFERENCES deals(id)  ON DELETE CASCADE,
+                reviewer_id INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                reviewee_id INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                score       INTEGER NOT NULL CHECK(score >= 1 AND score <= 5),
+                comment     TEXT,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(deal_id, reviewer_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ratings_reviewee ON ratings(reviewee_id)")
         conn.commit()
 
     _migrate_deal_statuses()

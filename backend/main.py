@@ -636,10 +636,43 @@ def get_creator(user_id: int, user: dict = Depends(current_user)):
             JOIN users u ON u.id = cp.user_id
             WHERE cp.user_id = ?
         """, (user_id,))
-    if not profile:
-        raise HTTPException(404, "Creator not found")
-    profile["skills"]         = json.loads(profile.get("skills") or "[]")
-    profile["social_handles"] = json.loads(profile.get("social_handles") or "{}")
+        if not profile:
+            raise HTTPException(404, "Creator not found")
+        profile["skills"]         = json.loads(profile.get("skills") or "[]")
+        profile["social_handles"] = json.loads(profile.get("social_handles") or "{}")
+
+        # ── Portfolio: rating stats ──────────────────────────────────────────
+        rating_stats = _row(conn, """
+            SELECT COUNT(*) AS cnt, AVG(score) AS avg_score
+            FROM ratings WHERE reviewee_id = ?
+        """, (user_id,))
+
+        # ── Portfolio: completed deal history (most recent 20) ───────────────
+        deal_history = _rows(conn, """
+            SELECT d.id, d.amount, d.updated_at AS completed_at,
+                   c.title AS campaign_title,
+                   COALESCE(bp.company_name, ub.name) AS brand_name,
+                   r.score AS brand_rating
+            FROM deals d
+            JOIN campaigns c    ON c.id  = d.campaign_id
+            JOIN users ub       ON ub.id = d.brand_id
+            LEFT JOIN brand_profiles bp ON bp.user_id = d.brand_id
+            LEFT JOIN ratings r ON r.deal_id = d.id AND r.reviewer_id = d.brand_id
+            WHERE d.creator_id = ? AND d.status = 'completed'
+            ORDER BY d.updated_at DESC
+            LIMIT 20
+        """, (user_id,))
+
+        deals_completed = _row(conn, """
+            SELECT COUNT(*) AS cnt FROM deals
+            WHERE creator_id = ? AND status = 'completed'
+        """, (user_id,))
+
+    avg = (rating_stats or {}).get("avg_score")
+    profile["avg_rating"]      = round(float(avg), 1) if avg is not None else None
+    profile["rating_count"]    = (rating_stats or {}).get("cnt", 0) or 0
+    profile["deals_completed"] = (deals_completed or {}).get("cnt", 0) or 0
+    profile["deal_history"]    = deal_history
     return profile
 
 # ---------------------------------------------------------------------------
@@ -1080,6 +1113,10 @@ class DealIn(BaseModel):
 class DealStatusIn(BaseModel):
     status: str
 
+class RatingIn(BaseModel):
+    score:   int            = Field(ge=1, le=5)
+    comment: Optional[str] = None
+
 # ---------------------------------------------------------------------------
 # Routes — Deals
 # ---------------------------------------------------------------------------
@@ -1278,6 +1315,39 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
         )
 
     return deal
+
+
+@app.post("/api/deals/{deal_id}/rate", status_code=201)
+def rate_deal(deal_id: int, body: RatingIn, user: dict = Depends(current_user)):
+    """
+    Submit a 1–5 star rating for a completed deal.
+    The brand rates the creator; the creator rates the brand.
+    Each party may submit exactly one rating per deal.
+    """
+    with get_conn() as conn:
+        deal = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+        if not deal:
+            raise HTTPException(404, "Deal not found")
+        if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+            raise HTTPException(403, "Not your deal")
+        if deal["status"] != "completed":
+            raise HTTPException(400, "Can only rate a completed deal")
+
+        # The person being rated is the other party
+        reviewee_id = deal["creator_id"] if user["id"] == deal["brand_id"] else deal["brand_id"]
+
+        existing = _row(conn, "SELECT id FROM ratings WHERE deal_id = ? AND reviewer_id = ?",
+                        (deal_id, user["id"]))
+        if existing:
+            raise HTTPException(409, "You have already rated this deal")
+
+        conn.execute(
+            "INSERT INTO ratings (deal_id, reviewer_id, reviewee_id, score, comment) VALUES (?,?,?,?,?)",
+            (deal_id, user["id"], reviewee_id, body.score, body.comment),
+        )
+        conn.commit()
+    return {"ok": True}
+
 
 # ---------------------------------------------------------------------------
 # Schemas — Messages

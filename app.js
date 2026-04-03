@@ -581,8 +581,9 @@ function navigate(page) {
   if (msgDot?.classList.contains('hidden') && payDot?.classList.contains('hidden')) {
     document.getElementById('nav-activity-dot')?.classList.add('hidden');
   }
-  if (page === 'contact')   renderContact();
-  if (page === 'admin')     renderAdmin();
+  if (page === 'contact')          renderContact();
+  if (page === 'admin')            renderAdmin();
+  if (page === 'creator-profile')  renderCreatorDealHistory();
 }
 
 // --- Role Switch ---
@@ -600,6 +601,17 @@ function fmtNum(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
   if (n >= 1000)    return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'K';
   return n.toString();
+}
+
+// --- Render Star Rating ---
+function renderStars(score) {
+  if (!score && score !== 0) return '<span class="text-gray-300 text-sm">No rating</span>';
+  const full  = Math.round(score);
+  const empty = 5 - full;
+  return (
+    '<span class="text-yellow-400 leading-none">' + '★'.repeat(Math.max(0, full))  + '</span>' +
+    '<span class="text-gray-200 leading-none">'  + '★'.repeat(Math.max(0, empty)) + '</span>'
+  );
 }
 
 // --- Toast ---
@@ -1175,7 +1187,41 @@ async function showCreatorDetail(userId) {
           <div class="font-bold text-pickle-700">${c.rate_ugc ? '$' + c.rate_ugc.toLocaleString() : '—'}</div>
         </div>
       </div>
-      ${c.rate_notes ? `<p class="text-sm text-gray-500 italic mb-6">${c.rate_notes}</p>` : ''}
+      ${c.rate_notes ? `<p class="text-sm text-gray-500 italic mb-4">${c.rate_notes}</p>` : ''}
+
+      <h3 class="font-bold mb-3">Track Record</h3>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="p-3 bg-gray-50 rounded-xl text-center">
+          <div class="text-xs text-gray-500 mb-1">Deals Completed</div>
+          <div class="font-bold text-2xl text-pickle-700">${c.deals_completed || 0}</div>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-xl text-center">
+          <div class="text-xs text-gray-500 mb-1">Avg Rating</div>
+          <div class="font-bold text-lg mt-0.5">
+            ${c.avg_rating
+              ? renderStars(c.avg_rating) + `<span class="text-sm font-normal text-gray-500 ml-1">${c.avg_rating} (${c.rating_count})</span>`
+              : '<span class="text-sm text-gray-400 font-normal">No ratings yet</span>'}
+          </div>
+        </div>
+      </div>
+
+      ${(c.deal_history && c.deal_history.length) ? `
+        <h3 class="font-bold mb-3">Past Brand Partners</h3>
+        <div class="border border-gray-100 rounded-xl overflow-hidden mb-2">
+          ${c.deal_history.map(h => `
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
+              <div class="min-w-0 mr-3">
+                <div class="font-medium text-sm truncate">${escHtml(h.brand_name || 'Brand')}</div>
+                <div class="text-xs text-gray-500 truncate">${escHtml(h.campaign_title || '')}</div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <div class="font-semibold text-pickle-700 text-sm">$${(h.amount || 0).toLocaleString()}</div>
+                ${h.brand_rating ? `<div class="text-xs mt-0.5">${renderStars(h.brand_rating)}</div>` : '<div class="text-xs text-gray-300">—</div>'}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
     `;
   } catch (err) {
     document.getElementById('detail-content').innerHTML =
@@ -1673,9 +1719,50 @@ async function updateDealStatus(dealId, status) {
   try {
     await apiPatch('/api/deals/' + dealId + '/status', { status });
     showToast('Deal ' + status + '!', 'success');
+    if (status === 'completed') {
+      openRatingModal(dealId, 'How was your experience working with this creator?');
+    }
     await openConversation(state.activePartner);
   } catch (err) {
     showToast('⚠ ' + err.message);
+  }
+}
+
+// --- Creator Deal History (creator's own profile page) ---
+async function renderCreatorDealHistory() {
+  const el = document.getElementById('creator-deal-history');
+  if (!el || state.role !== 'creator') return;
+  el.innerHTML = '';
+
+  try {
+    const deals = await apiGet('/api/deals');
+    const completed = deals.filter(d => d.status === 'completed');
+    if (!completed.length) return;
+
+    el.innerHTML = `
+      <div class="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 class="font-bold text-lg mb-1">Deal History</h2>
+        <p class="text-sm text-gray-500 mb-4">
+          ${completed.length} completed deal${completed.length !== 1 ? 's' : ''} — this is your public track record on CourtCollab
+        </p>
+        <div class="divide-y divide-gray-100">
+          ${completed.map(d => `
+            <div class="flex items-center justify-between py-3">
+              <div class="min-w-0 mr-3">
+                <div class="font-medium text-sm">${escHtml(d.brand_name || 'Brand')}</div>
+                <div class="text-xs text-gray-500 truncate">${escHtml(d.campaign_title || '')}</div>
+              </div>
+              <div class="text-right flex-shrink-0 flex flex-col items-end gap-1">
+                <span class="font-semibold text-pickle-700 text-sm">$${(d.amount || 0).toLocaleString()}</span>
+                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Completed</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } catch {
+    el.innerHTML = '';
   }
 }
 
@@ -1844,6 +1931,38 @@ function handleStripeReturn() {
     showToast('💳 Payment complete! Funds are held in escrow until you confirm delivery.');
     history.replaceState({}, '', window.location.pathname);
     navigate('messages');
+  }
+}
+
+// --- Deal Ratings ---
+let _ratingDealId = null;
+let _ratingScore  = 0;
+
+function openRatingModal(dealId, subtitleText) {
+  _ratingDealId = dealId;
+  _ratingScore  = 0;
+  const comment = document.getElementById('rating-comment');
+  if (comment) comment.value = '';
+  const sub = document.getElementById('rating-modal-subtitle');
+  if (sub && subtitleText) sub.textContent = subtitleText;
+  document.querySelectorAll('.star-btn').forEach(b => {
+    b.classList.remove('text-yellow-400');
+    b.classList.add('text-gray-200');
+  });
+  openModal('rating-modal');
+}
+
+async function submitRating() {
+  if (!_ratingScore) { showToast('Please select a star rating first'); return; }
+  try {
+    await apiPost('/api/deals/' + _ratingDealId + '/rate', {
+      score:   _ratingScore,
+      comment: (document.getElementById('rating-comment')?.value || '').trim() || null,
+    });
+    closeModal('rating-modal');
+    showToast('Rating submitted — thanks!', 'success');
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Could not submit rating'));
   }
 }
 
@@ -2126,6 +2245,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('reset-password-form').style.display = 'block';
     return;
   }
+
+  // Wire star picker for rating modal
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _ratingScore = parseInt(btn.dataset.val);
+      document.querySelectorAll('.star-btn').forEach(b => {
+        const v = parseInt(b.dataset.val);
+        b.classList.toggle('text-yellow-400', v <= _ratingScore);
+        b.classList.toggle('text-gray-200',   v >  _ratingScore);
+      });
+    });
+    btn.addEventListener('mouseenter', () => {
+      const hv = parseInt(btn.dataset.val);
+      document.querySelectorAll('.star-btn').forEach(b => {
+        const v = parseInt(b.dataset.val);
+        b.classList.toggle('text-yellow-400', v <= hv);
+        b.classList.toggle('text-gray-200',   v >  hv);
+      });
+    });
+    btn.addEventListener('mouseleave', () => {
+      document.querySelectorAll('.star-btn').forEach(b => {
+        const v = parseInt(b.dataset.val);
+        b.classList.toggle('text-yellow-400', v <= _ratingScore);
+        b.classList.toggle('text-gray-200',   v >  _ratingScore);
+      });
+    });
+  });
 
   // Dismiss splash after auth resolves
   const dismissSplash = () => {
