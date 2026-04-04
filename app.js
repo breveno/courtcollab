@@ -563,7 +563,7 @@ let _detailCreatorId = null;  // creator user_id currently open in detail modal
 
 // --- Navigation ---
 function navigateDashboard() {
-  navigate(state.role === 'brand' ? 'brand-portal' : 'landing', 'nav-dashboard-btn');
+  navigate(state.role === 'brand' ? 'brand-portal' : 'creator-dashboard', 'nav-dashboard-btn');
 }
 
 function navigate(page, activeNavId = null) {
@@ -604,7 +604,8 @@ function navigate(page, activeNavId = null) {
   }
   if (page === 'contact')          renderContact();
   if (page === 'admin')            renderAdmin();
-  if (page === 'creator-profile')  { populateCreatorForm(); renderCreatorDealHistory(); }
+  if (page === 'creator-profile')    { populateCreatorForm(); renderCreatorDealHistory(); }
+  if (page === 'creator-dashboard')  renderCreatorDashboard();
 }
 
 // --- Role Switch ---
@@ -615,7 +616,7 @@ function switchRole(role) {
   document.querySelectorAll('.brand-only').forEach(e => { e.style.display = role === 'brand' ? '' : 'none'; });
   document.querySelectorAll('.creator-only').forEach(e => { e.style.display = role === 'creator' ? '' : 'none'; });
   // Update dashboard nav button data-page so active highlight works per role
-  const dashPage = role === 'brand' ? 'brand-portal' : 'landing';
+  const dashPage = role === 'brand' ? 'brand-portal' : 'creator-dashboard';
   ['nav-dashboard-btn', 'nav-dashboard-btn-mobile'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.dataset.page = dashPage;
@@ -865,6 +866,90 @@ function renderBrandRatingsCard(brandProfile) {
       </div>
     </div>
   `;
+}
+
+// --- Creator Dashboard ---
+async function renderCreatorDashboard() {
+  const statsEl = document.getElementById('creator-dash-stats');
+  const dealsEl = document.getElementById('creator-dash-deals');
+  const greetEl = document.getElementById('creator-dash-greeting');
+  if (!statsEl || !dealsEl) return;
+
+  if (greetEl && state.currentUser) {
+    const first = (state.currentUser.name || 'Creator').split(' ')[0];
+    greetEl.textContent = `Welcome back, ${first}`;
+  }
+
+  try {
+    const [payments, deals] = await Promise.all([
+      apiGet('/api/payments'),
+      apiGet('/api/deals')
+    ]);
+
+    // Compute stats
+    const totalEarned  = payments.filter(p => p.status === 'released').reduce((s, p) => s + (p.creator_payout || 0), 0);
+    const pending      = payments.filter(p => p.status === 'held').reduce((s, p) => s + (p.creator_payout || 0), 0);
+    const activeDeals  = deals.filter(d => d.status === 'active').length;
+
+    statsEl.innerHTML = `
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Total Earned</p>
+        <p class="text-2xl font-bold text-gray-900">$${totalEarned.toLocaleString()}</p>
+        <p class="text-xs text-gray-400 mt-1">After platform fee</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">In Escrow</p>
+        <p class="text-2xl font-bold text-yellow-600">$${pending.toLocaleString()}</p>
+        <p class="text-xs text-gray-400 mt-1">Pending brand release</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Active Deals</p>
+        <p class="text-2xl font-bold text-pickle-600">${activeDeals}</p>
+        <p class="text-xs text-gray-400 mt-1">Currently in progress</p>
+      </div>
+    `;
+
+    if (deals.length === 0) {
+      dealsEl.innerHTML = `
+        <div class="flex flex-col items-center py-14 text-center text-gray-400">
+          <svg class="w-10 h-10 mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <p class="font-medium text-gray-500 mb-1">No deals yet</p>
+          <p class="text-sm">Browse campaigns and apply to start earning.</p>
+          <button onclick="navigate('campaigns')" class="mt-4 bg-pickle-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-pickle-700 transition">Browse Campaigns</button>
+        </div>`;
+      return;
+    }
+
+    dealsEl.innerHTML = deals.map(d => {
+      const payment    = payments.find(p => p.deal_id === d.id);
+      const payout     = payment ? payment.creator_payout : Math.round((d.amount || 0) * 0.85);
+      const payStatus  = payment ? payment.status : null;
+      const statusColor = { pending:'bg-yellow-100 text-yellow-700', active:'bg-blue-100 text-blue-700', completed:'bg-green-100 text-green-700', declined:'bg-red-100 text-red-700' }[d.status] || 'bg-gray-100 text-gray-600';
+      return `
+        <div class="px-6 py-4 hover:bg-gray-50 transition cursor-pointer" onclick="openConversation(${d.id})">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <p class="font-semibold text-gray-900 truncate">${escHtml(d.campaign_title || d.title || 'Deal #' + d.id)}</p>
+                <span class="tag ${statusColor} text-xs">${d.status.charAt(0).toUpperCase() + d.status.slice(1)}</span>
+              </div>
+              <p class="text-sm text-gray-500 mt-0.5">${escHtml(d.brand_name || 'Brand')} · ${fmtDateUTC(d.created_at)}</p>
+              <div class="mt-2">${dealStepperMiniHtml(d)}</div>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="font-bold text-gray-900">$${payout.toLocaleString()}</p>
+              <p class="text-xs mt-0.5 ${payStatus === 'released' ? 'text-green-600' : payStatus === 'held' ? 'text-yellow-600' : 'text-gray-400'}">
+                ${payStatus === 'released' ? '✓ Paid' : payStatus === 'held' ? 'In escrow' : 'Awaiting payment'}
+              </p>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+  } catch (err) {
+    statsEl.innerHTML = '';
+    dealsEl.innerHTML = `<p class="p-6 text-red-500 text-sm">Could not load dashboard data.</p>`;
+  }
 }
 
 function renderBrandPortalGrid(campaigns) {
@@ -1654,7 +1739,7 @@ async function saveCreatorProfile(e) {
     showToast('Profile saved!', 'success');
     _updateVerifiedBadgeUI(handles);
     renderCreatorCompletion(saved);
-    setTimeout(() => navigateDashboard(), 1000);
+    setTimeout(() => navigate('creator-dashboard', 'nav-dashboard-btn'), 1000);
   } catch (err) {
     showToast(err.message || 'Something went wrong', 'error');
   }
