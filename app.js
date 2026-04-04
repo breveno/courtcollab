@@ -354,7 +354,7 @@ async function handleSignup(e) {
       } catch (_) { /* best-effort */ }
     }
     onAuthSuccess(user);
-    showToast('Welcome to CourtCollab, ' + name.split(' ')[0] + '!', 'success');
+    startOnboarding(user);   // shows wizard overlay for new users
   } catch (err) {
     const msg = (err.message || '').toLowerCase();
     if (msg.includes('already') || msg.includes('registered') || (msg.includes('email') && msg.includes('exist'))) {
@@ -546,6 +546,11 @@ let state = {
   currentUser: null,
 };
 
+// Saved creators state (brands only)
+let _savedCreatorIds = new Set();
+let _creatorsTab     = 'all';
+let _detailCreatorId = null;  // creator user_id currently open in detail modal
+
 // --- Navigation ---
 function navigateDashboard() {
   navigate(state.role === 'brand' ? 'brand-portal' : 'landing');
@@ -570,7 +575,7 @@ function navigate(page) {
     link.classList.toggle('active', link.dataset.page === page);
   });
   if (page === 'brand-portal') renderBrandPortal();
-  if (page === 'creators')  renderCreators();
+  if (page === 'creators')  { loadSavedCreatorIds().then(() => renderCreators()); }
   if (page === 'campaigns') renderCampaigns();
   if (page === 'matching')  runMatching();
   if (page === 'messages')  { renderConversations(); document.getElementById('nav-messages-dot')?.classList.add('hidden'); }
@@ -583,7 +588,7 @@ function navigate(page) {
   }
   if (page === 'contact')          renderContact();
   if (page === 'admin')            renderAdmin();
-  if (page === 'creator-profile')  renderCreatorDealHistory();
+  if (page === 'creator-profile')  { populateCreatorForm(); renderCreatorDealHistory(); }
 }
 
 // --- Role Switch ---
@@ -787,6 +792,8 @@ async function renderBrandPortal() {
       `;
     }
 
+    // Profile completion bar (top of portal)
+    renderBrandCompletion(brandProfile);
     // Ratings from creators card (below the campaign grid, populated after grid renders)
     renderBrandPortalGrid(campaigns);
     renderBrandRatingsCard(brandProfile);
@@ -918,6 +925,227 @@ function creatorSkeletonHtml() {
     </div>`).join('');
 }
 
+// --- Deal Status Stepper ---
+const _DEAL_STEPS = ['Proposed', 'Accepted', 'In Progress', 'Complete'];
+
+function _dealCurrentStep(status) {
+  if (status === 'pending')   return 0;
+  if (status === 'active')    return 2;
+  if (status === 'completed') return 3;
+  return -1; // declined or unknown
+}
+
+// Full horizontal stepper — used in the chat header area
+function dealStepperHtml(deal) {
+  if (!deal) return '';
+  const step = _dealCurrentStep(deal.status);
+
+  if (step === -1) {
+    return `<div class="flex items-center gap-2 text-sm text-red-500 py-0.5">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+      <span class="font-medium">Deal Declined</span>
+    </div>`;
+  }
+
+  const checkSvg = `<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+
+  let html = `<div class="flex items-start w-full min-w-0">`;
+  _DEAL_STEPS.forEach((label, i) => {
+    const done    = i < step;
+    const current = i === step;
+
+    const circleCls = done
+      ? 'bg-pickle-600 text-white border-2 border-pickle-600'
+      : current
+        ? 'bg-white text-pickle-700 border-2 border-pickle-600 ring-4 ring-pickle-100'
+        : 'bg-white text-gray-300 border-2 border-gray-200';
+    const labelCls = done    ? 'text-pickle-600 font-medium'
+                   : current ? 'text-pickle-700 font-semibold'
+                   :           'text-gray-400';
+
+    html += `
+      <div class="flex flex-col items-center flex-shrink-0" style="min-width:3rem">
+        <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${circleCls}">
+          ${done ? checkSvg : `<span>${i + 1}</span>`}
+        </div>
+        <span class="text-[11px] mt-1 text-center whitespace-nowrap ${labelCls}">${label}</span>
+      </div>`;
+
+    if (i < _DEAL_STEPS.length - 1) {
+      const connCls = i < step ? 'bg-pickle-500' : 'bg-gray-200';
+      html += `<div class="flex-1 h-0.5 ${connCls} mt-3.5 mx-0.5 min-w-0 transition-all"></div>`;
+    }
+  });
+  html += `</div>`;
+
+  // Amount pill + step label
+  const amountStr = deal.amount ? `$${deal.amount.toLocaleString()} · ` : '';
+  const stepLabel = _DEAL_STEPS[step] || '';
+  html += `<div class="flex items-center justify-between mt-2">
+    <span class="text-xs text-gray-400">${amountStr}Step ${step + 1} of ${_DEAL_STEPS.length}</span>
+    <span class="text-xs font-semibold text-pickle-600">${stepLabel}</span>
+  </div>`;
+
+  return html;
+}
+
+// Compact mini stepper — 4 dots + labels for use in list rows
+function dealStepperMiniHtml(status) {
+  const step = _dealCurrentStep(status);
+  if (step === -1) return `<span class="tag bg-red-100 text-red-600">Declined</span>`;
+
+  const dots = _DEAL_STEPS.map((label, i) => {
+    const cls = i < step  ? 'bg-pickle-600'
+              : i === step ? 'bg-pickle-600 ring-2 ring-pickle-200'
+              :              'bg-gray-200';
+    return `<div class="w-2 h-2 rounded-full flex-shrink-0 ${cls}" title="${label}"></div>`;
+  });
+
+  const connectors = _DEAL_STEPS.slice(0, -1).map((_, i) =>
+    `<div class="flex-1 h-0.5 max-w-[12px] ${i < step ? 'bg-pickle-500' : 'bg-gray-200'}"></div>`
+  );
+
+  // Interleave dots and connectors
+  let inner = '';
+  dots.forEach((d, i) => {
+    inner += d;
+    if (i < connectors.length) inner += connectors[i];
+  });
+
+  const label = _DEAL_STEPS[step] || '';
+  const labelColor = status === 'completed' ? 'text-green-600' : status === 'active' ? 'text-yellow-700' : 'text-blue-600';
+  return `<div class="flex items-center gap-0.5">${inner}</div><span class="text-xs font-medium ${labelColor} ml-1.5">${label}</span>`;
+}
+
+// --- Saved Creators ---
+async function loadSavedCreatorIds() {
+  if (!state.user || state.user.role !== 'brand') return;
+  try {
+    const ids = await apiGet('/api/saved-creators/ids');
+    _savedCreatorIds = new Set(ids);
+    _updateSavedCountBadge();
+  } catch (_) {}
+}
+
+function _updateSavedCountBadge() {
+  const badge = document.getElementById('saved-count-badge');
+  if (!badge) return;
+  const n = _savedCreatorIds.size;
+  badge.textContent = n;
+  badge.classList.toggle('hidden', n === 0);
+}
+
+async function toggleSaveCreator(creatorId) {
+  if (!creatorId || !state.user || state.user.role !== 'brand') return;
+  try {
+    const { saved } = await apiPost(`/api/saved-creators/${creatorId}`, {});
+    if (saved) _savedCreatorIds.add(creatorId);
+    else        _savedCreatorIds.delete(creatorId);
+    _updateSavedCountBadge();
+    // Update every bookmark button for this creator currently in the DOM
+    document.querySelectorAll(`[data-save-id="${creatorId}"]`).forEach(btn => {
+      _applyBookmarkState(btn, saved);
+    });
+    // Update detail modal save button if open for this creator
+    if (_detailCreatorId === creatorId) _syncDetailSaveBtn(saved);
+    // If in saved tab and just un-saved, re-render to remove the card
+    if (_creatorsTab === 'saved' && !saved) renderCreators();
+  } catch (err) {
+    showToast('⚠ ' + err.message);
+  }
+}
+
+function _applyBookmarkState(btn, saved) {
+  if (saved) {
+    btn.classList.add('text-pickle-700', 'bg-pickle-50', 'border-pickle-300');
+    btn.classList.remove('text-gray-400', 'border-gray-200', 'hover:text-pickle-600', 'hover:border-pickle-300');
+  } else {
+    btn.classList.remove('text-pickle-700', 'bg-pickle-50', 'border-pickle-300');
+    btn.classList.add('text-gray-400', 'border-gray-200', 'hover:text-pickle-600', 'hover:border-pickle-300');
+  }
+  const path = btn.querySelector('path');
+  if (path) path.setAttribute('fill', saved ? 'currentColor' : 'none');
+  btn.title = saved ? 'Saved' : 'Save creator';
+}
+
+function bookmarkBtnHtml(creatorId) {
+  if (!state.user || state.user.role !== 'brand') return '';
+  const saved     = _savedCreatorIds.has(creatorId);
+  const colorCls  = saved
+    ? 'text-pickle-700 bg-pickle-50 border-pickle-300'
+    : 'text-gray-400 border-gray-200 hover:text-pickle-600 hover:border-pickle-300';
+  const fillAttr  = saved ? 'currentColor' : 'none';
+  return `<button
+    data-save-id="${creatorId}"
+    onclick="event.stopPropagation();toggleSaveCreator(${creatorId})"
+    title="${saved ? 'Saved' : 'Save creator'}"
+    class="w-8 h-8 rounded-lg border flex items-center justify-center transition flex-shrink-0 ${colorCls}">
+    <svg class="w-4 h-4 pointer-events-none" fill="${fillAttr}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+    </svg>
+  </button>`;
+}
+
+function _syncDetailSaveBtn(saved) {
+  const btn   = document.getElementById('detail-save-btn');
+  const icon  = document.getElementById('detail-save-icon');
+  const label = document.getElementById('detail-save-label');
+  if (!btn) return;
+  if (saved) {
+    btn.classList.add('bg-pickle-50', 'border-pickle-300', 'text-pickle-700');
+    btn.classList.remove('border-gray-300', 'text-gray-600');
+    if (icon)  icon.setAttribute('fill', 'currentColor');
+    if (label) label.textContent = 'Saved';
+  } else {
+    btn.classList.remove('bg-pickle-50', 'border-pickle-300', 'text-pickle-700');
+    btn.classList.add('border-gray-300', 'text-gray-600');
+    if (icon)  icon.setAttribute('fill', 'none');
+    if (label) label.textContent = 'Save';
+  }
+}
+
+function switchCreatorsTab(tab) {
+  _creatorsTab = tab;
+  const allBtn   = document.getElementById('tab-all-creators');
+  const savedBtn = document.getElementById('tab-saved-creators');
+  const activeCls   = 'bg-pickle-600 text-white border-transparent';
+  const inactiveCls = 'border border-gray-300 text-gray-600 bg-white hover:bg-gray-50';
+  if (allBtn)   allBtn.className   = `px-4 py-1.5 rounded-full text-sm font-medium transition ${tab === 'all'   ? activeCls : inactiveCls}`;
+  if (savedBtn) savedBtn.className = `px-4 py-1.5 rounded-full text-sm font-medium transition flex items-center gap-1.5 ${tab === 'saved' ? activeCls : inactiveCls}`;
+  renderCreators();
+}
+
+// --- Verified Badge ---
+function _updateVerifiedBadgeUI(handles) {
+  // Show/hide the verified badge on the creator's own profile form
+  const badge = document.getElementById('cp-verified-badge');
+  if (!badge) return;
+  const isVerified = Object.values(handles || {}).some(v => v && String(v).trim().length > 0);
+  if (isVerified) {
+    badge.classList.remove('hidden');
+    badge.classList.add('inline-flex');
+  } else {
+    badge.classList.add('hidden');
+    badge.classList.remove('inline-flex');
+  }
+}
+
+function verifiedBadgeHtml(creator, size = 'sm') {
+  const handles = (typeof creator.social_handles === 'object' && creator.social_handles !== null)
+    ? creator.social_handles : {};
+  const isVerified = Object.values(handles).some(v => v && String(v).trim().length > 0);
+  if (!isVerified) return '';
+  const sizeCls = size === 'lg'
+    ? 'w-5 h-5 text-xs px-2 py-0.5'
+    : 'w-4 h-4 text-[11px] px-1.5 py-0.5';
+  return `<span class="inline-flex items-center gap-1 bg-pickle-100 text-pickle-700 font-semibold rounded-full leading-none ${sizeCls}" title="Verified creator — connected social account">
+    <svg class="${size === 'lg' ? 'w-3.5 h-3.5' : 'w-3 h-3'}" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
+    Verified
+  </span>`;
+}
+
 async function renderCreators() {
   const grid = document.getElementById('creator-grid');
   if (!grid) return;
@@ -932,24 +1160,47 @@ async function renderCreators() {
 
     let creators = await apiGet('/api/creators?' + params.toString());
 
-    // Client-side filters for audience size and rate (not supported as API params)
-    const search   = document.getElementById('filter-search')?.value.toLowerCase() || '';
-    const audience = document.getElementById('filter-audience')?.value || '';
-    const rate     = document.getElementById('filter-rate')?.value || '';
+    // Client-side filters
+    const search     = document.getElementById('filter-search')?.value.toLowerCase().trim() || '';
+    const platform   = document.getElementById('filter-platform')?.value || '';
+    const audience   = document.getElementById('filter-audience')?.value || '';
+    const engagement = document.getElementById('filter-engagement')?.value || '';
+    const rate       = document.getElementById('filter-rate')?.value || '';
 
     if (search) {
       creators = creators.filter(c =>
-        (c.name || '').toLowerCase().includes(search) ||
-        (c.bio  || '').toLowerCase().includes(search)
+        (c.name     || '').toLowerCase().includes(search) ||
+        (c.bio      || '').toLowerCase().includes(search) ||
+        (c.location || '').toLowerCase().includes(search)
       );
+    }
+    if (platform) {
+      creators = creators.filter(c => {
+        const handles  = (typeof c.social_handles === 'object' && c.social_handles) ? c.social_handles : {};
+        if (platform === 'instagram') return (c.followers_ig || 0) > 0 || !!(handles.instagram);
+        if (platform === 'tiktok')    return (c.followers_tt || 0) > 0 || !!(handles.tiktok);
+        if (platform === 'youtube')   return (c.followers_yt || 0) > 0 || !!(handles.youtube);
+        return true;
+      });
     }
     if (audience) {
       creators = creators.filter(c => {
         const t = c.total_followers || 0;
-        if (audience === 'micro')  return t >= 1000  && t <= 10000;
-        if (audience === 'mid')    return t >= 10000 && t <= 50000;
-        if (audience === 'macro')  return t >= 50000 && t <= 200000;
+        if (audience === 'nano')   return t < 1000;
+        if (audience === 'micro')  return t >= 1000  && t < 10000;
+        if (audience === 'mid')    return t >= 10000 && t < 50000;
+        if (audience === 'macro')  return t >= 50000 && t < 200000;
         if (audience === 'mega')   return t >= 200000;
+        return true;
+      });
+    }
+    if (engagement) {
+      creators = creators.filter(c => {
+        const e = c.engagement_rate || 0;
+        if (engagement === 'low')    return e > 0  && e < 2;
+        if (engagement === 'medium') return e >= 2 && e < 5;
+        if (engagement === 'high')   return e >= 5 && e < 10;
+        if (engagement === 'viral')  return e >= 10;
         return true;
       });
     }
@@ -964,14 +1215,34 @@ async function renderCreators() {
       });
     }
 
+    // Saved tab: fetch from API when in saved view, otherwise filter in memory
+    if (_creatorsTab === 'saved') {
+      creators = creators.filter(c => _savedCreatorIds.has(c.user_id));
+    }
+
+    // Show/hide clear button and results count
+    const anyFilter = search || platform || audience || engagement || rate || niche || skill || _creatorsTab === 'saved';
+    const clearBtn  = document.getElementById('filter-clear-btn');
+    const resultsBar = document.getElementById('creator-results-bar');
+    const resultsCount = document.getElementById('creator-results-count');
+    if (clearBtn) clearBtn.classList.toggle('hidden', !anyFilter);
+    if (resultsBar) resultsBar.classList.toggle('hidden', !anyFilter);
+    if (resultsCount && anyFilter) {
+      resultsCount.textContent = `${creators.length} creator${creators.length !== 1 ? 's' : ''} found`;
+    }
+
     if (creators.length === 0) {
+      const emptySaved = _creatorsTab === 'saved';
       grid.innerHTML = `
         <div class="col-span-full flex flex-col items-center py-16 text-center">
           <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
-            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            ${emptySaved
+              ? `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>`
+              : `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`}
           </div>
-          <p class="font-semibold text-gray-700 mb-1">No creators found</p>
-          <p class="text-gray-400 text-sm">Try adjusting your filters to see more results.</p>
+          <p class="font-semibold text-gray-700 mb-1">${emptySaved ? 'No saved creators yet' : 'No creators found'}</p>
+          <p class="text-gray-400 text-sm">${emptySaved ? 'Bookmark creators to save them here for quick access.' : 'Try adjusting your filters to see more results.'}</p>
+          ${emptySaved ? `<button onclick="switchCreatorsTab('all')" class="mt-4 text-sm text-pickle-600 hover:underline font-medium">Browse all creators →</button>` : ''}
         </div>`;
       return;
     }
@@ -985,11 +1256,17 @@ async function renderCreators() {
           <div class="p-6">
             <div class="flex items-center gap-4 mb-4">
               <div class="w-14 h-14 rounded-2xl bg-pickle-100 flex items-center justify-center text-xl font-bold text-pickle-700">${initials}</div>
-              <div class="flex-1">
-                <h3 class="font-bold text-lg">${c.name || 'Creator'}</h3>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="font-bold text-lg">${c.name || 'Creator'}</h3>
+                  ${verifiedBadgeHtml(c)}
+                </div>
                 <p class="text-gray-500 text-sm">${c.location || ''}</p>
               </div>
-              <span class="tag bg-pickle-100 text-pickle-700">${c.niche || 'Creator'}</span>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <span class="tag bg-pickle-100 text-pickle-700">${c.niche || 'Creator'}</span>
+                ${bookmarkBtnHtml(c.user_id)}
+              </div>
             </div>
             <p class="text-gray-600 text-sm mb-4 line-clamp-2">${c.bio || ''}</p>
             <div class="grid grid-cols-3 gap-3 mb-4">
@@ -1024,6 +1301,15 @@ async function renderCreators() {
 }
 
 function filterCreators() { renderCreators(); }
+
+function clearCreatorFilters() {
+  ['filter-search','filter-niche','filter-platform','filter-audience','filter-engagement','filter-rate']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  renderCreators();
+}
 
 // --- Creator Detail ---
 // --- Admin: view any user's profile ---
@@ -1067,8 +1353,9 @@ async function adminViewUser(userId) {
       const c = await apiGet('/api/creators/' + userId);
       state.selectedCreator = c;
       const skills = Array.isArray(c.skills) ? c.skills : [];
-      document.getElementById('detail-avatar').textContent   = c.initials || (c.name||'CC').slice(0,2).toUpperCase();
-      document.getElementById('detail-name').textContent     = c.name || u.name;
+      document.getElementById('detail-avatar').textContent = c.initials || (c.name||'CC').slice(0,2).toUpperCase();
+      document.getElementById('detail-name').innerHTML =
+        escHtml(c.name || u.name) + ' ' + verifiedBadgeHtml(c, 'lg');
       document.getElementById('detail-location').textContent = [c.location, c.niche, c.skill_level].filter(Boolean).join(' · ');
       document.getElementById('detail-content').innerHTML = `
         <p class="text-gray-600 mb-6">${c.bio || '<span class="text-gray-400 italic">No bio added yet.</span>'}</p>
@@ -1153,10 +1440,14 @@ async function adminViewUser(userId) {
 async function showCreatorDetail(userId) {
   const modal = document.getElementById('creator-detail-modal');
   if (!modal) return;
+  _detailCreatorId = userId;
   // Show loading state inside modal first
   document.getElementById('detail-name').textContent = 'Loading…';
   document.getElementById('detail-location').textContent = '';
   document.getElementById('detail-content').innerHTML = '';
+  // Hide save button during load
+  const saveBtnEl = document.getElementById('detail-save-btn');
+  if (saveBtnEl) saveBtnEl.classList.add('hidden');
   openModal('creator-detail-modal');
 
   try {
@@ -1166,10 +1457,18 @@ async function showCreatorDetail(userId) {
     const initials = c.initials || (c.name || 'CC').slice(0, 2).toUpperCase();
     const skills   = Array.isArray(c.skills) ? c.skills : [];
 
-    document.getElementById('detail-avatar').textContent   = initials;
-    document.getElementById('detail-name').textContent     = c.name || 'Creator';
+    document.getElementById('detail-avatar').textContent = initials;
+    document.getElementById('detail-name').innerHTML =
+      escHtml(c.name || 'Creator') + ' ' + verifiedBadgeHtml(c, 'lg');
     document.getElementById('detail-location').textContent =
       [c.location, c.niche, c.skill_level].filter(Boolean).join(' · ');
+
+    // Show save button for brands
+    if (saveBtnEl && state.user?.role === 'brand') {
+      saveBtnEl.classList.remove('hidden');
+      saveBtnEl.classList.add('inline-flex');
+      _syncDetailSaveBtn(_savedCreatorIds.has(c.user_id));
+    }
 
     document.getElementById('detail-content').innerHTML = `
       <p class="text-gray-600 mb-6">${c.bio || ''}</p>
@@ -1314,10 +1613,22 @@ async function saveCreatorProfile(e) {
     rate_ugc:        parseInt(document.getElementById('cp-rate-ugc').value)   || 0,
     rate_notes:      document.getElementById('cp-rate-notes').value,
   };
+  // Social handles — build dict, skip blanks
+  const _ig = (document.getElementById('cp-handle-ig')?.value || '').trim().replace(/^@/, '');
+  const _tt = (document.getElementById('cp-handle-tt')?.value || '').trim().replace(/^@/, '');
+  const _yt = (document.getElementById('cp-handle-yt')?.value || '').trim().replace(/^@/, '');
+  const handles = {};
+  if (_ig) handles.instagram = _ig;
+  if (_tt) handles.tiktok    = _tt;
+  if (_yt) handles.youtube   = _yt;
+  body.social_handles = JSON.stringify(handles);
   try {
-    await apiPut('/api/creator/profile', body);
-    showToast('Profile saved successfully!');
-    navigate('creators');
+    const saved = await apiPut('/api/creator/profile', body);
+    // Attach parsed handles back for the completion bar
+    saved.social_handles = handles;
+    showToast('Profile saved!', 'success');
+    _updateVerifiedBadgeUI(handles);
+    renderCreatorCompletion(saved);
   } catch (err) {
     showToast('⚠ ' + err.message);
   }
@@ -1353,6 +1664,15 @@ function campaignSkeletonHtml() {
 async function renderCampaigns() {
   const list = document.getElementById('campaign-list');
   if (!list) return;
+
+  // Render post button only for brands
+  const postBtnWrap = document.getElementById('post-campaign-btn-wrap');
+  if (postBtnWrap) {
+    postBtnWrap.innerHTML = state.role === 'brand'
+      ? `<button onclick="openModal('campaign-modal')" id="post-campaign-btn" class="bg-brand-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-brand-700 transition whitespace-nowrap">+ Post Campaign Brief</button>`
+      : '';
+  }
+
   list.innerHTML = campaignSkeletonHtml();
 
   try {
@@ -1536,8 +1856,9 @@ async function runMatching() {
               <div class="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white border-2 ${colorClass} flex items-center justify-center text-xs font-bold ${textClass}">${score}</div>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <h3 class="font-bold text-lg">${c.name || 'Creator'}</h3>
+                ${verifiedBadgeHtml(c)}
                 <span class="tag bg-pickle-100 text-pickle-700">${c.niche || ''}</span>
               </div>
               <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
@@ -1565,6 +1886,30 @@ async function runMatching() {
 }
 
 // --- Messages ---
+
+// Format a timestamp for display in message threads / conversation list
+function _fmtMsgTime(ts) {
+  if (!ts) return '';
+  try {
+    const d   = new Date(ts.includes('T') || ts.includes('Z') ? ts : ts.replace(' ', 'T') + 'Z');
+    const now = new Date();
+    const diffMs  = now - d;
+    const diffMin = Math.floor(diffMs / 60000);
+    const sameDay = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    if (diffMin < 1)        return 'Just now';
+    if (sameDay)            return d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (isYesterday)        return 'Yesterday ' + d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (diffMs < 7*86400000) return d.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+  } catch { return ''; }
+}
+
+// Double-checkmark SVG (seen indicator)
+const _SEEN_ICON = `<svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l6 6 9-13.5" opacity="0.5"/></svg>`;
+const _SENT_ICON = `<svg class="w-3.5 h-3.5 inline-block opacity-40" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>`;
+
 async function renderConversations() {
   const list = document.getElementById('conversation-list');
   if (!list) return;
@@ -1590,22 +1935,38 @@ async function renderConversations() {
       return;
     }
 
+    const myId = state.currentUser?.id;
     list.innerHTML = convs.map(conv => {
-      const partner  = conv.partner;
-      const lastMsg  = conv.last_message;
-      const unread   = conv.unread_count || 0;
-      const preview  = lastMsg ? (lastMsg.body || '').substring(0, 60) : 'No messages yet';
-      const isActive = state.activePartner === partner.id;
+      const partner   = conv.partner;
+      const lastMsg   = conv.last_message;
+      const unread    = conv.unread_count || 0;
+      const rawPreview = lastMsg ? (lastMsg.body || '') : '';
+      const preview   = rawPreview.substring(0, 55) + (rawPreview.length > 55 ? '…' : '');
+      const isActive  = state.activePartner === partner.id;
+      const iMine     = lastMsg && lastMsg.sender_id === myId;
+      const wasSeen   = iMine && lastMsg.read_at;
+      const msgTime   = lastMsg ? _fmtMsgTime(lastMsg.created_at) : '';
+      const seenIcon  = iMine
+        ? (wasSeen
+            ? `<span class="text-pickle-500 flex-shrink-0">${_SEEN_ICON}</span>`
+            : `<span class="text-gray-400 flex-shrink-0">${_SENT_ICON}</span>`)
+        : '';
       return `
         <div class="p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${isActive ? 'bg-pickle-50' : ''}" onclick="openConversation(${partner.id})">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm">${partner.initials || partner.name.slice(0,2).toUpperCase()}</div>
+            <div class="relative flex-shrink-0">
+              <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm">${partner.initials || partner.name.slice(0,2).toUpperCase()}</div>
+              ${unread > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-pickle-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">${unread > 9 ? '9+' : unread}</span>` : ''}
+            </div>
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="font-semibold text-sm">${partner.name}</span>
-                ${unread > 0 ? `<span class="bg-pickle-600 text-white text-xs rounded-full px-2 py-0.5">${unread}</span>` : ''}
+              <div class="flex items-center justify-between gap-1 mb-0.5">
+                <span class="font-semibold text-sm truncate ${unread > 0 ? 'text-gray-900' : 'text-gray-700'}">${escHtml(partner.name)}</span>
+                <span class="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">${msgTime}</span>
               </div>
-              <p class="text-xs text-gray-500 truncate">${preview}${preview.length >= 60 ? '…' : ''}</p>
+              <div class="flex items-center gap-1">
+                ${seenIcon}
+                <p class="text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}">${escHtml(preview) || '<span class="italic text-gray-400">No messages yet</span>'}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1642,6 +2003,18 @@ async function openConversation(partnerId) {
       : 'No active deal';
     if (headerStatus) headerStatus.textContent = dealStatusText;
 
+    // Deal status stepper
+    const stepperEl = document.getElementById('deal-stepper');
+    if (stepperEl) {
+      if (deal) {
+        stepperEl.innerHTML = dealStepperHtml(deal);
+        stepperEl.classList.remove('hidden');
+      } else {
+        stepperEl.classList.add('hidden');
+        stepperEl.innerHTML = '';
+      }
+    }
+
     // If creator, fetch brand's avg rating and show alongside deal status
     if (state.role === 'creator' && headerStatus) {
       apiGet('/api/brands/' + partnerId).then(b => {
@@ -1665,7 +2038,6 @@ async function openConversation(partnerId) {
       } else if (deal && deal.status === 'active') {
         dealActions.classList.remove('hidden');
         // Check contract signing status for the badge
-        let contractBtnHtml = `<button onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition flex items-center gap-1.5">📄 View Contract</button>`;
         apiGet(`/api/deals/${deal.id}/contract`).then(c => {
           const badge = c.is_fully_signed ? '✅' : c.i_have_signed ? '⏳' : '✍️';
           const btn = document.querySelector(`[data-contract-btn="${deal.id}"]`);
@@ -1674,8 +2046,10 @@ async function openConversation(partnerId) {
         dealActions.innerHTML = state.role === 'brand'
           ? `<button onclick="updateDealStatus(${deal.id}, 'completed')" class="bg-pickle-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-700 transition">Mark Complete</button>
              <button onclick="stripeCheckout(${deal.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Pay with Stripe</button>
-             <button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>`
-          : `<button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>`;
+             <button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>
+             <button onclick="openDisputeModal(${deal.id})" class="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition" title="File a dispute">🚩</button>`
+          : `<button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>
+             <button onclick="openDisputeModal(${deal.id})" class="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition" title="File a dispute">🚩</button>`;
       } else if (deal && deal.status === 'completed') {
         dealActions.classList.remove('hidden');
         const partnerLabel   = state.role === 'brand' ? 'Creator' : 'Brand';
@@ -1696,6 +2070,35 @@ async function openConversation(partnerId) {
       }
     }
 
+    // Show/hide dispute banner
+    const disputeBanner = document.getElementById('dispute-banner');
+    const disputeBannerText = document.getElementById('dispute-banner-text');
+    const disputeBannerBtn  = document.getElementById('dispute-banner-btn');
+    if (disputeBanner) {
+      if (deal && (deal.status === 'active' || deal.status === 'completed')) {
+        apiGet(`/api/deals/${deal.id}/dispute`).then(dispute => {
+          if (dispute) {
+            const statusLabel = dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1);
+            const colours = { open: 'bg-red-50 border-red-200', resolved: 'bg-green-50 border-green-200', closed: 'bg-gray-50 border-gray-200' };
+            const textColours = { open: 'text-red-700', resolved: 'text-green-700', closed: 'text-gray-600' };
+            disputeBanner.className = `px-4 py-2.5 border-b flex items-center justify-between gap-3 ${colours[dispute.status] || colours.open}`;
+            if (disputeBannerText) {
+              disputeBannerText.className = `font-medium text-sm ${textColours[dispute.status] || textColours.open}`;
+              disputeBannerText.textContent = `🚩 Dispute ${statusLabel} — filed ${dispute.created_at ? dispute.created_at.slice(0,10) : ''}`;
+            }
+            if (disputeBannerBtn) {
+              disputeBannerBtn.onclick = () => openDisputeDetailModal(deal.id);
+            }
+            disputeBanner.classList.remove('hidden');
+          } else {
+            disputeBanner.classList.add('hidden');
+          }
+        }).catch(() => disputeBanner.classList.add('hidden'));
+      } else {
+        disputeBanner.classList.add('hidden');
+      }
+    }
+
     // Render messages
     const chatEl = document.getElementById('chat-messages');
     if (!chatEl) return;
@@ -1704,14 +2107,26 @@ async function openConversation(partnerId) {
     if (messages.length === 0) {
       chatEl.innerHTML = '<div class="text-center text-gray-400 text-sm py-8">No messages yet. Say hello!</div>';
     } else {
+      // Find the id of the last message I sent that the other person has read
+      const lastReadSentId = [...messages]
+        .filter(m => m.sender_id === myId && m.read_at)
+        .pop()?.id ?? null;
+
       chatEl.innerHTML = messages.map(m => {
-        const isMe = m.sender_id === myId;
-        const time = m.created_at ? new Date(m.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+        const isMe     = m.sender_id === myId;
+        const time     = _fmtMsgTime(m.created_at);
+        const showSeen = isMe && m.id === lastReadSentId;
+        const seenTime = showSeen ? _fmtMsgTime(m.read_at) : '';
         return `
-          <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+          <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-1">
             <div class="max-w-sm">
-              <div class="${isMe ? 'message-bubble-right' : 'message-bubble-left'} px-4 py-3 text-sm">${m.body}</div>
-              <div class="text-xs text-gray-400 mt-1 ${isMe ? 'text-right' : ''}">${time}</div>
+              <div class="${isMe ? 'message-bubble-right' : 'message-bubble-left'} px-4 py-3 text-sm">${escHtml(m.body)}</div>
+              <div class="text-xs text-gray-400 mt-1 ${isMe ? 'text-right' : ''}">
+                ${time}
+                ${showSeen
+                  ? `<span class="ml-1.5 inline-flex items-center gap-0.5 text-pickle-500 font-medium">${_SEEN_ICON} Seen${seenTime ? ' · ' + seenTime : ''}</span>`
+                  : (isMe ? `<span class="ml-1 text-gray-300">${_SENT_ICON}</span>` : '')}
+              </div>
             </div>
           </div>
         `;
@@ -1827,6 +2242,279 @@ async function updateDealStatus(dealId, status) {
 }
 
 // --- Creator Deal History (creator's own profile page) ---
+// ---------------------------------------------------------------------------
+// Profile Completion
+// ---------------------------------------------------------------------------
+
+const _CREATOR_COMPLETION_FIELDS = [
+  {
+    key: 'bio', label: 'Write a bio', icon: '✍️', pct: 15,
+    tip: 'Brands read your bio first — make it count.',
+    check: p => (p.bio || '').trim().length > 10,
+    focusId: 'cp-bio',
+  },
+  {
+    key: 'niche', label: 'Choose a content niche', icon: '🎯', pct: 15,
+    tip: 'Niche is the #1 filter brands use to find creators.',
+    check: p => !!(p.niche || '').trim(),
+    focusId: 'cp-niche',
+  },
+  {
+    key: 'followers', label: 'Add follower counts', icon: '📈', pct: 15,
+    tip: 'Brands filter by audience size — add at least one platform.',
+    check: p => (p.followers_ig || 0) + (p.followers_tt || 0) + (p.followers_yt || 0) > 0,
+    focusId: 'cp-ig',
+  },
+  {
+    key: 'rates', label: 'Set your rates', icon: '💰', pct: 15,
+    tip: 'Creators with listed rates close deals faster.',
+    check: p => (p.rate_ig || 0) + (p.rate_tiktok || 0) + (p.rate_yt || 0) + (p.rate_ugc || 0) > 0,
+    focusId: 'cp-rate-ig',
+  },
+  {
+    key: 'name', label: 'Add a display name', icon: '👤', pct: 10,
+    tip: 'Your creator name shown to brands.',
+    check: p => !!(p.name || '').trim(),
+    focusId: 'cp-name',
+  },
+  {
+    key: 'skills', label: 'Select creator skills', icon: '🛠️', pct: 10,
+    tip: 'Skills power the AI matching engine.',
+    check: p => Array.isArray(p.skills) ? p.skills.length > 0 : !!(p.skills),
+    focusId: 'cp-skills',
+    scroll: true,
+  },
+  {
+    key: 'skill_level', label: 'Set your skill level', icon: '🎾', pct: 5,
+    tip: 'Pickleball skill level helps brands target the right audience.',
+    check: p => !!(p.skill_level || '').trim(),
+    focusId: 'cp-skill-level',
+  },
+  {
+    key: 'location', label: 'Add your location', icon: '📍', pct: 5,
+    tip: 'Local brands love working with creators in their market.',
+    check: p => !!(p.location || '').trim(),
+    focusId: 'cp-location',
+  },
+  {
+    key: 'engagement', label: 'Enter engagement rate', icon: '⚡', pct: 5,
+    tip: 'High engagement can outweigh follower count for many brands.',
+    check: p => (p.engagement_rate || 0) > 0,
+    focusId: 'cp-engagement',
+  },
+  {
+    key: 'demo', label: 'Add audience demographics', icon: '👥', pct: 5,
+    tip: 'Demographics help brands confirm audience fit.',
+    check: p => !!(p.demo_age || p.demo_gender || p.demo_locations),
+    focusId: 'cp-age',
+  },
+];
+
+const _BRAND_COMPLETION_FIELDS = [
+  {
+    key: 'budget', label: 'Set campaign budget', icon: '💰', pct: 25,
+    tip: 'Creators use your budget to decide if it\'s worth applying.',
+    check: p => (p.budget_min || 0) > 0 || (p.budget_max || 0) > 0,
+  },
+  {
+    key: 'company_name', label: 'Add company name', icon: '🏢', pct: 20,
+    tip: 'Your company name appears on every campaign brief.',
+    check: p => !!(p.company_name || '').trim(),
+  },
+  {
+    key: 'industry', label: 'Select your industry', icon: '🎯', pct: 20,
+    tip: 'Creators browse by industry to find relevant partners.',
+    check: p => !!(p.industry || '').trim(),
+  },
+  {
+    key: 'description', label: 'Write a brand description', icon: '✍️', pct: 20,
+    tip: 'A strong description attracts higher-quality creators.',
+    check: p => (p.description || '').trim().length > 10,
+  },
+  {
+    key: 'website', label: 'Add your website', icon: '🌐', pct: 15,
+    tip: 'Creators research your brand before applying.',
+    check: p => !!(p.website || '').trim(),
+  },
+];
+
+function _calcCompletion(profile, fields) {
+  return fields.reduce((sum, f) => sum + (f.check(profile) ? f.pct : 0), 0);
+}
+
+function _completionBarHtml(pct, missingFields, role) {
+  // Color scheme
+  const isComplete = pct >= 100;
+  let barColor, bgColor, textColor, borderColor;
+  if (isComplete)    { barColor = '#16a34a'; bgColor = 'bg-green-50';  textColor = 'text-green-800';  borderColor = 'border-green-200'; }
+  else if (pct >= 75){ barColor = '#2F4F2F'; bgColor = 'bg-pickle-50'; textColor = 'text-pickle-800'; borderColor = 'border-pickle-200'; }
+  else if (pct >= 40){ barColor = '#d97706'; bgColor = 'bg-amber-50';  textColor = 'text-amber-800';  borderColor = 'border-amber-200'; }
+  else               { barColor = '#dc2626'; bgColor = 'bg-red-50';    textColor = 'text-red-800';    borderColor = 'border-red-200'; }
+
+  const topItems = missingFields.slice(0, 3);
+
+  const actionHtml = isComplete
+    ? `<p class="text-sm font-medium ${textColor} mt-2">You're fully set up — brands can discover and contact you. 🎉</p>`
+    : `<div class="mt-3 flex flex-wrap gap-2">
+         ${topItems.map(f => `
+           <button onclick="${role === 'creator' ? `_creatorCompletionFocus('${f.focusId}',${!!f.scroll})` : `openBrandProfileModal('${f.key}')`}"
+             class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white border ${borderColor} ${textColor} hover:shadow-sm transition">
+             <span>${f.icon}</span>
+             <span>${f.label}</span>
+             <span class="opacity-60">+${f.pct}%</span>
+           </button>
+         `).join('')}
+       </div>`;
+
+  return `
+    <div class="${bgColor} border ${borderColor} rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <span class="text-sm font-semibold ${textColor}">${isComplete ? '✅ Profile Complete' : 'Profile Strength'}</span>
+          ${!isComplete ? `<span class="text-xs ${textColor} opacity-70 ml-2">${missingFields.length} field${missingFields.length !== 1 ? 's' : ''} missing</span>` : ''}
+        </div>
+        <span class="text-2xl font-black ${textColor}">${pct}%</span>
+      </div>
+      <div class="h-2.5 bg-white/60 rounded-full overflow-hidden border ${borderColor}">
+        <div class="h-full rounded-full transition-all duration-700 ease-out" style="width:${pct}%;background:${barColor};"></div>
+      </div>
+      ${actionHtml}
+    </div>
+  `;
+}
+
+function _creatorCompletionFocus(id, scroll) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (scroll) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { try { el.focus(); } catch (_) {} }, 350);
+  }
+}
+
+function renderCreatorCompletion(profile) {
+  const el = document.getElementById('creator-profile-completion');
+  if (!el) return;
+  const missing = _CREATOR_COMPLETION_FIELDS.filter(f => !f.check(profile));
+  const pct     = _calcCompletion(profile, _CREATOR_COMPLETION_FIELDS);
+  el.innerHTML  = _completionBarHtml(pct, missing, 'creator');
+}
+
+function renderBrandCompletion(profile) {
+  const el = document.getElementById('brand-profile-completion');
+  if (!el) return;
+  if (!profile) { el.innerHTML = ''; return; }
+  const missing = _BRAND_COMPLETION_FIELDS.filter(f => !f.check(profile));
+  const pct     = _calcCompletion(profile, _BRAND_COMPLETION_FIELDS);
+  el.innerHTML  = _completionBarHtml(pct, missing, 'brand');
+}
+
+// --- Pre-populate creator profile form from API ---
+async function populateCreatorForm() {
+  try {
+    const p = await apiGet('/api/creator/profile');
+    const setVal  = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    const setNum  = (id, v) => { const el = document.getElementById(id); if (el) el.value = v > 0 ? v : ''; };
+    const setSel  = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+
+    setVal('cp-name',       p.name);
+    setVal('cp-location',   p.location);
+    setVal('cp-bio',        p.bio);
+    setSel('cp-niche',      p.niche);
+    setSel('cp-skill-level', p.skill_level);
+    setNum('cp-ig',         p.followers_ig);
+    setNum('cp-tiktok',     p.followers_tt);
+    setNum('cp-yt',         p.followers_yt);
+    setNum('cp-engagement', p.engagement_rate);
+    setNum('cp-views',      p.avg_views);
+    setSel('cp-age',        p.demo_age);
+    setSel('cp-gender',     p.demo_gender);
+    setVal('cp-locations',  p.demo_locations);
+    setVal('cp-interests',  p.demo_interests);
+    setNum('cp-rate-ig',    p.rate_ig);
+    setNum('cp-rate-tiktok', p.rate_tiktok);
+    setNum('cp-rate-yt',    p.rate_yt);
+    setNum('cp-rate-ugc',   p.rate_ugc);
+    setVal('cp-rate-notes', p.rate_notes);
+
+    // Tick skill checkboxes
+    const skills = Array.isArray(p.skills) ? p.skills : [];
+    document.querySelectorAll('#cp-skills input[type="checkbox"]').forEach(cb => {
+      cb.checked = skills.includes(cb.value);
+    });
+
+    // Social handles
+    const handles = (typeof p.social_handles === 'object' && p.social_handles !== null) ? p.social_handles : {};
+    const igHandle = document.getElementById('cp-handle-ig');
+    const ttHandle = document.getElementById('cp-handle-tt');
+    const ytHandle = document.getElementById('cp-handle-yt');
+    if (igHandle) igHandle.value = handles.instagram || '';
+    if (ttHandle) ttHandle.value = handles.tiktok    || '';
+    if (ytHandle) ytHandle.value = handles.youtube   || '';
+    _updateVerifiedBadgeUI(handles);
+
+    renderCreatorCompletion(p);
+  } catch (err) {
+    // Profile doesn't exist yet (new user) — show empty completion bar
+    renderCreatorCompletion({});
+  }
+}
+
+// --- Brand profile edit modal ---
+async function openBrandProfileModal(highlightKey) {
+  try {
+    const p = await apiGet('/api/brand/profile').catch(() => ({}));
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    const setSel = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+    const setNum = (id, v) => { const el = document.getElementById(id); if (el) el.value = v > 0 ? v : ''; };
+
+    setVal('bp-company',     p.company_name);
+    setSel('bp-industry',    p.industry);
+    setVal('bp-website',     p.website);
+    setNum('bp-budget-min',  p.budget_min);
+    setNum('bp-budget-max',  p.budget_max);
+    setVal('bp-description', p.description);
+  } catch (_) {}
+
+  openModal('bp-edit-modal');
+
+  // Highlight the relevant field after modal opens
+  if (highlightKey) {
+    const fieldMap = {
+      company_name: 'bp-company', industry: 'bp-industry',
+      website: 'bp-website', budget: 'bp-budget-min', description: 'bp-description',
+    };
+    const targetId = fieldMap[highlightKey];
+    if (targetId) {
+      setTimeout(() => {
+        const el = document.getElementById(targetId);
+        if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }, 150);
+    }
+  }
+}
+
+async function saveBrandProfileModal() {
+  const body = {
+    company_name: document.getElementById('bp-company')?.value.trim() || '',
+    industry:     document.getElementById('bp-industry')?.value || '',
+    website:      document.getElementById('bp-website')?.value.trim() || '',
+    budget_min:   parseInt(document.getElementById('bp-budget-min')?.value || '0') || 0,
+    budget_max:   parseInt(document.getElementById('bp-budget-max')?.value || '0') || 0,
+    description:  document.getElementById('bp-description')?.value.trim() || '',
+  };
+  try {
+    await apiPut('/api/brand/profile', body);
+    closeModal('bp-edit-modal');
+    showToast('Brand profile saved!', 'success');
+    renderBrandPortal(); // re-renders completion bar + stats
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Could not save profile'));
+  }
+}
+
 async function renderCreatorDealHistory() {
   const el = document.getElementById('creator-deal-history');
   if (!el || state.role !== 'creator') return;
@@ -1834,25 +2522,28 @@ async function renderCreatorDealHistory() {
 
   try {
     const deals = await apiGet('/api/deals');
-    const completed = deals.filter(d => d.status === 'completed');
-    if (!completed.length) return;
+    const active = deals.filter(d => d.status !== 'declined');
+    if (!active.length) return;
 
+    const completed = active.filter(d => d.status === 'completed').length;
     el.innerHTML = `
-      <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 class="font-bold text-lg mb-1">Deal History</h2>
+      <div class="bg-white rounded-2xl border border-gray-200 p-6 mt-6">
+        <h2 class="font-bold text-lg mb-1">My Deals</h2>
         <p class="text-sm text-gray-500 mb-4">
-          ${completed.length} completed deal${completed.length !== 1 ? 's' : ''} — this is your public track record on CourtCollab
+          ${active.length} deal${active.length !== 1 ? 's' : ''} · ${completed} completed
         </p>
         <div class="divide-y divide-gray-100">
-          ${completed.map(d => `
-            <div class="flex items-center justify-between py-3">
-              <div class="min-w-0 mr-3">
-                <div class="font-medium text-sm">${escHtml(d.brand_name || 'Brand')}</div>
-                <div class="text-xs text-gray-500 truncate">${escHtml(d.campaign_title || '')}</div>
+          ${active.map(d => `
+            <div class="py-3">
+              <div class="flex items-center justify-between mb-2">
+                <div class="min-w-0 mr-3">
+                  <div class="font-medium text-sm">${escHtml(d.brand_name || 'Brand')}</div>
+                  <div class="text-xs text-gray-500 truncate">${escHtml(d.campaign_title || '')}</div>
+                </div>
+                <span class="font-semibold text-pickle-700 text-sm flex-shrink-0">$${(d.amount || 0).toLocaleString()}</span>
               </div>
-              <div class="text-right flex-shrink-0 flex flex-col items-end gap-1">
-                <span class="font-semibold text-pickle-700 text-sm">$${(d.amount || 0).toLocaleString()}</span>
-                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Completed</span>
+              <div class="flex items-center gap-1">
+                ${dealStepperMiniHtml(d.status)}
               </div>
             </div>
           `).join('')}
@@ -1914,22 +2605,29 @@ async function renderPayments() {
     }
 
     historyEl.innerHTML = payments.map(p => {
-      const statusColor = p.status === 'released'  ? 'bg-green-100 text-green-700'  :
-                          p.status === 'held'       ? 'bg-yellow-100 text-yellow-700' :
-                          p.status === 'refunded'   ? 'bg-red-100 text-red-700'      :
-                                                      'bg-gray-100 text-gray-600';
+      const payStatusColor = p.status === 'released'  ? 'bg-green-100 text-green-700'  :
+                             p.status === 'held'       ? 'bg-yellow-100 text-yellow-700' :
+                             p.status === 'refunded'   ? 'bg-red-100 text-red-700'      :
+                                                         'bg-gray-100 text-gray-600';
       const date = p.created_at ? new Date(p.created_at).toLocaleDateString() : '';
+      // Map payment status to deal status for the mini stepper
+      const dealStatusForStep = p.deal_status || (p.status === 'released' ? 'completed' : 'active');
       return `
-        <div class="flex items-center justify-between p-4 border border-gray-100 rounded-xl mb-2">
-          <div>
-            <div class="font-semibold text-sm">${p.campaign_title || 'Campaign'}</div>
-            <div class="text-xs text-gray-500">${state.role === 'brand' ? 'To: ' + p.creator_name : 'From: ' + p.brand_name} · ${date}</div>
+        <div class="p-4 border border-gray-100 rounded-xl mb-2">
+          <div class="flex items-center justify-between mb-2.5">
+            <div class="min-w-0 mr-3">
+              <div class="font-semibold text-sm">${escHtml(p.campaign_title || 'Campaign')}</div>
+              <div class="text-xs text-gray-500">${escHtml(state.role === 'brand' ? 'To: ' + (p.creator_name||'') : 'From: ' + (p.brand_name||''))} · ${date}</div>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <div class="font-bold">${state.role === 'brand' ? '$' + (p.amount || 0).toLocaleString() : '$' + (p.creator_payout || 0).toLocaleString()}</div>
+              <span class="tag ${payStatusColor} text-xs">${p.status}</span>
+              ${p.status === 'held' && state.role === 'brand' ?
+                `<button onclick="releasePayment(${p.id})" class="ml-1 text-xs bg-pickle-600 text-white px-2 py-1 rounded-lg hover:bg-pickle-700 transition">Release</button>` : ''}
+            </div>
           </div>
-          <div class="text-right">
-            <div class="font-bold">${state.role === 'brand' ? '$' + (p.amount || 0).toLocaleString() : '$' + (p.creator_payout || 0).toLocaleString()}</div>
-            <span class="tag ${statusColor} text-xs">${p.status}</span>
-            ${p.status === 'held' && state.role === 'brand' ?
-              `<button onclick="releasePayment(${p.id})" class="ml-2 text-xs bg-pickle-600 text-white px-2 py-1 rounded-lg hover:bg-pickle-700 transition">Release</button>` : ''}
+          <div class="flex items-center gap-1 pt-2 border-t border-gray-50">
+            ${dealStepperMiniHtml(dealStatusForStep)}
           </div>
         </div>
       `;
@@ -2149,6 +2847,394 @@ async function signContract() {
   }
 }
 
+// --- Dispute Resolution ---
+let _disputeDealId = null;
+let _disputeId     = null;
+
+function openDisputeModal(dealId) {
+  _disputeDealId = dealId;
+  const ta = document.getElementById('dispute-reason');
+  if (ta) ta.value = '';
+  document.getElementById('dispute-modal').classList.remove('hidden');
+}
+
+async function submitDispute() {
+  const reason = (document.getElementById('dispute-reason')?.value || '').trim();
+  if (reason.length < 10) {
+    showToast('Please describe the issue in at least 10 characters.', 'error');
+    return;
+  }
+  try {
+    await apiPost(`/api/deals/${_disputeDealId}/dispute`, { reason });
+    closeModal('dispute-modal');
+    showToast('Dispute filed. Our team will review and contact both parties.', 'success');
+    if (state.activePartner) openConversation(state.activePartner);
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Could not file dispute'));
+  }
+}
+
+async function openDisputeDetailModal(dealId) {
+  _disputeDealId = dealId;
+  const modal = document.getElementById('dispute-detail-modal');
+  if (!modal) return;
+
+  // Reset
+  document.getElementById('dispute-reason-text').textContent    = '';
+  document.getElementById('dispute-meta').textContent           = '';
+  document.getElementById('dispute-comments-list').innerHTML    = '<p class="text-sm text-gray-400 text-center py-4">Loading…</p>';
+  document.getElementById('dispute-resolution-section').classList.add('hidden');
+  document.getElementById('dispute-admin-controls').classList.add('hidden');
+  document.getElementById('dispute-comment-area').classList.remove('hidden');
+  modal.classList.remove('hidden');
+
+  try {
+    const dispute = await apiGet(`/api/deals/${dealId}/dispute`);
+    if (!dispute) {
+      document.getElementById('dispute-reason-text').textContent = 'No dispute found.';
+      return;
+    }
+
+    _disputeId = dispute.id;
+
+    // Status badge
+    const badge = document.getElementById('dispute-status-badge');
+    if (badge) {
+      const colours = { open: 'bg-red-100 text-red-700', resolved: 'bg-green-100 text-green-700', closed: 'bg-gray-100 text-gray-600' };
+      badge.className = `inline-block mt-0.5 text-xs font-semibold px-2.5 py-0.5 rounded-full ${colours[dispute.status] || colours.open}`;
+      badge.textContent = dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1);
+    }
+
+    // Meta + reason
+    const filed = dispute.created_at ? new Date(dispute.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    document.getElementById('dispute-meta').textContent =
+      `Filed by ${escHtml(dispute.filed_by_name)} (${dispute.filed_by_role}) · ${filed}`;
+    document.getElementById('dispute-reason-text').textContent = dispute.reason;
+
+    // Resolution
+    if (dispute.resolution) {
+      document.getElementById('dispute-resolution-section').classList.remove('hidden');
+      document.getElementById('dispute-resolution-text').textContent = dispute.resolution;
+    }
+
+    // Comments
+    const commentsEl = document.getElementById('dispute-comments-list');
+    if (!dispute.comments || dispute.comments.length === 0) {
+      commentsEl.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">No messages yet.</p>';
+    } else {
+      commentsEl.innerHTML = dispute.comments.map(c => {
+        const isMe = c.author_id === state.currentUser?.id;
+        const time = c.created_at ? new Date(c.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+        const adminBadge = c.is_admin ? '<span class="ml-1 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-semibold">Admin</span>' : '';
+        return `
+          <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+            <div class="max-w-xs">
+              <div class="text-xs text-gray-500 mb-0.5 ${isMe ? 'text-right' : ''}">
+                ${escHtml(c.author_name)}${adminBadge}
+              </div>
+              <div class="${isMe ? 'bg-pickle-600 text-white' : 'bg-gray-100 text-gray-800'} px-3 py-2 rounded-xl text-sm">
+                ${escHtml(c.body)}
+              </div>
+              <div class="text-xs text-gray-400 mt-0.5 ${isMe ? 'text-right' : ''}">${time}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Closed → hide comment box
+    if (dispute.status === 'closed') {
+      document.getElementById('dispute-comment-area').classList.add('hidden');
+    }
+
+    // Admin controls
+    const isAdmin = ADMIN_EMAILS.includes(state.currentUser?.email);
+    if (isAdmin && dispute.status !== 'closed') {
+      document.getElementById('dispute-admin-controls').classList.remove('hidden');
+      const resolutionInput = document.getElementById('dispute-admin-resolution');
+      if (resolutionInput) resolutionInput.value = dispute.resolution || '';
+    }
+  } catch (err) {
+    document.getElementById('dispute-reason-text').textContent = 'Failed to load dispute.';
+    showToast('⚠ ' + (err.message || 'Could not load dispute'));
+  }
+}
+
+async function submitDisputeComment() {
+  const body = (document.getElementById('dispute-comment-input')?.value || '').trim();
+  if (!body) { showToast('Please enter a message.'); return; }
+  try {
+    await apiPost(`/api/disputes/${_disputeId}/comment`, { body });
+    document.getElementById('dispute-comment-input').value = '';
+    await openDisputeDetailModal(_disputeDealId);
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Could not send message'));
+  }
+}
+
+async function resolveDispute(newStatus) {
+  const resolution = (document.getElementById('dispute-admin-resolution')?.value || '').trim() || null;
+  try {
+    await apiPatch(`/api/disputes/${_disputeId}`, { status: newStatus, resolution });
+    showToast(newStatus === 'resolved' ? '✅ Dispute marked resolved!' : '🔒 Dispute closed.', 'success');
+    await openDisputeDetailModal(_disputeDealId);
+    renderAdmin();
+  } catch (err) {
+    showToast('⚠ ' + (err.message || 'Could not update dispute'));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Onboarding Wizard
+// ---------------------------------------------------------------------------
+
+const _ONBOARD_NICHES     = ['Tutorials & Tips','Pro Match Highlights','Gear Reviews','Comedy & Entertainment','Lifestyle & Fitness','News & Commentary'];
+const _ONBOARD_SKILLS_LVL = ['Beginner (2.0-2.5)','Intermediate (3.0-3.5)','Advanced (4.0-4.5)','Pro (5.0+)'];
+const _ONBOARD_SKILLS     = ['Short Form Video','Long Form Video','Editing','UGC','Photography','Live Streaming','Voice Overs','Podcast'];
+const _ONBOARD_INDUSTRIES = ['Paddles & Equipment','Apparel','Footwear','Training & Coaching','Sports Nutrition','Accessories','Technology','Other'];
+
+let _onboardUser         = null;
+let _onboardStep         = 1;
+let _onboardTotalSteps   = 3;
+let _onboardNiche        = '';
+let _onboardSkillLvl     = '';
+let _onboardSkills       = [];
+let _onboardIndustry     = '';
+
+function _onboardPills(containerId, items, type, multi = false) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = items.map(item => {
+    const fn = multi ? `onboardToggleSkill(this,'${item.replace(/'/g,"\\'")}')` : `onboardSelectPill(this,'${type}','${item.replace(/'/g,"\\'")}')`;
+    return `<button type="button" onclick="${fn}"
+      class="onboard-pill text-sm px-3 py-1.5 rounded-full border border-gray-300 text-gray-700 hover:border-pickle-500 hover:bg-pickle-50 transition-all">${item}</button>`;
+  }).join('');
+}
+
+function startOnboarding(user) {
+  // Only show for brand-new users; skip admins and returning users
+  if (!user || ADMIN_EMAILS.includes(user.email)) return;
+  if (localStorage.getItem(`onboarded_${user.id}`)) return;
+
+  _onboardUser       = user;
+  _onboardStep       = 1;
+  _onboardNiche      = '';
+  _onboardSkillLvl   = '';
+  _onboardSkills     = [];
+  _onboardIndustry   = '';
+
+  const isCreator      = user.role === 'creator';
+  _onboardTotalSteps   = isCreator ? 3 : 2;
+  const firstName      = user.name.split(' ')[0];
+
+  // ── Welcome step ──
+  const emojiEl = document.getElementById('onboard-emoji');
+  const titleEl = document.getElementById('onboard-title');
+  const subEl   = document.getElementById('onboard-sub');
+  const ctaEl   = document.getElementById('onboard-cta-btn');
+  const bullEl  = document.getElementById('onboard-bullets');
+
+  if (emojiEl) emojiEl.textContent = isCreator ? '🎾' : '🏢';
+  if (titleEl) titleEl.textContent = `Welcome, ${firstName}!`;
+  if (subEl)   subEl.textContent   = isCreator
+    ? "Let's get your creator profile ready — it only takes 2 minutes."
+    : "Let's get your brand set up so you can start finding creators.";
+  if (ctaEl)   ctaEl.textContent   = isCreator ? "Let's set it up →" : "Let's get started →";
+
+  if (bullEl) {
+    bullEl.innerHTML = isCreator
+      ? `<div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Your profile is your media kit.</strong><p class="text-xs text-gray-500 mt-0.5">Brands discover you by niche, skill level, and audience size.</p></div></div>
+         <div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Every deal builds your track record.</strong><p class="text-xs text-gray-500 mt-0.5">Completed campaigns and reviews appear on your public profile.</p></div></div>
+         <div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Contracts, payments & protection built in.</strong><p class="text-xs text-gray-500 mt-0.5">Auto-generated contracts, escrow payments, and dispute support.</p></div></div>`
+      : `<div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Browse verified pickleball creators.</strong><p class="text-xs text-gray-500 mt-0.5">Filter by niche, audience size, skill level, and rates.</p></div></div>
+         <div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Post campaigns and get matched instantly.</strong><p class="text-xs text-gray-500 mt-0.5">Our AI scores creators against your brief and budget.</p></div></div>
+         <div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Deals, contracts & payments in one place.</strong><p class="text-xs text-gray-500 mt-0.5">No more back-and-forth emails or chasing invoices.</p></div></div>`;
+  }
+
+  // ── Step 2 setup ──
+  const s2Title  = document.getElementById('onboard-s2-title');
+  const s2Sub    = document.getElementById('onboard-s2-sub');
+  const s2Next   = document.getElementById('onboard-s2-next');
+  const creatorF = document.getElementById('onboard-creator-fields');
+  const brandF   = document.getElementById('onboard-brand-fields');
+
+  if (isCreator) {
+    if (s2Title) s2Title.textContent = 'What do you create?';
+    if (s2Sub)   s2Sub.textContent   = 'Help brands understand your content and find you faster.';
+    if (s2Next)  s2Next.textContent  = 'Next →';
+    if (creatorF) creatorF.classList.remove('hidden');
+    if (brandF)   brandF.classList.add('hidden');
+    _onboardPills('onboard-niche-pills',  _ONBOARD_NICHES,     'niche');
+    _onboardPills('onboard-skill-pills',  _ONBOARD_SKILLS_LVL, 'skill');
+    _onboardPills('onboard-skills-pills', _ONBOARD_SKILLS,     'skills', true);
+  } else {
+    if (s2Title) s2Title.textContent = 'Tell us about your brand';
+    if (s2Sub)   s2Sub.textContent   = 'Creators will see this when reviewing your campaign briefs.';
+    if (s2Next)  s2Next.textContent  = 'Finish & go to dashboard 🎾';
+    if (brandF)   brandF.classList.remove('hidden');
+    if (creatorF) creatorF.classList.add('hidden');
+    _onboardPills('onboard-industry-pills', _ONBOARD_INDUSTRIES, 'industry');
+  }
+
+  // ── Dot visibility ──
+  const dot3 = document.getElementById('onboard-dot-3');
+  if (dot3) dot3.style.display = isCreator ? '' : 'none';
+
+  _onboardGoToStep(1);
+
+  const overlay = document.getElementById('onboarding-overlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+  }
+}
+
+function _onboardGoToStep(n) {
+  _onboardStep = n;
+
+  // Show correct step panel with animation
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById(`onboard-step-${i}`);
+    if (!el) continue;
+    if (i === n) {
+      el.classList.remove('hidden');
+      el.classList.add('onboard-step-visible');
+    } else {
+      el.classList.add('hidden');
+      el.classList.remove('onboard-step-visible');
+    }
+  }
+
+  // Progress bar
+  const pct = Math.round((n / _onboardTotalSteps) * 100);
+  const bar = document.getElementById('onboard-progress');
+  if (bar) bar.style.width = pct + '%';
+
+  // Step dots
+  for (let i = 1; i <= 3; i++) {
+    const dot = document.getElementById(`onboard-dot-${i}`);
+    if (!dot) continue;
+    if (i <= n) {
+      dot.style.background = '#2F4F2F';
+    } else {
+      dot.style.background = '#e5e7eb';
+    }
+  }
+}
+
+function onboardSelectPill(btn, type, value) {
+  // Single-select — reset siblings in same container
+  btn.parentElement.querySelectorAll('.onboard-pill').forEach(p => p.classList.remove('onboard-pill-active'));
+  btn.classList.add('onboard-pill-active');
+  if (type === 'niche')    _onboardNiche    = value;
+  if (type === 'skill')    _onboardSkillLvl = value;
+  if (type === 'industry') _onboardIndustry = value;
+}
+
+function onboardToggleSkill(btn, skill) {
+  const idx = _onboardSkills.indexOf(skill);
+  if (idx >= 0) {
+    _onboardSkills.splice(idx, 1);
+    btn.classList.remove('onboard-pill-active');
+  } else {
+    _onboardSkills.push(skill);
+    btn.classList.add('onboard-pill-active');
+  }
+}
+
+async function onboardNext() {
+  const isCreator = _onboardUser?.role === 'creator';
+
+  if (_onboardStep === 1) {
+    _onboardGoToStep(2);
+    return;
+  }
+
+  if (_onboardStep === 2) {
+    if (isCreator) {
+      // Save step 2 — best-effort, non-blocking
+      _onboardSaveCreatorStep2();
+      _onboardGoToStep(3);
+    } else {
+      // Brand: step 2 is final
+      await _onboardSaveBrand();
+      _onboardClose(true);
+    }
+  }
+}
+
+function onboardBack() {
+  if (_onboardStep > 1) _onboardGoToStep(_onboardStep - 1);
+}
+
+async function onboardFinish() {
+  // Save step 3 (creator audience & rates)
+  try {
+    const ig  = parseInt(document.getElementById('onboard-ig')?.value  || '0') || 0;
+    const tt  = parseInt(document.getElementById('onboard-tt')?.value  || '0') || 0;
+    const yt  = parseInt(document.getElementById('onboard-yt')?.value  || '0') || 0;
+    const eng = parseFloat(document.getElementById('onboard-engagement')?.value || '0') || 0;
+    const rIg  = parseInt(document.getElementById('onboard-rate-ig')?.value  || '0') || 0;
+    const rTt  = parseInt(document.getElementById('onboard-rate-tt')?.value  || '0') || 0;
+    const rYt  = parseInt(document.getElementById('onboard-rate-yt')?.value  || '0') || 0;
+    const rUgc = parseInt(document.getElementById('onboard-rate-ugc')?.value  || '0') || 0;
+    const payload = {};
+    if (ig)   payload.followers_ig    = ig;
+    if (tt)   payload.followers_tt    = tt;
+    if (yt)   payload.followers_yt    = yt;
+    if (eng)  payload.engagement_rate = eng;
+    if (rIg)  payload.rate_ig         = rIg;
+    if (rTt)  payload.rate_tiktok     = rTt;
+    if (rYt)  payload.rate_yt         = rYt;
+    if (rUgc) payload.rate_ugc        = rUgc;
+    if (Object.keys(payload).length) await apiPut('/api/creator/profile', payload);
+  } catch (_) { /* best-effort */ }
+  _onboardClose(true);
+}
+
+function onboardSkip() {
+  _onboardClose(false);
+}
+
+function _onboardClose(saved = false) {
+  if (_onboardUser) localStorage.setItem(`onboarded_${_onboardUser.id}`, '1');
+  const overlay = document.getElementById('onboarding-overlay');
+  if (overlay) overlay.style.display = 'none';
+  _onboardUser = null;
+  if (saved) showToast('Profile saved! Welcome to CourtCollab 🎾', 'success');
+}
+
+function _onboardSaveCreatorStep2() {
+  try {
+    const location = document.getElementById('onboard-location')?.value.trim() || '';
+    const bio      = document.getElementById('onboard-bio')?.value.trim() || '';
+    const payload  = {};
+    if (_onboardNiche)             payload.niche       = _onboardNiche;
+    if (_onboardSkillLvl)          payload.skill_level = _onboardSkillLvl;
+    if (_onboardSkills.length)     payload.skills      = _onboardSkills;
+    if (location)                  payload.location    = location;
+    if (bio)                       payload.bio         = bio;
+    if (Object.keys(payload).length) apiPut('/api/creator/profile', payload).catch(() => {});
+  } catch (_) { /* best-effort */ }
+}
+
+async function _onboardSaveBrand() {
+  try {
+    const website    = document.getElementById('onboard-website')?.value.trim() || '';
+    const budgetMin  = parseInt(document.getElementById('onboard-budget-min')?.value || '0') || 0;
+    const budgetMax  = parseInt(document.getElementById('onboard-budget-max')?.value || '0') || 0;
+    const desc       = document.getElementById('onboard-brand-desc')?.value.trim() || '';
+    const payload = {};
+    if (_onboardIndustry) payload.industry    = _onboardIndustry;
+    if (website)          payload.website     = website;
+    if (budgetMin)        payload.budget_min  = budgetMin;
+    if (budgetMax)        payload.budget_max  = budgetMax;
+    if (desc)             payload.description = desc;
+    if (Object.keys(payload).length) await apiPut('/api/brand/profile', payload);
+  } catch (_) { /* best-effort */ }
+}
+
 // --- Contact ---
 function renderContact() {
   const form = document.getElementById('contact-form');
@@ -2177,11 +3263,12 @@ async function renderAdmin() {
   listEl.innerHTML = '<div class="px-6 py-12 text-center text-gray-400">Loading users…</div>';
 
   // Fetch all data in parallel
-  const [usersResult, paymentsResult, dealsResult, messagesResult] = await Promise.allSettled([
+  const [usersResult, paymentsResult, dealsResult, messagesResult, disputesResult] = await Promise.allSettled([
     apiGet('/api/admin/users'),
     apiGet('/api/payments'),
     apiGet('/api/deals'),
     apiGet('/api/messages'),
+    apiGet('/api/admin/disputes'),
   ]);
 
   // ── Users ──
@@ -2249,6 +3336,50 @@ async function renderAdmin() {
   const msgCount = Array.isArray(messages) ? messages.length : 0;
   const msgEl = document.getElementById('admin-stat-messages');
   if (msgEl) msgEl.textContent = msgCount.toLocaleString();
+
+  // ── Disputes ──
+  const disputesEl    = document.getElementById('admin-disputes-list');
+  const disputeCount  = document.getElementById('admin-disputes-count');
+  const disputes      = disputesResult.status === 'fulfilled' ? (disputesResult.value || []) : [];
+  const openDisputes  = disputes.filter(d => d.status === 'open');
+  if (disputeCount) {
+    disputeCount.textContent = openDisputes.length ? `${openDisputes.length} open` : 'None';
+    disputeCount.className = `text-xs font-semibold px-2 py-0.5 rounded-full ${openDisputes.length ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`;
+  }
+  if (disputesEl) {
+    if (!disputes.length) {
+      disputesEl.innerHTML = '<div class="px-6 py-8 text-center text-gray-400 text-sm flex flex-col items-center gap-2"><span class="text-2xl">✅</span>No disputes filed</div>';
+    } else {
+      disputesEl.innerHTML = disputes.map(d => {
+        const statusColour = { open: 'bg-red-100 text-red-700', resolved: 'bg-green-100 text-green-700', closed: 'bg-gray-100 text-gray-600' };
+        const sc = statusColour[d.status] || statusColour.open;
+        const date = d.created_at ? d.created_at.slice(0, 10) : '';
+        const reasonSnippet = (d.reason || '').slice(0, 120) + ((d.reason || '').length > 120 ? '…' : '');
+        return `
+          <div class="flex items-start gap-4 px-6 py-4 hover:bg-gray-50 transition">
+            <div class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-base">🚩</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap mb-0.5">
+                <span class="font-semibold text-gray-900 text-sm">Deal #${d.deal_id}</span>
+                <span class="text-xs ${sc} px-2 py-0.5 rounded-full font-semibold">${d.status}</span>
+                <span class="text-xs text-gray-400">${escHtml(d.campaign_title || '')}</span>
+              </div>
+              <p class="text-xs text-gray-500 mb-1">
+                Filed by <strong>${escHtml(d.filed_by_name)}</strong> (${d.filed_by_role}) ·
+                ${escHtml(d.brand_name)} ↔ ${escHtml(d.creator_name)} · ${date}
+                ${d.comment_count > 0 ? `· <span class="text-pickle-600">${d.comment_count} message${d.comment_count > 1 ? 's' : ''}</span>` : ''}
+              </p>
+              <p class="text-xs text-gray-600 line-clamp-2">${escHtml(reasonSnippet)}</p>
+            </div>
+            <button onclick="openDisputeDetailModal(${d.deal_id})"
+              class="text-xs bg-pickle-600 text-white px-3 py-1.5 rounded-lg hover:bg-pickle-700 transition font-medium whitespace-nowrap flex-shrink-0">
+              ${d.status === 'open' ? 'Review' : 'View'}
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+  }
 
   // ── Recent Signups ──
   const signupsEl = document.getElementById('admin-recent-signups');

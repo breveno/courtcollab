@@ -1179,6 +1179,16 @@ class RatingIn(BaseModel):
     score:   int            = Field(ge=1, le=5)
     comment: Optional[str] = None
 
+class DisputeIn(BaseModel):
+    reason: str = Field(min_length=10, max_length=2000)
+
+class DisputeCommentIn(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+class DisputeUpdateIn(BaseModel):
+    status:     str            # 'open' | 'resolved' | 'closed'
+    resolution: Optional[str] = None
+
 # ---------------------------------------------------------------------------
 # Routes — Deals
 # ---------------------------------------------------------------------------
@@ -2352,6 +2362,258 @@ def admin_delete_users(body: AdminDeleteIn, admin: dict = Depends(require_admin)
         conn.commit()
 
     return {"deleted": len(safe_ids), "ids": safe_ids}
+
+
+# ---------------------------------------------------------------------------
+# Routes — Disputes
+# ---------------------------------------------------------------------------
+
+@app.post("/api/deals/{deal_id}/dispute", status_code=201)
+def file_dispute(deal_id: int, body: DisputeIn, request: Request,
+                 user: dict = Depends(current_user)):
+    """
+    File a dispute on an active or completed deal.
+    Both the brand and creator in the deal can file; only one dispute per deal.
+    """
+    uid = user["id"]
+    with get_conn() as conn:
+        deal = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+        if not deal:
+            raise HTTPException(404, "Deal not found")
+        if deal["brand_id"] != uid and deal["creator_id"] != uid:
+            raise HTTPException(403, "Not a participant in this deal")
+        if deal["status"] not in ("active", "completed"):
+            raise HTTPException(400, "Disputes can only be filed on active or completed deals")
+
+        # Check for existing dispute
+        existing = _row(conn, "SELECT id FROM disputes WHERE deal_id = ?", (deal_id,))
+        if existing:
+            raise HTTPException(409, "A dispute has already been filed for this deal")
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cur = conn.execute(
+            "INSERT INTO disputes (deal_id, filed_by, reason, status, created_at, updated_at) VALUES (?, ?, ?, 'open', ?, ?)",
+            (deal_id, uid, body.reason.strip(), now, now)
+        )
+        dispute_id = cur.lastrowid
+        conn.commit()
+
+    # Notify the other party + admins
+    other_id = deal["brand_id"] if uid == deal["creator_id"] else deal["creator_id"]
+    filer_name = user.get("name", "Someone")
+    with get_conn() as conn:
+        other = _row(conn, "SELECT email, name FROM users WHERE id = ?", (other_id,))
+
+    if other:
+        _send_email(
+            other["email"],
+            f"Dispute Filed — Deal #{deal_id}",
+            f"Hi {other['name']},\n\n{filer_name} has filed a dispute on your deal (#{deal_id}).\n\n"
+            f"Reason:\n{body.reason}\n\n"
+            "Log in to CourtCollab to respond and our team will mediate.\n\nCourtCollab",
+        )
+    _send_email(
+        ADMIN_EMAILS[0],
+        f"[Admin] New Dispute — Deal #{deal_id}",
+        f"A dispute has been filed by user #{uid} ({filer_name}) on deal #{deal_id}.\n\n"
+        f"Reason:\n{body.reason}",
+    )
+
+    return {"id": dispute_id, "status": "open"}
+
+
+@app.get("/api/deals/{deal_id}/dispute")
+def get_dispute(deal_id: int, user: dict = Depends(current_user)):
+    """Return the dispute for a deal (if any) including all comments."""
+    uid = user["id"]
+    is_admin = user.get("email") in ADMIN_EMAILS
+    with get_conn() as conn:
+        deal = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+        if not deal:
+            raise HTTPException(404, "Deal not found")
+        if not is_admin and deal["brand_id"] != uid and deal["creator_id"] != uid:
+            raise HTTPException(403, "Not authorised")
+
+        dispute = _row(conn, """
+            SELECT d.*, u.name AS filed_by_name, u.role AS filed_by_role
+            FROM disputes d
+            JOIN users u ON u.id = d.filed_by
+            WHERE d.deal_id = ?
+        """, (deal_id,))
+
+        if not dispute:
+            return None
+
+        comments = _rows(conn, """
+            SELECT dc.*, u.name AS author_name, u.role AS author_role
+            FROM dispute_comments dc
+            JOIN users u ON u.id = dc.author_id
+            WHERE dc.dispute_id = ?
+            ORDER BY dc.created_at ASC
+        """, (dispute["id"],))
+
+    dispute["comments"] = comments
+    return dispute
+
+
+@app.post("/api/disputes/{dispute_id}/comment", status_code=201)
+def add_dispute_comment(dispute_id: int, body: DisputeCommentIn,
+                        user: dict = Depends(current_user)):
+    """Post a comment on a dispute (participants or admin)."""
+    uid = user["id"]
+    is_admin = user.get("email") in ADMIN_EMAILS
+    with get_conn() as conn:
+        dispute = _row(conn, "SELECT * FROM disputes WHERE id = ?", (dispute_id,))
+        if not dispute:
+            raise HTTPException(404, "Dispute not found")
+
+        deal = _row(conn, "SELECT * FROM deals WHERE id = ?", (dispute["deal_id"],))
+        if not is_admin and deal["brand_id"] != uid and deal["creator_id"] != uid:
+            raise HTTPException(403, "Not authorised")
+
+        if dispute["status"] == "closed":
+            raise HTTPException(400, "This dispute has been closed")
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute(
+            "INSERT INTO dispute_comments (dispute_id, author_id, body, is_admin, created_at) VALUES (?, ?, ?, ?, ?)",
+            (dispute_id, uid, body.body.strip(), 1 if is_admin else 0, now)
+        )
+        conn.commit()
+
+    return {"ok": True}
+
+
+@app.patch("/api/disputes/{dispute_id}")
+def update_dispute(dispute_id: int, body: DisputeUpdateIn,
+                   admin: dict = Depends(require_admin)):
+    """Admin-only: update dispute status and optionally add a resolution note."""
+    if body.status not in ("open", "resolved", "closed"):
+        raise HTTPException(400, "Invalid status")
+    with get_conn() as conn:
+        dispute = _row(conn, "SELECT * FROM disputes WHERE id = ?", (dispute_id,))
+        if not dispute:
+            raise HTTPException(404, "Dispute not found")
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute(
+            "UPDATE disputes SET status = ?, resolution = ?, updated_at = ? WHERE id = ?",
+            (body.status, body.resolution, now, dispute_id)
+        )
+        conn.commit()
+
+    # Notify both parties
+    deal_id = dispute["deal_id"]
+    with get_conn() as conn:
+        deal = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+        if deal:
+            for pid in (deal["brand_id"], deal["creator_id"]):
+                p = _row(conn, "SELECT email, name FROM users WHERE id = ?", (pid,))
+                if p:
+                    _send_email(
+                        p["email"],
+                        f"Dispute Update — Deal #{deal_id}",
+                        f"Hi {p['name']},\n\nYour dispute on deal #{deal_id} has been updated.\n\n"
+                        f"Status: {body.status.upper()}\n"
+                        + (f"Resolution:\n{body.resolution}\n" if body.resolution else "")
+                        + "\nLog in to CourtCollab to view full details.\n\nCourtCollab",
+                    )
+
+    return {"ok": True}
+
+
+@app.get("/api/admin/disputes")
+def admin_list_disputes(admin: dict = Depends(require_admin)):
+    """Return all disputes ordered by creation date (newest first)."""
+    with get_conn() as conn:
+        disputes = _rows(conn, """
+            SELECT
+                d.id,
+                d.deal_id,
+                d.reason,
+                d.status,
+                d.resolution,
+                d.created_at,
+                d.updated_at,
+                u.name  AS filed_by_name,
+                u.role  AS filed_by_role,
+                c.title AS campaign_title,
+                ub.name AS brand_name,
+                uc.name AS creator_name,
+                (SELECT COUNT(*) FROM dispute_comments dc WHERE dc.dispute_id = d.id) AS comment_count
+            FROM disputes d
+            JOIN users u     ON u.id  = d.filed_by
+            JOIN deals  dl   ON dl.id = d.deal_id
+            JOIN campaigns c ON c.id  = dl.campaign_id
+            JOIN users ub    ON ub.id = dl.brand_id
+            JOIN users uc    ON uc.id = dl.creator_id
+            ORDER BY d.created_at DESC
+        """)
+    return disputes
+
+
+# ---------------------------------------------------------------------------
+# Saved Creators
+# ---------------------------------------------------------------------------
+
+@app.post("/api/saved-creators/{creator_id}", status_code=200)
+def toggle_saved_creator(creator_id: int, user: dict = Depends(current_user)):
+    """Toggle save/unsave a creator for the current brand. Returns {saved: bool}."""
+    if user["role"] != "brand":
+        raise HTTPException(403, "Brands only")
+    with get_conn() as conn:
+        existing = _row(conn,
+            "SELECT id FROM saved_creators WHERE brand_id=? AND creator_id=?",
+            (user["id"], creator_id))
+        if existing:
+            conn.execute("DELETE FROM saved_creators WHERE brand_id=? AND creator_id=?",
+                         (user["id"], creator_id))
+            conn.commit()
+            return {"saved": False}
+        else:
+            conn.execute("INSERT INTO saved_creators (brand_id, creator_id) VALUES (?,?)",
+                         (user["id"], creator_id))
+            conn.commit()
+            return {"saved": True}
+
+
+@app.get("/api/saved-creators/ids")
+def get_saved_creator_ids(user: dict = Depends(current_user)):
+    """Return list of saved creator user_ids for the current brand."""
+    if user["role"] != "brand":
+        return []
+    with get_conn() as conn:
+        rows = _rows(conn,
+            "SELECT creator_id FROM saved_creators WHERE brand_id=?",
+            (user["id"],))
+    return [r["creator_id"] for r in rows]
+
+
+@app.get("/api/saved-creators")
+def get_saved_creators(user: dict = Depends(current_user)):
+    """Return full creator profiles for all saved creators (same shape as /api/creators)."""
+    if user["role"] != "brand":
+        return []
+    with get_conn() as conn:
+        rows = _rows(conn, """
+            SELECT cp.*, u.email
+            FROM saved_creators sc
+            JOIN creator_profiles cp ON cp.user_id = sc.creator_id
+            JOIN users u             ON u.id        = sc.creator_id
+            WHERE sc.brand_id = ?
+            ORDER BY sc.created_at DESC
+        """, (user["id"],))
+    results = []
+    for r in rows:
+        r["skills"]         = json.loads(r.get("skills") or "[]")
+        r["social_handles"] = json.loads(r.get("social_handles") or "{}")
+        r["total_followers"] = (
+            (r.get("followers_ig") or 0) +
+            (r.get("followers_tt") or 0) +
+            (r.get("followers_yt") or 0)
+        )
+        results.append(r)
+    return results
 
 
 # ---------------------------------------------------------------------------

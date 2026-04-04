@@ -333,6 +333,45 @@ def _init_pg():
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_contracts_deal ON contracts(deal_id)")
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS disputes (
+                id          SERIAL PRIMARY KEY,
+                deal_id     INTEGER NOT NULL UNIQUE REFERENCES deals(id) ON DELETE CASCADE,
+                filed_by    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                reason      TEXT    NOT NULL,
+                status      TEXT    NOT NULL DEFAULT 'open'
+                                CHECK(status IN ('open','resolved','closed')),
+                resolution  TEXT,
+                created_at  TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                updated_at  TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS')
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_disputes_deal     ON disputes(deal_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_disputes_filed_by ON disputes(filed_by)")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS dispute_comments (
+                id          SERIAL PRIMARY KEY,
+                dispute_id  INTEGER NOT NULL REFERENCES disputes(id) ON DELETE CASCADE,
+                author_id   INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+                body        TEXT    NOT NULL,
+                is_admin    INTEGER NOT NULL DEFAULT 0,
+                created_at  TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS')
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_dcomments_dispute ON dispute_comments(dispute_id)")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS saved_creators (
+                id          SERIAL PRIMARY KEY,
+                brand_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                creator_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at  TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                UNIQUE(brand_id, creator_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_brand ON saved_creators(brand_id)")
+
         # Migrations — add columns to existing tables if they don't exist yet
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token         TEXT")
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TEXT")
@@ -515,6 +554,42 @@ def _init_sqlite():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_contracts_deal ON contracts(deal_id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS disputes (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                deal_id     INTEGER NOT NULL UNIQUE REFERENCES deals(id) ON DELETE CASCADE,
+                filed_by    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                reason      TEXT    NOT NULL,
+                status      TEXT    NOT NULL DEFAULT 'open'
+                                CHECK(status IN ('open','resolved','closed')),
+                resolution  TEXT,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_disputes_deal     ON disputes(deal_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_disputes_filed_by ON disputes(filed_by)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS dispute_comments (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                dispute_id  INTEGER NOT NULL REFERENCES disputes(id) ON DELETE CASCADE,
+                author_id   INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+                body        TEXT    NOT NULL,
+                is_admin    INTEGER NOT NULL DEFAULT 0,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_dcomments_dispute ON dispute_comments(dispute_id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS saved_creators (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                brand_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                creator_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(brand_id, creator_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_brand ON saved_creators(brand_id)")
         conn.commit()
 
     _migrate_deal_statuses()

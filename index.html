@@ -37,6 +37,10 @@
     input:focus, select:focus, textarea:focus { outline: none; border-color: #2F4F2F; box-shadow: 0 0 0 3px rgba(79,138,79,0.15); }
     button { transition: transform 0.1s ease; }
     button:active:not(:disabled) { transform: scale(0.96); }
+    @keyframes onboardFadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .onboard-step-visible { animation: onboardFadeIn 0.28s ease; }
+    #onboarding-overlay { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+    .onboard-pill-active { border-color: #2F4F2F !important; background: #f0f5f0 !important; color: #1e351e !important; font-weight: 600; }
     .message-bubble-left { background: #f3f4f6; border-radius: 0 12px 12px 12px; }
     .message-bubble-right { background: #d6e8d6; border-radius: 12px 0 12px 12px; }
     /* Nav dropdowns */
@@ -612,44 +616,73 @@
         <button onclick="switchRole('creator');navigate('creator-profile')" class="bg-pickle-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-pickle-700 transition whitespace-nowrap creator-only">+ Create Your Profile</button>
       </div>
 
+      <!-- All / Saved tabs — brands only -->
+      <div class="brand-only flex items-center gap-2 mb-4">
+        <button id="tab-all-creators" onclick="switchCreatorsTab('all')"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition bg-pickle-600 text-white border border-transparent">
+          All Creators
+        </button>
+        <button id="tab-saved-creators" onclick="switchCreatorsTab('saved')"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition border border-gray-300 text-gray-600 bg-white hover:bg-gray-50 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+          Saved
+          <span id="saved-count-badge" class="hidden bg-pickle-100 text-pickle-700 text-xs font-bold px-1.5 py-0.5 rounded-full leading-none"></span>
+        </button>
+      </div>
+
       <!-- Filters -->
-      <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-8">
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <input type="text" id="filter-search" placeholder="Search creators..." class="col-span-2 md:col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" oninput="filterCreators()">
-          <select id="filter-niche" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="filterCreators()">
+      <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
+        <!-- Search row -->
+        <div class="relative mb-4">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" id="filter-search" placeholder="Search by name or bio…" class="w-full border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-pickle-500" oninput="filterCreators()">
+        </div>
+        <!-- Filter chips row -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <select id="filter-niche" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" onchange="filterCreators()">
             <option value="">All Niches</option>
-            <option>Tutorials & Tips</option>
+            <option>Tutorials &amp; Tips</option>
             <option>Pro Match Highlights</option>
             <option>Gear Reviews</option>
-            <option>Comedy & Entertainment</option>
-            <option>Lifestyle & Fitness</option>
-            <option>News & Commentary</option>
+            <option>Comedy &amp; Entertainment</option>
+            <option>Lifestyle &amp; Fitness</option>
+            <option>News &amp; Commentary</option>
           </select>
-          <select id="filter-skill" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="filterCreators()">
-            <option value="">All Skills</option>
-            <option>Short Form Video</option>
-            <option>Long Form Video</option>
-            <option>Editing</option>
-            <option>Voice Overs</option>
-            <option>Photography</option>
-            <option>Live Streaming</option>
-            <option>UGC</option>
+          <select id="filter-platform" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" onchange="filterCreators()">
+            <option value="">All Platforms</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="youtube">YouTube</option>
           </select>
-          <select id="filter-audience" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="filterCreators()">
-            <option value="">Audience Size</option>
-            <option value="micro">Micro (1K-10K)</option>
-            <option value="mid">Mid (10K-50K)</option>
-            <option value="macro">Macro (50K-200K)</option>
+          <select id="filter-audience" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" onchange="filterCreators()">
+            <option value="">Followers</option>
+            <option value="nano">Nano (&lt;1K)</option>
+            <option value="micro">Micro (1K–10K)</option>
+            <option value="mid">Mid (10K–50K)</option>
+            <option value="macro">Macro (50K–200K)</option>
             <option value="mega">Mega (200K+)</option>
           </select>
-          <select id="filter-rate" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" onchange="filterCreators()">
+          <select id="filter-engagement" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" onchange="filterCreators()">
+            <option value="">Engagement</option>
+            <option value="low">Low (&lt;2%)</option>
+            <option value="medium">Medium (2–5%)</option>
+            <option value="high">High (5–10%)</option>
+            <option value="viral">Viral (10%+)</option>
+          </select>
+          <select id="filter-rate" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" onchange="filterCreators()">
             <option value="">Rate Range</option>
             <option value="budget">Under $500</option>
-            <option value="mid">$500-$2,000</option>
-            <option value="premium">$2,000-$5,000</option>
+            <option value="mid">$500–$2,000</option>
+            <option value="premium">$2,000–$5,000</option>
             <option value="elite">$5,000+</option>
           </select>
+          <button onclick="clearCreatorFilters()" id="filter-clear-btn" class="hidden border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 hover:border-gray-400 transition whitespace-nowrap">✕ Clear</button>
         </div>
+      </div>
+
+      <!-- Results count -->
+      <div id="creator-results-bar" class="flex items-center justify-between mb-4 hidden">
+        <p id="creator-results-count" class="text-sm text-gray-500"></p>
       </div>
 
       <!-- Creator Grid -->
@@ -663,7 +696,10 @@
   <div id="page-creator-profile" class="page">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 class="text-3xl font-bold mb-2">Your Creator Profile</h1>
-      <p class="text-gray-500 mb-8">Set up your profile so brands can find and connect with you</p>
+      <p class="text-gray-500 mb-4">Set up your profile so brands can find and connect with you</p>
+
+      <!-- Profile completion bar -->
+      <div id="creator-profile-completion" class="mb-8"></div>
 
       <form id="creator-form" class="space-y-8" onsubmit="saveCreatorProfile(event)">
         <!-- Basic Info -->
@@ -834,6 +870,41 @@
           </div>
         </div>
 
+        <!-- Social Accounts -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-6">
+          <div class="flex items-center gap-3 mb-1">
+            <h2 class="font-bold text-lg">Social Accounts</h2>
+            <span id="cp-verified-badge" class="hidden items-center gap-1 bg-pickle-100 text-pickle-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
+              Verified
+            </span>
+          </div>
+          <p class="text-sm text-gray-500 mb-4">Connect your social handles to earn a Verified badge visible to brands.</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Instagram Handle</label>
+              <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:border-pickle-500 focus-within:ring-2 focus-within:ring-pickle-100">
+                <span class="px-3 py-2 bg-gray-50 text-gray-500 text-sm border-r border-gray-300">@</span>
+                <input type="text" id="cp-handle-ig" class="flex-1 px-3 py-2 text-sm outline-none" placeholder="yourhandle">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">TikTok Handle</label>
+              <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:border-pickle-500 focus-within:ring-2 focus-within:ring-pickle-100">
+                <span class="px-3 py-2 bg-gray-50 text-gray-500 text-sm border-r border-gray-300">@</span>
+                <input type="text" id="cp-handle-tt" class="flex-1 px-3 py-2 text-sm outline-none" placeholder="yourhandle">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">YouTube Handle</label>
+              <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:border-pickle-500 focus-within:ring-2 focus-within:ring-pickle-100">
+                <span class="px-3 py-2 bg-gray-50 text-gray-500 text-sm border-r border-gray-300">@</span>
+                <input type="text" id="cp-handle-yt" class="flex-1 px-3 py-2 text-sm outline-none" placeholder="yourhandle">
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="flex gap-4">
           <button type="submit" class="bg-pickle-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-pickle-700 transition">Save Profile</button>
           <button type="button" onclick="navigate('creators')" class="border border-gray-300 text-gray-600 px-8 py-3 rounded-xl font-medium hover:bg-gray-50 transition">Cancel</button>
@@ -853,7 +924,7 @@
           <h1 class="text-3xl font-bold">Campaign Briefs</h1>
           <p class="text-gray-500 mt-1" id="campaigns-subtitle">Browse active campaigns from top brands</p>
         </div>
-        <button onclick="openModal('campaign-modal')" class="bg-brand-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-brand-700 transition whitespace-nowrap" id="post-campaign-btn">+ Post Campaign Brief</button>
+        <div id="post-campaign-btn-wrap"></div>
       </div>
 
       <div id="campaign-list" class="space-y-6">
@@ -943,6 +1014,16 @@
               <button onclick="updateDealStatus('declined')" class="border border-red-300 text-red-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-50 ml-2">Decline</button>
             </div>
           </div>
+          <!-- Deal status timeline stepper — shown when a deal exists -->
+          <div id="deal-stepper" class="hidden px-4 py-3 border-b border-gray-100 bg-gray-50/60"></div>
+          <!-- Dispute banner — shown when a dispute is open on the active deal -->
+          <div id="dispute-banner" class="hidden px-4 py-2.5 bg-red-50 border-b border-red-200 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-sm">
+              <span class="text-red-500 text-base">🚩</span>
+              <span id="dispute-banner-text" class="text-red-700 font-medium">A dispute has been filed on this deal.</span>
+            </div>
+            <button id="dispute-banner-btn" onclick="" class="text-xs bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition font-medium whitespace-nowrap">View Details</button>
+          </div>
           <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4" style="max-height: calc(100vh - 380px);">
             <div class="text-center text-gray-400 text-sm py-10">Select a conversation to start messaging</div>
           </div>
@@ -982,6 +1063,10 @@
       <div id="detail-content"></div>
       <div class="flex gap-3 mt-6">
         <button id="detail-message-btn" onclick="startConversation()" class="bg-pickle-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-pickle-700 transition flex-1">Message Creator</button>
+        <button id="detail-save-btn" onclick="toggleSaveCreator(_detailCreatorId)" class="hidden items-center gap-2 border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">
+          <svg class="w-4 h-4 flex-shrink-0" id="detail-save-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+          <span id="detail-save-label">Save</span>
+        </button>
         <button onclick="closeModal('creator-detail-modal')" class="border border-gray-300 text-gray-600 px-6 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">Close</button>
       </div>
     </div>
@@ -1069,6 +1154,144 @@
       <div class="flex gap-3">
         <button onclick="submitRating()" class="flex-1 bg-pickle-600 text-white py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition text-sm">Submit Rating</button>
         <button onclick="closeModal('rating-modal')" class="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dispute Filing Modal -->
+  <div id="dispute-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('dispute-modal')">
+    <div class="modal-content max-w-md">
+      <div class="flex justify-between items-start mb-5">
+        <div>
+          <div class="text-3xl mb-1">🚩</div>
+          <h2 class="text-xl font-bold text-gray-900">File a Dispute</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Describe the issue clearly. Our team will review and mediate.</p>
+        </div>
+        <button onclick="closeModal('dispute-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800">
+        ⚠️ Only file a dispute if you have a genuine issue. Both parties will be notified and a CourtCollab admin will review.
+      </div>
+      <label class="block text-sm font-medium text-gray-700 mb-1.5">What happened? <span class="text-red-500">*</span></label>
+      <textarea id="dispute-reason" rows="5" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
+        placeholder="e.g. The brand has not responded for 2 weeks after I delivered the content, and payment has not been released..."></textarea>
+      <div class="flex gap-3">
+        <button onclick="submitDispute()" class="flex-1 bg-red-600 text-white py-2.5 rounded-xl font-semibold hover:bg-red-700 transition text-sm">Submit Dispute</button>
+        <button onclick="closeModal('dispute-modal')" class="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dispute Detail Modal -->
+  <div id="dispute-detail-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('dispute-detail-modal')">
+    <div class="modal-content max-w-lg">
+      <div class="flex justify-between items-start mb-4">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🚩</span>
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Dispute Details</h2>
+            <span id="dispute-status-badge" class="inline-block mt-0.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">Open</span>
+          </div>
+        </div>
+        <button onclick="closeModal('dispute-detail-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+
+      <!-- Filed by + date -->
+      <div class="text-xs text-gray-400 mb-3" id="dispute-meta"></div>
+
+      <!-- Reason -->
+      <div class="bg-gray-50 rounded-xl p-4 mb-4">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Dispute Reason</p>
+        <p class="text-sm text-gray-800 whitespace-pre-wrap" id="dispute-reason-text"></p>
+      </div>
+
+      <!-- Resolution (shown when resolved/closed) -->
+      <div id="dispute-resolution-section" class="hidden bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+        <p class="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1.5">Admin Resolution</p>
+        <p class="text-sm text-green-800 whitespace-pre-wrap" id="dispute-resolution-text"></p>
+      </div>
+
+      <!-- Comments thread -->
+      <div class="mb-4">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Thread</p>
+        <div id="dispute-comments-list" class="space-y-3 max-h-52 overflow-y-auto pr-1">
+          <p class="text-sm text-gray-400 text-center py-4">No comments yet.</p>
+        </div>
+      </div>
+
+      <!-- Add comment (hidden when closed) -->
+      <div id="dispute-comment-area">
+        <textarea id="dispute-comment-input" rows="2" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm mb-2 resize-none focus:outline-none focus:ring-2 focus:ring-pickle-400"
+          placeholder="Add a message to this dispute thread…"></textarea>
+        <button onclick="submitDisputeComment()" class="w-full bg-pickle-600 text-white py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition text-sm">Send Message</button>
+      </div>
+
+      <!-- Admin resolution controls -->
+      <div id="dispute-admin-controls" class="hidden mt-4 pt-4 border-t border-gray-100">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Admin Controls</p>
+        <textarea id="dispute-admin-resolution" rows="2" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm mb-2 resize-none focus:outline-none focus:ring-2 focus:ring-green-400"
+          placeholder="Resolution note (optional)…"></textarea>
+        <div class="flex gap-2">
+          <button onclick="resolveDispute('resolved')" class="flex-1 bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">✅ Mark Resolved</button>
+          <button onclick="resolveDispute('closed')" class="flex-1 bg-gray-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-700 transition">🔒 Close Dispute</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Brand Profile Edit Modal -->
+  <div id="bp-edit-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('bp-edit-modal')">
+    <div class="modal-content max-w-lg">
+      <div class="flex justify-between items-center mb-5">
+        <div>
+          <h2 class="text-xl font-bold">Edit Brand Profile</h2>
+          <p class="text-sm text-gray-400 mt-0.5">Visible to creators browsing your campaigns</p>
+        </div>
+        <button onclick="closeModal('bp-edit-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+            <input type="text" id="bp-company" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="Your company name">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+            <select id="bp-industry" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+              <option value="">Select industry</option>
+              <option>Paddles &amp; Equipment</option>
+              <option>Apparel</option>
+              <option>Footwear</option>
+              <option>Training &amp; Coaching</option>
+              <option>Sports Nutrition</option>
+              <option>Accessories</option>
+              <option>Technology</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Website</label>
+            <input type="url" id="bp-website" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="https://yourbrand.com">
+          </div>
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Campaign Budget</label>
+            <div class="flex items-center gap-2 text-sm text-gray-400">
+              <span>$</span>
+              <input type="number" id="bp-budget-min" class="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="Min (e.g. 500)">
+              <span>—</span>
+              <span>$</span>
+              <input type="number" id="bp-budget-max" class="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="Max (e.g. 5000)">
+            </div>
+          </div>
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">About Your Brand</label>
+            <textarea id="bp-description" rows="3" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="What does your brand do? What are you looking for in a creator partnership?"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button onclick="saveBrandProfileModal()" class="flex-1 bg-pickle-600 text-white py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition">Save Profile</button>
+        <button onclick="closeModal('bp-edit-modal')" class="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">Cancel</button>
       </div>
     </div>
   </div>
@@ -1389,6 +1612,9 @@
         </div>
       </div>
 
+      <!-- Brand profile completion bar -->
+      <div id="brand-profile-completion" class="mb-6"></div>
+
       <!-- Stats row -->
       <div class="grid grid-cols-3 gap-4 mb-8" id="brand-portal-stats">
         <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-20"></div>
@@ -1498,6 +1724,21 @@
         </div>
       </div>
 
+      <!-- Open Disputes -->
+      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-8">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🚩</span>
+            <h2 class="font-bold text-gray-900">Disputes</h2>
+            <span class="text-xs text-red-600 font-semibold px-2 py-0.5 bg-red-100 rounded-full" id="admin-disputes-count">—</span>
+          </div>
+          <span class="text-xs text-gray-400">All disputes filed on the platform</span>
+        </div>
+        <div id="admin-disputes-list" class="divide-y divide-gray-50">
+          <div class="px-6 py-8 text-center text-gray-400 text-sm">Loading…</div>
+        </div>
+      </div>
+
       <!-- User Table -->
       <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -1531,11 +1772,186 @@
     </div>
   </div>
 
+  <!-- Onboarding Wizard Overlay -->
+  <div id="onboarding-overlay" class="fixed inset-0 hidden items-center justify-center p-4" style="background:rgba(10,25,10,0.82);z-index:9998;display:none;">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+
+      <!-- Top progress bar -->
+      <div class="h-1.5 bg-gray-100">
+        <div id="onboard-progress" class="h-full bg-pickle-600 transition-all duration-500 ease-out" style="width:33%"></div>
+      </div>
+
+      <!-- Steps wrapper -->
+      <div id="onboard-steps-wrapper">
+
+        <!-- Step 1: Welcome -->
+        <div id="onboard-step-1" class="onboard-step p-8 text-center">
+          <div class="text-6xl mb-4" id="onboard-emoji">🎾</div>
+          <h1 class="text-2xl font-black text-gray-900 mb-2" id="onboard-title">Welcome to CourtCollab!</h1>
+          <p class="text-gray-500 text-sm mb-6" id="onboard-sub">Let's set up your profile in just a couple of steps.</p>
+          <div class="text-left bg-pickle-50 rounded-2xl p-5 mb-7 space-y-3.5" id="onboard-bullets"></div>
+          <button onclick="onboardNext()" id="onboard-cta-btn"
+            class="w-full bg-pickle-600 text-white py-3.5 rounded-xl font-bold text-base hover:bg-pickle-700 transition">
+            Let's set it up →
+          </button>
+          <button onclick="onboardSkip()"
+            class="w-full mt-3 text-sm text-gray-400 hover:text-gray-600 transition py-1">
+            Skip for now
+          </button>
+        </div>
+
+        <!-- Step 2: Creator content / Brand info -->
+        <div id="onboard-step-2" class="onboard-step hidden p-8">
+          <h2 class="text-xl font-black text-gray-900 mb-1" id="onboard-s2-title">What do you create?</h2>
+          <p class="text-sm text-gray-400 mb-6" id="onboard-s2-sub">Help brands understand your content and find you faster.</p>
+
+          <!-- Creator fields -->
+          <div id="onboard-creator-fields" class="space-y-5">
+            <div>
+              <p class="text-sm font-semibold text-gray-700 mb-2">Content Niche</p>
+              <div class="flex flex-wrap gap-2" id="onboard-niche-pills"></div>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-700 mb-2">Skill Level on the Court</p>
+              <div class="flex flex-wrap gap-2" id="onboard-skill-pills"></div>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-700 mb-1.5">Creator Skills <span class="font-normal text-gray-400">(pick all that apply)</span></p>
+              <div class="flex flex-wrap gap-2" id="onboard-skills-pills"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Location</label>
+                <input type="text" id="onboard-location" placeholder="City, State"
+                  class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+              </div>
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Short Bio</label>
+              <textarea id="onboard-bio" rows="3" placeholder="Tell brands about your content and pickleball journey…"
+                class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-pickle-400"></textarea>
+            </div>
+          </div>
+
+          <!-- Brand fields -->
+          <div id="onboard-brand-fields" class="hidden space-y-5">
+            <div>
+              <p class="text-sm font-semibold text-gray-700 mb-2">Industry</p>
+              <div class="flex flex-wrap gap-2" id="onboard-industry-pills"></div>
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Website <span class="font-normal text-gray-400">(optional)</span></label>
+              <input type="url" id="onboard-website" placeholder="https://yourbrand.com"
+                class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Monthly Campaign Budget</label>
+              <div class="flex items-center gap-2 text-sm text-gray-400">
+                <span>$</span>
+                <input type="number" id="onboard-budget-min" placeholder="Min (e.g. 500)"
+                  class="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                <span>—</span>
+                <span>$</span>
+                <input type="number" id="onboard-budget-max" placeholder="Max (e.g. 5000)"
+                  class="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pickle-400">
+              </div>
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-700 mb-1.5 block">About Your Brand <span class="font-normal text-gray-400">(optional)</span></label>
+              <textarea id="onboard-brand-desc" rows="3" placeholder="What does your brand do? What are you looking for in a creator partnership?"
+                class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-pickle-400"></textarea>
+            </div>
+          </div>
+
+          <div class="flex gap-3 mt-6">
+            <button onclick="onboardBack()" class="flex-1 border border-gray-300 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50 transition text-sm">← Back</button>
+            <button onclick="onboardNext()" id="onboard-s2-next" class="flex-1 bg-pickle-600 text-white py-3 rounded-xl font-bold hover:bg-pickle-700 transition text-sm">Next →</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Audience & Rates (Creator only) -->
+        <div id="onboard-step-3" class="onboard-step hidden p-8">
+          <h2 class="text-xl font-black text-gray-900 mb-1">Your audience &amp; rates</h2>
+          <p class="text-sm text-gray-400 mb-6">Brands use these to match you with the right campaigns.</p>
+
+          <div class="space-y-5">
+            <div>
+              <p class="text-sm font-semibold text-gray-700 mb-2">Audience Size</p>
+              <div class="grid grid-cols-3 gap-3">
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">IG</span>
+                  <input type="number" id="onboard-ig" placeholder="Followers"
+                    class="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                </div>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">TT</span>
+                  <input type="number" id="onboard-tt" placeholder="Followers"
+                    class="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                </div>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">YT</span>
+                  <input type="number" id="onboard-yt" placeholder="Subs"
+                    class="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                </div>
+              </div>
+              <p class="text-xs text-gray-400 mt-1.5">Instagram · TikTok · YouTube</p>
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Avg Engagement Rate <span class="font-normal text-gray-400">(%)</span></label>
+              <input type="number" step="0.1" id="onboard-engagement" placeholder="e.g. 4.5"
+                class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-700 mb-2">Your Rates <span class="font-normal text-gray-400 text-xs">($ per deliverable — you can edit any time)</span></p>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-gray-500 mb-1 block">IG Post / Story</label>
+                  <input type="number" id="onboard-rate-ig" placeholder="$"
+                    class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 mb-1 block">TikTok / Reel</label>
+                  <input type="number" id="onboard-rate-tt" placeholder="$"
+                    class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 mb-1 block">YouTube Video</label>
+                  <input type="number" id="onboard-rate-yt" placeholder="$"
+                    class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 mb-1 block">UGC (unposted)</label>
+                  <input type="number" id="onboard-rate-ugc" placeholder="$"
+                    class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-3 mt-6">
+            <button onclick="onboardBack()" class="flex-1 border border-gray-300 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50 transition text-sm">← Back</button>
+            <button onclick="onboardFinish()" class="flex-1 bg-pickle-600 text-white py-3 rounded-xl font-bold hover:bg-pickle-700 transition text-sm">Go to Dashboard 🎾</button>
+          </div>
+          <button onclick="onboardSkip()" class="w-full mt-3 text-sm text-gray-400 hover:text-gray-600 transition py-1">Skip for now</button>
+        </div>
+
+      </div><!-- /steps wrapper -->
+
+      <!-- Step dots -->
+      <div class="flex justify-center gap-2 py-5" id="onboard-dots">
+        <div class="w-2 h-2 rounded-full transition-colors duration-300" id="onboard-dot-1"></div>
+        <div class="w-2 h-2 rounded-full transition-colors duration-300" id="onboard-dot-2"></div>
+        <div class="w-2 h-2 rounded-full transition-colors duration-300" id="onboard-dot-3"></div>
+      </div>
+
+    </div><!-- /card -->
+  </div><!-- /overlay -->
+
   <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-6 right-6 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-lg hidden transition-all transform translate-y-2 opacity-0 z-50">
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
