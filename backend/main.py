@@ -1667,10 +1667,11 @@ def list_conversations(user: dict = Depends(current_user)):
                 ORDER BY created_at DESC, id DESC LIMIT 1
             """, (uid, pid, pid, uid))
 
-            unread = conn.execute("""
-                SELECT COUNT(*) FROM messages
+            unread_row = conn.execute("""
+                SELECT COUNT(*) AS cnt FROM messages
                 WHERE sender_id = ? AND receiver_id = ? AND read_at IS NULL
-            """, (pid, uid)).fetchone()[0]
+            """, (pid, uid)).fetchone()
+            unread = (unread_row or {}).get("cnt", 0)
 
             results.append({
                 "partner":      partner,
@@ -2184,10 +2185,11 @@ def list_notifications(
 @app.get("/api/notifications/unread-count")
 def unread_count(user: dict = Depends(current_user)):
     with get_conn() as conn:
-        count = conn.execute(
-            "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL",
+        row = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = ? AND read_at IS NULL",
             (user["id"],),
-        ).fetchone()[0]
+        ).fetchone()
+        count = (row or {}).get("cnt", 0)
     return {"count": count}
 
 
