@@ -2860,14 +2860,14 @@ async function loadStripeConnectStatus() {
       banner.innerHTML = `
         <div class="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          <span class="font-medium">Stripe payouts connected — you'll receive 85% of each deal directly to your bank.</span>
+          <span class="font-medium">Stripe payouts connected — you'll receive your earnings directly to your bank.</span>
         </div>`;
     } else {
       banner.innerHTML = `
         <div class="flex items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
           <div class="flex items-center gap-2 text-amber-800">
             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-            <span class="font-medium">Connect your bank to receive deal payouts (85% of each deal).</span>
+            <span class="font-medium">Connect your bank to receive your deal payouts.</span>
           </div>
           <button id="stripe-connect-btn" onclick="stripeConnectOnboard()"
             class="shrink-0 bg-[#2F4F2F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#1f3a1f] transition">
