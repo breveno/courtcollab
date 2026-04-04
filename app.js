@@ -6,60 +6,50 @@
 const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'https://courtcollab-production.up.railway.app'
   : '';
-const WS_BASE = 'wss://courtcollab-production.up.railway.app';
+// --- Real-time messaging via polling ---
+let _msgPollTimer  = null;
+let _lastMsgId     = 0;
+let _typingTimer   = null;
+let _typingHideTimer = null;
 
-// --- WebSocket ---
-let _ws = null;
-let _wsReconnectTimer = null;
-let _typingTimer = null;
+function _connectWS() { _startMsgPolling(); }   // alias kept for onAuthSuccess
+function _disconnectWS() { _stopMsgPolling(); }  // alias kept for handleLogout
 
-function _connectWS() {
-  const token = getToken();
-  if (!token || _ws) return;
-  _ws = new WebSocket(WS_BASE + '/ws?token=' + token);
-
-  _ws.onmessage = (e) => {
-    try {
-      const data = JSON.parse(e.data);
-      if (data.type === 'message') {
-        // Append to active chat if it matches, else refresh conversation list dot
-        if (state.activePartner === data.sender_id) {
-          _appendIncomingMessage(data);
-          renderConversations();
-        } else {
-          renderConversations();
-        }
-      } else if (data.type === 'typing') {
-        if (state.activePartner === data.from) {
-          _showTypingIndicator(data.sender_name);
-        }
-      }
-    } catch (_) {}
-  };
-
-  _ws.onclose = () => {
-    _ws = null;
-    // Reconnect after 3s if still logged in
-    if (getToken()) {
-      _wsReconnectTimer = setTimeout(_connectWS, 3000);
-    }
-  };
-
-  _ws.onerror = () => { _ws?.close(); };
-
-  // Keep-alive ping every 30s
-  const pingInterval = setInterval(() => {
-    if (_ws && _ws.readyState === WebSocket.OPEN) {
-      _ws.send(JSON.stringify({ type: 'ping' }));
-    } else {
-      clearInterval(pingInterval);
-    }
-  }, 30000);
+function _startMsgPolling() {
+  if (_msgPollTimer) return;
+  _msgPollTimer = setInterval(_pollMessages, 2000);
 }
 
-function _disconnectWS() {
-  if (_wsReconnectTimer) { clearTimeout(_wsReconnectTimer); _wsReconnectTimer = null; }
-  if (_ws) { _ws.onclose = null; _ws.close(); _ws = null; }
+function _stopMsgPolling() {
+  if (_msgPollTimer) { clearInterval(_msgPollTimer); _msgPollTimer = null; }
+  _lastMsgId = 0;
+}
+
+async function _pollMessages() {
+  if (!state.activePartner || !getToken()) return;
+  try {
+    const msgs = await apiGet('/api/messages/' + state.activePartner);
+    if (!msgs || !msgs.length) return;
+    const latest = msgs[msgs.length - 1];
+    if (_lastMsgId === 0) { _lastMsgId = latest.id; return; }   // first poll, just set baseline
+    if (latest.id <= _lastMsgId) return;                         // nothing new
+    // Append only the new messages
+    const newMsgs = msgs.filter(m => m.id > _lastMsgId);
+    _lastMsgId = latest.id;
+    const myId = state.currentUser?.id;
+    newMsgs.forEach(m => {
+      if (m.sender_id !== myId) _appendIncomingMessage(m);
+    });
+    // Refresh the conversation list sidebar too
+    renderConversations();
+  } catch (_) {}
+
+  // Also check typing indicator
+  try {
+    const t = await apiGet('/api/typing/' + state.activePartner);
+    if (t && t.is_typing) _showTypingIndicator();
+    else _hideTypingIndicator();
+  } catch (_) {}
 }
 
 function _appendIncomingMessage(msg) {
@@ -75,8 +65,7 @@ function _appendIncomingMessage(msg) {
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-let _typingHideTimer = null;
-function _showTypingIndicator(name) {
+function _showTypingIndicator() {
   let el = document.getElementById('typing-indicator');
   if (!el) {
     el = document.createElement('div');
@@ -85,11 +74,9 @@ function _showTypingIndicator(name) {
     const chatEl = document.getElementById('chat-messages');
     if (chatEl) chatEl.appendChild(el);
   }
-  el.innerHTML = `<div class="message-bubble-left px-4 py-3 text-sm flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms"></span><span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms"></span><span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:300ms"></span></div>`;
+  el.innerHTML = `<div class="message-bubble-left px-4 py-2.5 flex items-center gap-1.5"><span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms"></span><span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms"></span><span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay:300ms"></span></div>`;
   const chatEl = document.getElementById('chat-messages');
   if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
-  if (_typingHideTimer) clearTimeout(_typingHideTimer);
-  _typingHideTimer = setTimeout(_hideTypingIndicator, 3000);
 }
 
 function _hideTypingIndicator() {
@@ -98,10 +85,10 @@ function _hideTypingIndicator() {
 }
 
 function _sendTyping() {
-  if (_ws && _ws.readyState === WebSocket.OPEN && state.activePartner) {
-    _ws.send(JSON.stringify({ type: 'typing', to: state.activePartner }));
+  if (!state.activePartner || !_typingTimer) {
+    // POST typing state (fire-and-forget)
+    apiPost('/api/typing/' + state.activePartner, {}).catch(() => {});
   }
-  // Debounce: only send once per 2s
   clearTimeout(_typingTimer);
   _typingTimer = setTimeout(() => { _typingTimer = null; }, 2000);
 }
@@ -2208,6 +2195,7 @@ async function renderConversations() {
 
 async function openConversation(partnerId) {
   state.activePartner = partnerId;
+  _lastMsgId = 0;   // reset so poller sets new baseline for this thread
   renderConversations();
 
   try {

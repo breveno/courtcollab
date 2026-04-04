@@ -1758,6 +1758,26 @@ def get_conversation(other_user_id: int, user: dict = Depends(current_user)):
     return rows
 
 
+# ---------------------------------------------------------------------------
+# Typing indicators — simple in-memory store (per-process, good enough)
+# ---------------------------------------------------------------------------
+import time as _time
+_typing_store: dict = {}   # (sender_id, receiver_id) -> expires_at
+
+@app.post("/api/typing/{receiver_id}", status_code=200)
+def set_typing(receiver_id: int, user: dict = Depends(current_user)):
+    """Mark the current user as typing to receiver_id for 3 seconds."""
+    _typing_store[(user["id"], receiver_id)] = _time.time() + 3
+    return {}
+
+@app.get("/api/typing/{sender_id}")
+def get_typing(sender_id: int, user: dict = Depends(current_user)):
+    """Check if sender_id is currently typing to the current user."""
+    key = (sender_id, user["id"])
+    expires = _typing_store.get(key, 0)
+    return {"is_typing": _time.time() < expires}
+
+
 @app.patch("/api/messages/{message_id}/read", status_code=200)
 def mark_message_read(message_id: int, user: dict = Depends(current_user)):
     """Explicit single-message read receipt."""
