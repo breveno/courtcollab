@@ -2542,6 +2542,15 @@ function _buildProfileFromForm() {
   };
 }
 
+// Auto-sum follower fields into Total Followers
+function _updateTotalFollowers() {
+  const ig  = parseInt(document.getElementById('cp-ig')?.value)     || 0;
+  const tt  = parseInt(document.getElementById('cp-tiktok')?.value) || 0;
+  const yt  = parseInt(document.getElementById('cp-yt')?.value)     || 0;
+  const el  = document.getElementById('cp-total');
+  if (el) el.value = (ig + tt + yt) > 0 ? (ig + tt + yt) : '';
+}
+
 // Attach live-update listeners to all profile form fields (called once after form renders)
 function _attachProfileFormListeners() {
   const fieldIds = [
@@ -2555,7 +2564,12 @@ function _attachProfileFormListeners() {
   fieldIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', handler);
-    if (el && (el.tagName === 'SELECT')) el.addEventListener('change', handler);
+    if (el && el.tagName === 'SELECT') el.addEventListener('change', handler);
+  });
+  // Auto-calculate total followers when any platform count changes
+  ['cp-ig', 'cp-tiktok', 'cp-yt'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', _updateTotalFollowers);
   });
   // Skills checkboxes
   document.querySelectorAll('#cp-skills input[type="checkbox"]').forEach(cb => {
@@ -2617,6 +2631,7 @@ async function populateCreatorForm() {
     _updateVerifiedBadgeUI(handles);
 
     renderCreatorCompletion(p);
+    _updateTotalFollowers();
     _attachProfileFormListeners();
   } catch (err) {
     // Profile doesn't exist yet (new user) — show empty completion bar
