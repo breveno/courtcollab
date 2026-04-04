@@ -354,7 +354,7 @@ async function handleSignup(e) {
         const handles = {};
         if (ig) handles.instagram = ig;
         if (tt) handles.tiktok = tt;
-        await apiPut('/api/creator/profile', { social_handles: JSON.stringify(handles) });
+        await apiPut('/api/creator/profile', { social_handles: handles });
       } catch (_) { /* best-effort */ }
     }
     if (role === 'brand') {
@@ -1631,7 +1631,7 @@ async function saveCreatorProfile(e) {
   if (_ig) handles.instagram = _ig;
   if (_tt) handles.tiktok    = _tt;
   if (_yt) handles.youtube   = _yt;
-  body.social_handles = JSON.stringify(handles);
+  body.social_handles = handles;
   try {
     const saved = await apiPut('/api/creator/profile', body);
     // Attach parsed handles back for the completion bar
