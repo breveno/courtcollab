@@ -563,10 +563,10 @@ let _detailCreatorId = null;  // creator user_id currently open in detail modal
 
 // --- Navigation ---
 function navigateDashboard() {
-  navigate(state.role === 'brand' ? 'brand-portal' : 'landing');
+  navigate(state.role === 'brand' ? 'brand-portal' : 'landing', 'nav-dashboard-btn');
 }
 
-function navigate(page) {
+function navigate(page, activeNavId = null) {
   if (!getToken()) { showAuthGate(); return; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + page);
@@ -582,7 +582,13 @@ function navigate(page) {
   document.body.scrollTop = 0;
   document.documentElement.scrollTop = 0;
   document.querySelectorAll('.nav-link').forEach(link => {
-    link.classList.toggle('active', link.dataset.page === page);
+    if (activeNavId) {
+      // Only light up the explicitly clicked button (and its mobile twin)
+      const mobileId = activeNavId + '-mobile';
+      link.classList.toggle('active', link.id === activeNavId || link.id === mobileId);
+    } else {
+      link.classList.toggle('active', link.dataset.page === page);
+    }
   });
   if (page === 'brand-portal') renderBrandPortal();
   if (page === 'creators')  { loadSavedCreatorIds().then(() => renderCreators()); }
