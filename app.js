@@ -744,17 +744,24 @@ async function renderBrandPortal() {
     const name = state.currentUser.company_name || state.currentUser.name || 'Brand';
     greeting.textContent = 'Welcome back, ' + name.split(' ')[0];
   }
-  const grid = document.getElementById('brand-portal-campaign-grid');
+  const grid    = document.getElementById('brand-portal-campaign-grid');
   const statsEl = document.getElementById('brand-portal-stats');
   if (!grid) return;
 
   try {
-    const campaigns = await apiGet('/api/campaigns');
+    // Fetch campaigns + brand profile (with ratings) in parallel
+    const [campaigns, brandProfile] = await Promise.all([
+      apiGet('/api/campaigns'),
+      apiGet('/api/brand/profile').catch(() => null),
+    ]);
     _brandPortalAllCampaigns = campaigns;
 
-    // Stats
-    const active = campaigns.filter(c => (c.status || 'open') === 'open').length;
+    // Stats row — 4 tiles (change grid to 4-col)
     if (statsEl) {
+      statsEl.className = 'grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8';
+      const active = campaigns.filter(c => (c.status || 'open') === 'open').length;
+      const avgRating   = brandProfile?.avg_rating;
+      const ratingCount = brandProfile?.rating_count || 0;
       statsEl.innerHTML = `
         <div class="bg-white rounded-2xl border border-gray-100 p-5">
           <div class="text-3xl font-bold text-gray-900">${campaigns.length}</div>
@@ -768,12 +775,64 @@ async function renderBrandPortal() {
           <div class="text-3xl font-bold text-brand-700">${campaigns.length - active}</div>
           <div class="text-sm text-gray-500 mt-1">Closed Campaigns</div>
         </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-5">
+          ${avgRating
+            ? `<div class="text-2xl font-bold text-yellow-500 leading-none mb-1">${renderStars(avgRating)}</div>
+               <div class="text-sm font-semibold text-gray-800">${avgRating} / 5</div>
+               <div class="text-xs text-gray-400 mt-0.5">${ratingCount} creator rating${ratingCount !== 1 ? 's' : ''}</div>`
+            : `<div class="text-2xl text-gray-200 leading-none mb-1">★★★★★</div>
+               <div class="text-sm text-gray-400">No ratings yet</div>
+               <div class="text-xs text-gray-300 mt-0.5">Complete deals to earn reviews</div>`}
+        </div>
       `;
     }
+
+    // Ratings from creators card (below the campaign grid, populated after grid renders)
     renderBrandPortalGrid(campaigns);
+    renderBrandRatingsCard(brandProfile);
   } catch (err) {
     grid.innerHTML = `<div class="col-span-full text-center py-8 text-red-400">${err.message}</div>`;
   }
+}
+
+function renderBrandRatingsCard(brandProfile) {
+  // Find or create the ratings card container (below the campaign grid)
+  let card = document.getElementById('brand-portal-ratings-card');
+  if (!card) {
+    const grid = document.getElementById('brand-portal-campaign-grid');
+    if (!grid) return;
+    card = document.createElement('div');
+    card.id = 'brand-portal-ratings-card';
+    card.className = 'mt-8';
+    grid.parentNode.insertBefore(card, grid.nextSibling);
+  }
+
+  const ratings = brandProfile?.recent_ratings || [];
+  if (!ratings.length) { card.innerHTML = ''; return; }
+
+  card.innerHTML = `
+    <div class="bg-white rounded-2xl border border-gray-100 p-6">
+      <h2 class="font-bold text-lg mb-1">Creator Reviews</h2>
+      <p class="text-sm text-gray-500 mb-4">What creators say about working with you</p>
+      <div class="divide-y divide-gray-50">
+        ${ratings.map(r => `
+          <div class="py-3 flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-medium text-sm">${escHtml(r.creator_name || 'Creator')}</span>
+                <span class="text-xs text-gray-400">on "${escHtml(r.campaign_title || '')}"</span>
+              </div>
+              ${r.comment ? `<p class="text-sm text-gray-600 italic">"${escHtml(r.comment)}"</p>` : ''}
+            </div>
+            <div class="flex-shrink-0 text-right">
+              <div>${renderStars(r.score)}</div>
+              <div class="text-xs text-gray-400 mt-0.5">${fmtDateUTC(r.created_at)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 function renderBrandPortalGrid(campaigns) {
@@ -1578,9 +1637,21 @@ async function openConversation(partnerId) {
     const headerName     = document.getElementById('chat-name');
     const headerStatus   = document.getElementById('chat-status');
     if (headerName)   headerName.textContent   = partnerName;
-    if (headerStatus) headerStatus.textContent = deal
+    const dealStatusText = deal
       ? `Deal: $${(deal.amount || 0).toLocaleString()} — ${deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}`
       : 'No active deal';
+    if (headerStatus) headerStatus.textContent = dealStatusText;
+
+    // If creator, fetch brand's avg rating and show alongside deal status
+    if (state.role === 'creator' && headerStatus) {
+      apiGet('/api/brands/' + partnerId).then(b => {
+        if (b && b.avg_rating) {
+          headerStatus.innerHTML =
+            `${escHtml(dealStatusText)} &nbsp;·&nbsp; ${renderStars(b.avg_rating)} ` +
+            `<span class="text-gray-400">${b.avg_rating} brand rating</span>`;
+        }
+      }).catch(() => {});
+    }
 
     // Deal action buttons (creator accepts/declines; brand marks complete; both sign contract)
     const dealActions = document.getElementById('deal-actions');
@@ -1605,6 +1676,21 @@ async function openConversation(partnerId) {
              <button onclick="stripeCheckout(${deal.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Pay with Stripe</button>
              <button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>`
           : `<button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>`;
+      } else if (deal && deal.status === 'completed') {
+        dealActions.classList.remove('hidden');
+        const partnerLabel   = state.role === 'brand' ? 'Creator' : 'Brand';
+        const ratingSubtitle = state.role === 'brand'
+          ? 'Did the creator deliver quality content on time?'
+          : 'Did the brand communicate clearly and pay on time?';
+        dealActions.innerHTML = deal.my_rating
+          ? `<span class="inline-flex items-center gap-2 text-sm text-gray-600 bg-gray-50 border border-gray-200 px-4 py-2 rounded-lg">
+               ${renderStars(deal.my_rating)}
+               <span>You rated this ${partnerLabel.toLowerCase()} <strong>${deal.my_rating}/5</strong></span>
+             </span>`
+          : `<button onclick="openRatingModal(${deal.id}, '${ratingSubtitle}')"
+               class="bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-yellow-100 transition flex items-center gap-2">
+               ⭐ Rate this ${partnerLabel}
+             </button>`;
       } else {
         dealActions.classList.add('hidden');
       }
@@ -1973,6 +2059,10 @@ async function submitRating() {
     });
     closeModal('rating-modal');
     showToast('Rating submitted — thanks!', 'success');
+    // Refresh deal panel so the "Rate" button swaps to the submitted stars
+    if (state.activePartner) openConversation(state.activePartner);
+    // Refresh brand portal if brand is on that page
+    if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
     showToast('⚠ ' + (err.message || 'Could not submit rating'));
   }

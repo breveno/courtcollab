@@ -715,8 +715,70 @@ def get_own_brand_profile(user: dict = Depends(current_user)):
     require_role("brand", user)
     with get_conn() as conn:
         profile = _row(conn, "SELECT * FROM brand_profiles WHERE user_id = ?", (user["id"],))
-    if not profile:
-        raise HTTPException(404, "Profile not set up yet")
+        if not profile:
+            raise HTTPException(404, "Profile not set up yet")
+        rating_stats = _row(conn, """
+            SELECT COUNT(*) AS cnt, AVG(score) AS avg_score
+            FROM ratings WHERE reviewee_id = ?
+        """, (user["id"],))
+        recent_ratings = _rows(conn, """
+            SELECT r.score, r.comment, r.created_at,
+                   COALESCE(cp.name, uc.name) AS creator_name,
+                   c.title AS campaign_title
+            FROM ratings r
+            JOIN deals d      ON d.id         = r.deal_id
+            JOIN users uc     ON uc.id         = r.reviewer_id
+            LEFT JOIN creator_profiles cp ON cp.user_id = r.reviewer_id
+            JOIN campaigns c  ON c.id          = d.campaign_id
+            WHERE r.reviewee_id = ?
+            ORDER BY r.created_at DESC
+            LIMIT 10
+        """, (user["id"],))
+    avg = (rating_stats or {}).get("avg_score")
+    profile["avg_rating"]     = round(float(avg), 1) if avg is not None else None
+    profile["rating_count"]   = (rating_stats or {}).get("cnt", 0) or 0
+    profile["recent_ratings"] = recent_ratings
+    return profile
+
+
+@app.get("/api/brands/{user_id}")
+def get_brand_public(user_id: int, user: dict = Depends(current_user)):
+    """Public brand profile — rating, completed deals, history. Visible to any authenticated user."""
+    with get_conn() as conn:
+        profile = _row(conn, """
+            SELECT bp.*, u.name AS account_name
+            FROM brand_profiles bp
+            JOIN users u ON u.id = bp.user_id
+            WHERE bp.user_id = ?
+        """, (user_id,))
+        if not profile:
+            raise HTTPException(404, "Brand not found")
+        rating_stats = _row(conn, """
+            SELECT COUNT(*) AS cnt, AVG(score) AS avg_score
+            FROM ratings WHERE reviewee_id = ?
+        """, (user_id,))
+        deal_history = _rows(conn, """
+            SELECT d.id, d.amount, d.updated_at AS completed_at,
+                   c.title AS campaign_title,
+                   COALESCE(cp.name, uc.name) AS creator_name,
+                   r.score AS creator_rating
+            FROM deals d
+            JOIN campaigns c   ON c.id          = d.campaign_id
+            JOIN users uc      ON uc.id          = d.creator_id
+            LEFT JOIN creator_profiles cp ON cp.user_id = d.creator_id
+            LEFT JOIN ratings r ON r.deal_id = d.id AND r.reviewer_id = d.creator_id
+            WHERE d.brand_id = ? AND d.status = 'completed'
+            ORDER BY d.updated_at DESC
+            LIMIT 20
+        """, (user_id,))
+        deals_completed = _row(conn, """
+            SELECT COUNT(*) AS cnt FROM deals WHERE brand_id = ? AND status = 'completed'
+        """, (user_id,))
+    avg = (rating_stats or {}).get("avg_score")
+    profile["avg_rating"]      = round(float(avg), 1) if avg is not None else None
+    profile["rating_count"]    = (rating_stats or {}).get("cnt", 0) or 0
+    profile["deals_completed"] = (deals_completed or {}).get("cnt", 0) or 0
+    profile["deal_history"]    = deal_history
     return profile
 
 
@@ -1327,6 +1389,7 @@ def list_deals(
     deal_status: Optional[str] = Query(None, alias="status"),
     user: dict = Depends(current_user),
 ):
+    uid   = user["id"]
     field = "brand_id" if user["role"] == "brand" else "creator_id"
     with get_conn() as conn:
         rows = _rows(conn, f"""
@@ -1335,14 +1398,16 @@ def list_deals(
                    c.niche        AS campaign_niche,
                    ub.name        AS brand_name,
                    uc.name        AS creator_name,
-                   uc.initials    AS creator_initials
+                   uc.initials    AS creator_initials,
+                   r_mine.score   AS my_rating
             FROM deals d
             JOIN campaigns c ON c.id  = d.campaign_id
             JOIN users ub    ON ub.id = d.brand_id
             JOIN users uc    ON uc.id = d.creator_id
+            LEFT JOIN ratings r_mine ON r_mine.deal_id = d.id AND r_mine.reviewer_id = ?
             WHERE d.{field} = ?
             ORDER BY d.updated_at DESC
-        """, (user["id"],))
+        """, (uid, uid))
     if deal_status:
         rows = [r for r in rows if r["status"] == deal_status]
     return rows
