@@ -79,8 +79,11 @@ async function apiGet(path, opts = {}) {
       headers: token ? { 'Authorization': 'Bearer ' + token } : {}
     });
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(_extractDetail(data));
+      const text = await res.text().catch(() => '');
+      let data = {};
+      try { data = JSON.parse(text); } catch (_) {}
+      const msg = _extractDetail(data);
+      throw new Error(msg === 'Request failed' ? `Request failed (${res.status})` : msg);
     }
     return res.json();
   } finally { if (opts.loading) hideLoading(); }
