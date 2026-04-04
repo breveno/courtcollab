@@ -610,6 +610,7 @@ function navigate(page, activeNavId = null) {
   if (page === 'contact')          renderContact();
   if (page === 'admin')            renderAdmin();
   if (page === 'creator-profile')    { populateCreatorForm(); renderCreatorDealHistory(); }
+  else { const el = document.getElementById('creator-profile-completion'); if (el) el.innerHTML = ''; }
   if (page === 'creator-dashboard')  renderCreatorDashboard();
 }
 
@@ -2518,6 +2519,50 @@ function renderCreatorCompletion(profile) {
   el.innerHTML  = _completionBarHtml(pct, missing, 'creator');
 }
 
+// Build a profile-like object from the live form values (no API call needed)
+function _buildProfileFromForm() {
+  const skills = Array.from(document.querySelectorAll('#cp-skills input:checked')).map(i => i.value);
+  return {
+    name:            (document.getElementById('cp-name')?.value        || '').trim(),
+    bio:             (document.getElementById('cp-bio')?.value         || '').trim(),
+    location:        (document.getElementById('cp-location')?.value    || '').trim(),
+    skill_level:     (document.getElementById('cp-skill-level')?.value || '').trim(),
+    skills,
+    followers_ig:    parseInt(document.getElementById('cp-ig')?.value)         || 0,
+    followers_tt:    parseInt(document.getElementById('cp-tiktok')?.value)     || 0,
+    followers_yt:    parseInt(document.getElementById('cp-yt')?.value)         || 0,
+    engagement_rate: parseFloat(document.getElementById('cp-engagement')?.value) || 0,
+    rate_ig:         parseInt(document.getElementById('cp-rate-ig')?.value)    || 0,
+    rate_tiktok:     parseInt(document.getElementById('cp-rate-tiktok')?.value) || 0,
+    rate_yt:         parseInt(document.getElementById('cp-rate-yt')?.value)    || 0,
+    rate_ugc:        parseInt(document.getElementById('cp-rate-ugc')?.value)   || 0,
+    demo_age:        (document.getElementById('cp-age')?.value         || '').trim(),
+    demo_gender:     (document.getElementById('cp-gender')?.value      || '').trim(),
+    demo_locations:  (document.getElementById('cp-locations')?.value   || '').trim(),
+  };
+}
+
+// Attach live-update listeners to all profile form fields (called once after form renders)
+function _attachProfileFormListeners() {
+  const fieldIds = [
+    'cp-name','cp-bio','cp-location','cp-skill-level','cp-niche',
+    'cp-ig','cp-tiktok','cp-yt','cp-engagement','cp-views',
+    'cp-rate-ig','cp-rate-tiktok','cp-rate-yt','cp-rate-ugc','cp-rate-notes',
+    'cp-age','cp-gender','cp-locations','cp-interests',
+    'cp-handle-ig','cp-handle-tt','cp-handle-yt',
+  ];
+  const handler = () => renderCreatorCompletion(_buildProfileFromForm());
+  fieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', handler);
+    if (el && (el.tagName === 'SELECT')) el.addEventListener('change', handler);
+  });
+  // Skills checkboxes
+  document.querySelectorAll('#cp-skills input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', handler);
+  });
+}
+
 function renderBrandCompletion(profile) {
   const el = document.getElementById('brand-profile-completion');
   if (!el) return;
@@ -2572,9 +2617,11 @@ async function populateCreatorForm() {
     _updateVerifiedBadgeUI(handles);
 
     renderCreatorCompletion(p);
+    _attachProfileFormListeners();
   } catch (err) {
     // Profile doesn't exist yet (new user) — show empty completion bar
     renderCreatorCompletion({});
+    _attachProfileFormListeners();
   }
 }
 
