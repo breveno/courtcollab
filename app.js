@@ -44,9 +44,9 @@ async function _pollMessages() {
     renderConversations();
   } catch (_) {}
 
-  // Also check typing indicator
+  // Also check typing indicator (cache-bust to prevent Netlify CDN caching)
   try {
-    const t = await apiGet('/api/typing/' + state.activePartner);
+    const t = await apiGet('/api/typing/' + state.activePartner + '?_=' + Date.now());
     if (t && t.is_typing) _showTypingIndicator();
     else _hideTypingIndicator();
   } catch (_) {}
@@ -85,7 +85,7 @@ function _hideTypingIndicator() {
 }
 
 function _sendTyping() {
-  if (!state.activePartner || !_typingTimer) {
+  if (state.activePartner && !_typingTimer) {
     // POST typing state (fire-and-forget)
     apiPost('/api/typing/' + state.activePartner, {}).catch(() => {});
   }
