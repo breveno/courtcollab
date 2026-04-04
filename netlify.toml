@@ -7,6 +7,12 @@
     Access-Control-Allow-Origin = "*"
 
 [[redirects]]
+  from = "/api/*"
+  to = "https://courtcollab-production.up.railway.app/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

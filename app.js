@@ -3,7 +3,9 @@
 // ============================================================
 
 // --- Auth & API Helpers ---
-const API = 'https://courtcollab-production.up.railway.app';
+const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'https://courtcollab-production.up.railway.app'
+  : '';
 
 // Extract a human-readable message from a FastAPI error response
 function _extractDetail(data) {
@@ -21,11 +23,11 @@ window.fetch = function(...args) {
   let _slowTimer = null;
   const url = typeof args[0] === 'string' ? args[0] : '';
   // Only intercept our own API calls (not Stripe etc.)
-  if (url.includes('railway.app')) {
+  if (url.includes('railway.app') || url.startsWith('/api')) {
     _slowTimer = setTimeout(() => showLoading('Loading…'), 500);
   }
   return _origFetch.apply(this, args).catch(err => {
-    if (err instanceof TypeError && url.includes('railway.app')) {
+    if (err instanceof TypeError && (url.includes('railway.app') || url.startsWith('/api'))) {
       showToast('Connection failed. Please check your internet and try again.', 'error');
     }
     throw err;
