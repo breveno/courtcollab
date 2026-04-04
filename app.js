@@ -26,7 +26,7 @@ window.fetch = function(...args) {
   }
   return _origFetch.apply(this, args).catch(err => {
     if (err instanceof TypeError && url.includes('railway.app')) {
-      showToast('⚠ Connection failed. Please check your internet and try again.');
+      showToast('Connection failed. Please check your internet and try again.', 'error');
     }
     throw err;
   }).finally(() => {
@@ -608,6 +608,12 @@ function switchRole(role) {
   if (el) el.value = role;
   document.querySelectorAll('.brand-only').forEach(e => { e.style.display = role === 'brand' ? '' : 'none'; });
   document.querySelectorAll('.creator-only').forEach(e => { e.style.display = role === 'creator' ? '' : 'none'; });
+  // Update dashboard nav button data-page so active highlight works per role
+  const dashPage = role === 'brand' ? 'brand-portal' : 'landing';
+  ['nav-dashboard-btn', 'nav-dashboard-btn-mobile'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.dataset.page = dashPage;
+  });
 }
 
 // --- Format Numbers ---
@@ -632,8 +638,11 @@ function renderStars(score) {
 // --- Toast ---
 function showToast(text, type = 'default') {
   const toast = document.getElementById('toast');
-  document.getElementById('toast-text').textContent = text;
-  toast.style.background = type === 'success' ? '#16a34a' : '';
+  const displayText = type === 'error' ? 'Uh oh! ' + text.replace(/^[⚠\s]+/, '') : text;
+  document.getElementById('toast-text').textContent = displayText;
+  if (type === 'success') toast.style.background = '#16a34a';
+  else if (type === 'error') toast.style.background = '#264226';
+  else toast.style.background = '';
   toast.classList.remove('hidden', 'opacity-0', 'translate-y-2');
   toast.classList.add('opacity-100', 'translate-y-0');
   setTimeout(() => {
@@ -1063,7 +1072,7 @@ async function toggleSaveCreator(creatorId) {
     // If in saved tab and just un-saved, re-render to remove the card
     if (_creatorsTab === 'saved' && !saved) renderCreators();
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Something went wrong'));
+    showToast(err.message || 'Something went wrong', 'error');
   }
 }
 
@@ -1639,8 +1648,9 @@ async function saveCreatorProfile(e) {
     showToast('Profile saved!', 'success');
     _updateVerifiedBadgeUI(handles);
     renderCreatorCompletion(saved);
+    setTimeout(() => navigateDashboard(), 1000);
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Something went wrong'));
+    showToast(err.message || 'Something went wrong', 'error');
   }
 }
 
@@ -1819,7 +1829,7 @@ async function postCampaign(e) {
     renderCampaigns();
     if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Something went wrong'));
+    showToast(err.message || 'Something went wrong', 'error');
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origBtnText; }
   }
 }
@@ -2160,7 +2170,7 @@ async function sendMessage() {
     await apiPost('/api/messages', { receiver_id: state.activePartner, body: text });
     await openConversation(state.activePartner);
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Something went wrong'));
+    showToast(err.message || 'Something went wrong', 'error');
     input.value = text;
   }
 }
@@ -2192,7 +2202,7 @@ async function proposeDeal(e) {
   const campaignId   = campaignEl ? parseInt(campaignEl.value) : null;
 
   if (!campaignId) {
-    showToast('⚠ Please select a campaign for this deal');
+    showToast('Please select a campaign for this deal', 'error');
     return;
   }
 
@@ -2212,7 +2222,7 @@ async function proposeDeal(e) {
     showToast('Deal proposal sent!', 'success');
     await openConversation(state.activePartner);
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Something went wrong'));
+    showToast(err.message || 'Something went wrong', 'error');
   }
 }
 
@@ -2247,7 +2257,7 @@ async function updateDealStatus(dealId, status) {
       openRatingModal(dealId, 'How was your experience working with this creator?');
     }
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Something went wrong'));
+    showToast(err.message || 'Something went wrong', 'error');
   }
 }
 
@@ -2521,7 +2531,7 @@ async function saveBrandProfileModal() {
     showToast('Brand profile saved!', 'success');
     renderBrandPortal(); // re-renders completion bar + stats
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Could not save profile'));
+    showToast(err.message || 'Could not save profile', 'error');
   }
 }
 
@@ -2653,7 +2663,7 @@ async function releasePayment(paymentId) {
     showToast('✓ Payment released to creator!', 'success');
     renderPayments();
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Something went wrong'));
+    showToast(err.message || 'Something went wrong', 'error');
   }
 }
 
@@ -2665,7 +2675,7 @@ function submitPayment(e) {
 async function handleStripePaymentForm(e) {
   e.preventDefault();
   const dealId = parseInt(document.getElementById('pay-deal-id')?.value);
-  if (!dealId) { showToast('⚠ Please enter a Deal ID'); return; }
+  if (!dealId) { showToast('Please enter a Deal ID', 'error'); return; }
   await stripeCheckout(dealId);
 }
 
@@ -2677,7 +2687,7 @@ async function stripeConnectOnboard() {
     const data = await apiPost('/api/stripe/connect/onboard', {});
     window.location.href = data.url;
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Could not start Stripe onboarding'));
+    showToast(err.message || 'Could not start Stripe onboarding', 'error');
     const btn = document.getElementById('stripe-connect-btn');
     if (btn) { btn.disabled = false; btn.textContent = 'Connect Stripe Payouts'; }
   }
@@ -2719,7 +2729,7 @@ async function stripeCheckout(dealId) {
     const data = await apiPost(`/api/stripe/checkout/${dealId}`, {});
     window.location.href = data.checkout_url;
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Payment failed'));
+    showToast(err.message || 'Payment failed', 'error');
     const btn = document.getElementById(`pay-btn-${dealId}`);
     if (btn) { btn.disabled = false; btn.textContent = 'Pay with Stripe'; }
   }
@@ -2772,7 +2782,7 @@ async function submitRating() {
     // Refresh brand portal if brand is on that page
     if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Could not submit rating'));
+    showToast(err.message || 'Could not submit rating', 'error');
   }
 }
 
@@ -2853,7 +2863,7 @@ async function signContract() {
     // Refresh deal panel so "View Contract" button updates
     if (state.activePartner) openConversation(state.activePartner);
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Could not sign contract'));
+    showToast(err.message || 'Could not sign contract', 'error');
   }
 }
 
@@ -2880,7 +2890,7 @@ async function submitDispute() {
     showToast('Dispute filed. Our team will review and contact both parties.', 'success');
     if (state.activePartner) openConversation(state.activePartner);
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Could not file dispute'));
+    showToast(err.message || 'Could not file dispute', 'error');
   }
 }
 
@@ -2966,7 +2976,7 @@ async function openDisputeDetailModal(dealId) {
     }
   } catch (err) {
     document.getElementById('dispute-reason-text').textContent = 'Failed to load dispute.';
-    showToast('⚠ ' + (err.message || 'Could not load dispute'));
+    showToast(err.message || 'Could not load dispute', 'error');
   }
 }
 
@@ -2978,7 +2988,7 @@ async function submitDisputeComment() {
     document.getElementById('dispute-comment-input').value = '';
     await openDisputeDetailModal(_disputeDealId);
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Could not send message'));
+    showToast(err.message || 'Could not send message', 'error');
   }
 }
 
@@ -2990,7 +3000,7 @@ async function resolveDispute(newStatus) {
     await openDisputeDetailModal(_disputeDealId);
     renderAdmin();
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Could not update dispute'));
+    showToast(err.message || 'Could not update dispute', 'error');
   }
 }
 
@@ -3513,7 +3523,7 @@ async function deleteSelectedUsers() {
     showToast(`✓ Deleted ${result.deleted} user${result.deleted !== 1 ? 's' : ''}`);
     renderAdmin();
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Delete failed'));
+    showToast(err.message || 'Delete failed', 'error');
   }
 }
 
@@ -3521,7 +3531,7 @@ async function adminDeleteOne(userId) {
   const u = _adminUsers.find(u => u.id === userId);
   if (!u) return;
   if (ADMIN_EMAILS.includes(u.email)) {
-    showToast('⚠ Admin accounts cannot be deleted.');
+    showToast('Admin accounts cannot be deleted.', 'error');
     return;
   }
   const ok = confirm(`Permanently delete ${u.name}?\n\nThis cannot be undone. Their profile, deals, and messages will be removed.`);
@@ -3531,7 +3541,7 @@ async function adminDeleteOne(userId) {
     showToast(`✓ ${u.name} has been deleted.`);
     renderAdmin();
   } catch (err) {
-    showToast('⚠ ' + (err.message || 'Delete failed'));
+    showToast(err.message || 'Delete failed', 'error');
   }
 }
 
