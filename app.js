@@ -2252,15 +2252,15 @@ async function openConversation(partnerId) {
 
     chatEl.scrollTop = chatEl.scrollHeight;
   } catch (err) {
-    const chatEl = document.getElementById('chat-messages');
-    if (chatEl) chatEl.innerHTML = `<div class="text-center text-red-400 text-sm py-8">${err.message}</div>`;
+    showToast(err.message || 'Could not load conversation', 'error');
   }
 }
 
 async function sendMessage() {
   const input = document.getElementById('message-input');
   const text  = (input?.value || '').trim();
-  if (!text || !state.activePartner) return;
+  if (!text) return;
+  if (!state.activePartner) { showToast('Select a conversation first', 'error'); return; }
   input.value = '';
 
   try {
@@ -2277,13 +2277,6 @@ async function startConversation() {
   const creatorUserId = state.selectedCreator.user_id;
   closeModal('creator-detail-modal');
   navigate('messages');
-  // Send an initial opening message then open the thread
-  try {
-    await apiPost('/api/messages', {
-      receiver_id: creatorUserId,
-      body: `Hi! I'm interested in collaborating with you on a campaign.`
-    });
-  } catch { /* thread may already exist */ }
   setTimeout(() => openConversation(creatorUserId), 200);
 }
 
