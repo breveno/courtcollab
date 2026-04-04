@@ -5,6 +5,16 @@
 // --- Auth & API Helpers ---
 const API = 'https://courtcollab-production.up.railway.app';
 
+// Extract a human-readable message from a FastAPI error response
+function _extractDetail(data) {
+  if (!data || !data.detail) return 'Request failed';
+  if (typeof data.detail === 'string') return data.detail;
+  if (Array.isArray(data.detail)) {
+    return data.detail.map(e => e.msg || JSON.stringify(e)).join(', ');
+  }
+  return JSON.stringify(data.detail);
+}
+
 // Slow-load detector: show spinner if any fetch takes > 500ms
 const _origFetch = window.fetch;
 window.fetch = function(...args) {
@@ -54,7 +64,7 @@ async function apiPost(path, body, opts = {}) {
       body: JSON.stringify(body)
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    if (!res.ok) throw new Error(_extractDetail(data));
     return data;
   } finally { if (opts.loading) hideLoading(); }
 }
@@ -68,7 +78,7 @@ async function apiGet(path, opts = {}) {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || 'Request failed');
+      throw new Error(_extractDetail(data));
     }
     return res.json();
   } finally { if (opts.loading) hideLoading(); }
@@ -87,7 +97,7 @@ async function apiPut(path, body, opts = {}) {
       body: JSON.stringify(body)
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    if (!res.ok) throw new Error(_extractDetail(data));
     return data;
   } finally { if (opts.loading) hideLoading(); }
 }
@@ -105,7 +115,7 @@ async function apiPatch(path, body = {}, opts = {}) {
       body: JSON.stringify(body)
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    if (!res.ok) throw new Error(_extractDetail(data));
     return data;
   } finally { if (opts.loading) hideLoading(); }
 }
@@ -1053,7 +1063,7 @@ async function toggleSaveCreator(creatorId) {
     // If in saved tab and just un-saved, re-render to remove the card
     if (_creatorsTab === 'saved' && !saved) renderCreators();
   } catch (err) {
-    showToast('⚠ ' + err.message);
+    showToast('⚠ ' + (err.message || 'Something went wrong'));
   }
 }
 
@@ -1630,7 +1640,7 @@ async function saveCreatorProfile(e) {
     _updateVerifiedBadgeUI(handles);
     renderCreatorCompletion(saved);
   } catch (err) {
-    showToast('⚠ ' + err.message);
+    showToast('⚠ ' + (err.message || 'Something went wrong'));
   }
 }
 
@@ -1809,7 +1819,7 @@ async function postCampaign(e) {
     renderCampaigns();
     if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
-    showToast('⚠ ' + err.message);
+    showToast('⚠ ' + (err.message || 'Something went wrong'));
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origBtnText; }
   }
 }
@@ -2150,7 +2160,7 @@ async function sendMessage() {
     await apiPost('/api/messages', { receiver_id: state.activePartner, body: text });
     await openConversation(state.activePartner);
   } catch (err) {
-    showToast('⚠ ' + err.message);
+    showToast('⚠ ' + (err.message || 'Something went wrong'));
     input.value = text;
   }
 }
@@ -2202,7 +2212,7 @@ async function proposeDeal(e) {
     showToast('Deal proposal sent!', 'success');
     await openConversation(state.activePartner);
   } catch (err) {
-    showToast('⚠ ' + err.message);
+    showToast('⚠ ' + (err.message || 'Something went wrong'));
   }
 }
 
@@ -2237,7 +2247,7 @@ async function updateDealStatus(dealId, status) {
       openRatingModal(dealId, 'How was your experience working with this creator?');
     }
   } catch (err) {
-    showToast('⚠ ' + err.message);
+    showToast('⚠ ' + (err.message || 'Something went wrong'));
   }
 }
 
@@ -2643,7 +2653,7 @@ async function releasePayment(paymentId) {
     showToast('✓ Payment released to creator!', 'success');
     renderPayments();
   } catch (err) {
-    showToast('⚠ ' + err.message);
+    showToast('⚠ ' + (err.message || 'Something went wrong'));
   }
 }
 
@@ -3538,7 +3548,7 @@ async function apiDelete(path, body, opts = {}) {
       body: JSON.stringify(body)
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    if (!res.ok) throw new Error(_extractDetail(data));
     return data;
   } finally { if (opts.loading) hideLoading(); }
 }
