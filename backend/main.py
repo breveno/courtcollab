@@ -247,8 +247,21 @@ async def websocket_endpoint(ws: WebSocket, token: str = Query(...)):
     try:
         while True:
             data = await ws.receive_json()
-            if isinstance(data, dict) and data.get("type") == "ping":
+            if not isinstance(data, dict):
+                continue
+            if data.get("type") == "ping":
                 await ws.send_json({"type": "pong"})
+            elif data.get("type") == "typing":
+                # Forward typing indicator to the recipient
+                to_id = data.get("to")
+                if to_id:
+                    with get_conn() as conn:
+                        sender = _row(conn, "SELECT name FROM users WHERE id = ?", (user_id,))
+                    await manager.send(to_id, {
+                        "type":        "typing",
+                        "from":        user_id,
+                        "sender_name": sender["name"] if sender else "",
+                    })
     except WebSocketDisconnect:
         manager.disconnect(user_id)
     except Exception:

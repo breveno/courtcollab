@@ -6,6 +6,105 @@
 const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'https://courtcollab-production.up.railway.app'
   : '';
+const WS_BASE = 'wss://courtcollab-production.up.railway.app';
+
+// --- WebSocket ---
+let _ws = null;
+let _wsReconnectTimer = null;
+let _typingTimer = null;
+
+function _connectWS() {
+  const token = getToken();
+  if (!token || _ws) return;
+  _ws = new WebSocket(WS_BASE + '/ws?token=' + token);
+
+  _ws.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'message') {
+        // Append to active chat if it matches, else refresh conversation list dot
+        if (state.activePartner === data.sender_id) {
+          _appendIncomingMessage(data);
+          renderConversations();
+        } else {
+          renderConversations();
+        }
+      } else if (data.type === 'typing') {
+        if (state.activePartner === data.from) {
+          _showTypingIndicator(data.sender_name);
+        }
+      }
+    } catch (_) {}
+  };
+
+  _ws.onclose = () => {
+    _ws = null;
+    // Reconnect after 3s if still logged in
+    if (getToken()) {
+      _wsReconnectTimer = setTimeout(_connectWS, 3000);
+    }
+  };
+
+  _ws.onerror = () => { _ws?.close(); };
+
+  // Keep-alive ping every 30s
+  const pingInterval = setInterval(() => {
+    if (_ws && _ws.readyState === WebSocket.OPEN) {
+      _ws.send(JSON.stringify({ type: 'ping' }));
+    } else {
+      clearInterval(pingInterval);
+    }
+  }, 30000);
+}
+
+function _disconnectWS() {
+  if (_wsReconnectTimer) { clearTimeout(_wsReconnectTimer); _wsReconnectTimer = null; }
+  if (_ws) { _ws.onclose = null; _ws.close(); _ws = null; }
+}
+
+function _appendIncomingMessage(msg) {
+  const chatEl = document.getElementById('chat-messages');
+  if (!chatEl) return;
+  const placeholder = chatEl.querySelector('.text-center.text-gray-400');
+  if (placeholder) placeholder.remove();
+  _hideTypingIndicator();
+  const div = document.createElement('div');
+  div.className = 'flex justify-start mb-1';
+  div.innerHTML = `<div class="max-w-sm"><div class="message-bubble-left px-4 py-3 text-sm">${escHtml(msg.body)}</div><div class="text-xs text-gray-400 mt-1">${_fmtMsgTime(msg.created_at)}</div></div>`;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+let _typingHideTimer = null;
+function _showTypingIndicator(name) {
+  let el = document.getElementById('typing-indicator');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'typing-indicator';
+    el.className = 'flex justify-start mb-1 px-4';
+    const chatEl = document.getElementById('chat-messages');
+    if (chatEl) chatEl.appendChild(el);
+  }
+  el.innerHTML = `<div class="message-bubble-left px-4 py-3 text-sm flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms"></span><span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms"></span><span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:300ms"></span></div>`;
+  const chatEl = document.getElementById('chat-messages');
+  if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+  if (_typingHideTimer) clearTimeout(_typingHideTimer);
+  _typingHideTimer = setTimeout(_hideTypingIndicator, 3000);
+}
+
+function _hideTypingIndicator() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+function _sendTyping() {
+  if (_ws && _ws.readyState === WebSocket.OPEN && state.activePartner) {
+    _ws.send(JSON.stringify({ type: 'typing', to: state.activePartner }));
+  }
+  // Debounce: only send once per 2s
+  clearTimeout(_typingTimer);
+  _typingTimer = setTimeout(() => { _typingTimer = null; }, 2000);
+}
 
 // Extract a human-readable message from a FastAPI error response
 function _extractDetail(data) {
@@ -428,6 +527,7 @@ function onAuthSuccess(user) {
   navigate(isAdmin ? 'admin' : 'landing');
   if (user.role === 'creator') loadStripeConnectStatus();
   startNotifPolling();
+  _connectWS();
 }
 
 // --- Admin role view switcher ---
@@ -481,6 +581,7 @@ function updateLandingHeroButtons(role) {
 
 function handleLogout() {
   stopNotifPolling();
+  _disconnectWS();
   state.currentUser = null;
   state.activePartner = null;
   state.selectedCreator = null;
@@ -2011,18 +2112,24 @@ async function runMatching() {
 
 // Format a timestamp for display in message threads / conversation list
 function _fmtMsgTime(ts) {
-  if (!ts) return '';
+  if (!ts || ts === 'null' || ts === 'undefined') return '';
   try {
-    const d   = new Date(ts.includes('T') || ts.includes('Z') ? ts : ts.replace(' ', 'T') + 'Z');
+    // Normalise: replace space separator with T, strip fractional seconds, ensure Z suffix
+    const normalised = ts.trim()
+      .replace(' ', 'T')
+      .replace(/\.\d+/, '')          // strip microseconds
+      .replace(/Z?$/, 'Z');          // ensure UTC marker
+    const d = new Date(normalised);
+    if (isNaN(d.getTime())) return '';
     const now = new Date();
     const diffMs  = now - d;
     const diffMin = Math.floor(diffMs / 60000);
     const sameDay = d.toDateString() === now.toDateString();
     const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
     const isYesterday = d.toDateString() === yesterday.toDateString();
-    if (diffMin < 1)        return 'Just now';
-    if (sameDay)            return d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
-    if (isYesterday)        return 'Yesterday ' + d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (diffMin < 1)         return 'Just now';
+    if (sameDay)             return d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (isYesterday)         return 'Yesterday ' + d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
     if (diffMs < 7*86400000) return d.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
   } catch { return ''; }
@@ -2267,6 +2374,7 @@ async function sendMessage() {
   if (!text) return;
   if (!state.activePartner) { showToast('Select a conversation first', 'error'); return; }
   input.value = '';
+  _hideTypingIndicator();
 
   try {
     await apiPost('/api/messages', { receiver_id: state.activePartner, body: text });
