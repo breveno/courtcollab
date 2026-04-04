@@ -495,10 +495,12 @@
             </button>
           </div>
           <div class="hidden md:flex items-center gap-2">
-            <div class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center" title="Account">
-              <span id="nav-user-initials" class="text-xs font-bold text-pickle-700"></span>
-            </div>
-            <span id="nav-user-name" class="text-sm font-medium text-gray-700 max-w-[120px] truncate"></span>
+            <button onclick="navigateToProfile()" class="flex items-center gap-2 hover:opacity-80 transition" title="View profile">
+              <div class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center">
+                <span id="nav-user-initials" class="text-xs font-bold text-pickle-700"></span>
+              </div>
+              <span id="nav-user-name" class="text-sm font-medium text-gray-700 max-w-[120px] truncate"></span>
+            </button>
             <button onclick="handleLogout()" class="text-sm text-gray-400 hover:text-red-500 transition font-medium ml-1" title="Sign out">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
             </button>
@@ -508,9 +510,9 @@
             <button class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Open menu">
               <span style="font-size:1.4rem;line-height:1;">☰</span>
             </button>
-            <div class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center" title="Account">
+            <button onclick="navigateToProfile()" class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center hover:opacity-80 transition" title="View profile">
               <span id="nav-user-initials-mobile" class="text-xs font-bold text-pickle-700"></span>
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -568,7 +570,7 @@
           <div class="flex flex-wrap gap-4" id="landing-hero-btns">
             <button onclick="navigate('creators')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-browse-creators">Browse Creators</button>
             <button onclick="switchRole('creator');navigate('creator-profile')" class="border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-white/10 transition" id="btn-join-creator">Join as Creator</button>
-            <button onclick="navigate('creator-profile')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-creator-dashboard" style="display:none;">My Creator Dashboard</button>
+            <button onclick="navigate('creator-dashboard','nav-dashboard-btn')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-creator-dashboard" style="display:none;">My Creator Dashboard</button>
             <button onclick="navigate('brand-portal')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-brand-dashboard" style="display:none;">My Brand Portal</button>
           </div>
         </div>

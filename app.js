@@ -566,6 +566,11 @@ function navigateDashboard() {
   navigate(state.role === 'brand' ? 'brand-portal' : 'creator-dashboard', 'nav-dashboard-btn');
 }
 
+function navigateToProfile() {
+  if (state.role === 'creator') navigate('creator-profile');
+  else navigate('brand-portal');
+}
+
 function navigate(page, activeNavId = null) {
   if (!getToken()) { showAuthGate(); return; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
