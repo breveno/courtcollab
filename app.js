@@ -84,13 +84,15 @@ function _hideTypingIndicator() {
   if (el) el.remove();
 }
 
-function _sendTyping() {
-  if (state.activePartner && !_typingTimer) {
-    // POST typing state (fire-and-forget)
+function _sendTyping(value) {
+  if (!state.activePartner) return;
+  if (!value || value.length === 0) return;  // don't show bubble for empty input
+  // Only POST once per 5s (debounce), backend expires after 2 min
+  if (!_typingTimer) {
     apiPost('/api/typing/' + state.activePartner, {}).catch(() => {});
   }
   clearTimeout(_typingTimer);
-  _typingTimer = setTimeout(() => { _typingTimer = null; }, 2000);
+  _typingTimer = setTimeout(() => { _typingTimer = null; }, 5000);
 }
 
 // Extract a human-readable message from a FastAPI error response
@@ -2362,6 +2364,7 @@ async function sendMessage() {
   if (!text) return;
   if (!state.activePartner) { showToast('Select a conversation first', 'error'); return; }
   input.value = '';
+  clearTimeout(_typingTimer); _typingTimer = null;
   _hideTypingIndicator();
 
   try {

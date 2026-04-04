@@ -1718,6 +1718,9 @@ async def send_message(request: Request, body: MessageIn, user: dict = Depends(c
         mid = cur.lastrowid
         msg = _row(conn, "SELECT * FROM messages WHERE id = ?", (mid,))
 
+    # Clear typing indicator now that message is sent
+    _typing_store.pop((user["id"], body.receiver_id), None)
+
     # Real-time fan-out — push to receiver's WebSocket if they are online
     await manager.send(body.receiver_id, {
         "type":        "message",
@@ -1766,8 +1769,8 @@ _typing_store: dict = {}   # (sender_id, receiver_id) -> expires_at
 
 @app.post("/api/typing/{receiver_id}", status_code=200)
 def set_typing(receiver_id: int, user: dict = Depends(current_user)):
-    """Mark the current user as typing to receiver_id for 3 seconds."""
-    _typing_store[(user["id"], receiver_id)] = _time.time() + 3
+    """Mark the current user as typing to receiver_id for 2 minutes."""
+    _typing_store[(user["id"], receiver_id)] = _time.time() + 120
     return {}
 
 @app.get("/api/typing/{sender_id}")
