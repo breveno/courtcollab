@@ -1827,16 +1827,38 @@ async function saveCreatorProfile(e) {
   if (_yt) handles.youtube   = _yt;
   body.social_handles = handles;
   try {
-    const saved = await apiPut('/api/creator/profile', body);
-    // Attach parsed handles back for the completion bar
-    saved.social_handles = handles;
-    showToast('Profile saved!', 'success');
+    await apiPut('/api/creator/profile', body);
+    // Use the form data (which was just saved) for completion calculation
+    const formProfile = _buildProfileFromForm();
+    formProfile.social_handles = handles;
+    formProfile.skills = skills;
     _updateVerifiedBadgeUI(handles);
-    renderCreatorCompletion(saved);
-    setTimeout(() => navigate('creator-dashboard', 'nav-dashboard-btn'), 1000);
+    renderCreatorCompletion(formProfile);
+    const pct = _calcCompletion(formProfile, _CREATOR_COMPLETION_FIELDS);
+
+    // First-time 100% completion celebration
+    const celebKey = 'cc_profile_celebrated_' + (state.currentUser?.id || '');
+    if (pct >= 100 && !localStorage.getItem(celebKey)) {
+      localStorage.setItem(celebKey, '1');
+      _showSavedBanner("You're all set! Good job completing your CourtCollab profile — let's collab!", '#16a34a');
+    } else {
+      _showSavedBanner('Your info has been saved!', '#16a34a');
+    }
+    setTimeout(() => navigate('creator-dashboard', 'nav-dashboard-btn'), 2000);
   } catch (err) {
     showToast(err.message || 'Something went wrong', 'error');
   }
+}
+
+function _showSavedBanner(msg, color) {
+  const existing = document.getElementById('_saved-banner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = '_saved-banner';
+  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:9999;background:${color};color:#fff;text-align:center;padding:14px 20px;font-size:15px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:opacity .4s`;
+  banner.textContent = msg;
+  document.body.appendChild(banner);
+  setTimeout(() => { banner.style.opacity = '0'; setTimeout(() => banner.remove(), 400); }, 3000);
 }
 
 // --- Render Campaigns ---
@@ -2683,7 +2705,7 @@ function renderBrandCompletion(profile) {
 // --- Pre-populate creator profile form from API ---
 async function populateCreatorForm() {
   try {
-    const p = await apiGet('/api/creator/profile');
+    const p = await apiGet('/api/creator/profile?_=' + Date.now());
     const setVal  = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
     const setNum  = (id, v) => { const el = document.getElementById(id); if (el) el.value = v > 0 ? v : ''; };
     const setSel  = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
