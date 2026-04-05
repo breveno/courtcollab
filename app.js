@@ -2499,7 +2499,7 @@ const _CREATOR_COMPLETION_FIELDS = [
     scroll: true,
   },
   {
-    key: 'skill_level', label: 'Set your skill level', icon: '🏓', pct: 5,
+    key: 'skill_level', label: 'Set your skill level', icon: '🎯', pct: 5,
     tip: 'Pickleball skill level helps brands target the right audience.',
     check: p => !!(p.skill_level || '').trim(),
     focusId: 'cp-skill-level',
@@ -3364,6 +3364,7 @@ function startOnboarding(user) {
     overlay.style.justifyContent = 'center';
   }
   document.body.style.overflow = 'hidden';
+  document.documentElement.style.overflow = 'hidden';
 }
 
 function _onboardGoToStep(n) {
@@ -3478,6 +3479,7 @@ function _onboardClose(saved = false) {
   const overlay = document.getElementById('onboarding-overlay');
   if (overlay) overlay.style.display = 'none';
   document.body.style.overflow = '';
+  document.documentElement.style.overflow = '';
   _onboardUser = null;
   if (saved) showToast('Profile saved! Welcome to CourtCollab', 'success');
 }
