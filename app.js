@@ -1344,17 +1344,10 @@ function _updateVerifiedBadgeUI(handles) {
 }
 
 function verifiedBadgeHtml(creator, size = 'sm') {
-  const handles = (typeof creator.social_handles === 'object' && creator.social_handles !== null)
-    ? creator.social_handles : {};
-  const isVerified = Object.values(handles).some(v => v && String(v).trim().length > 0);
-  if (!isVerified) return '';
-  const sizeCls = size === 'lg'
-    ? 'w-5 h-5 text-xs px-2 py-0.5'
-    : 'w-4 h-4 text-[11px] px-1.5 py-0.5';
-  return `<span class="inline-flex items-center gap-1 bg-pickle-100 text-pickle-700 font-semibold rounded-full leading-none ${sizeCls}" title="Verified creator — connected social account">
-    <svg class="${size === 'lg' ? 'w-3.5 h-3.5' : 'w-3 h-3'}" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
-    Verified
-  </span>`;
+  const pct = _calcCompletion(creator, _CREATOR_COMPLETION_FIELDS);
+  if (pct < 100) return '';
+  const svgSize = size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5';
+  return `<svg class="${svgSize} text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" title="Profile complete"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>`;
 }
 
 async function renderCreators() {
@@ -2614,6 +2607,9 @@ function renderCreatorCompletion(profile) {
   const missing = _CREATOR_COMPLETION_FIELDS.filter(f => !f.check(profile));
   const pct     = _calcCompletion(profile, _CREATOR_COMPLETION_FIELDS);
   el.innerHTML  = _completionBarHtml(pct, missing, 'creator');
+  // Show/hide nav verified badge
+  const navBadge = document.getElementById('nav-verified-badge');
+  if (navBadge) navBadge.classList.toggle('hidden', pct < 100);
 }
 
 // Build a profile-like object from the live form values (no API call needed)
@@ -2691,6 +2687,8 @@ async function populateCreatorForm() {
     const setNum  = (id, v) => { const el = document.getElementById(id); if (el) el.value = v > 0 ? v : ''; };
     const setSel  = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
 
+    const emailEl = document.getElementById('cp-account-email');
+    if (emailEl) emailEl.value = state.currentUser?.email || '';
     setVal('cp-name',       p.name);
     setVal('cp-location',   p.location);
     setVal('cp-bio',        p.bio);
@@ -2734,6 +2732,22 @@ async function populateCreatorForm() {
     // Profile doesn't exist yet (new user) — show empty completion bar
     renderCreatorCompletion({});
     _attachProfileFormListeners();
+  }
+}
+
+async function changePassword() {
+  const pw  = document.getElementById('cp-new-password')?.value || '';
+  const pw2 = document.getElementById('cp-confirm-password')?.value || '';
+  if (!pw) { showToast('Please enter a new password', 'error'); return; }
+  if (pw.length < 8) { showToast('Password must be at least 8 characters', 'error'); return; }
+  if (pw !== pw2) { showToast('Passwords do not match', 'error'); return; }
+  try {
+    await apiPost('/api/change-password', { password: pw });
+    document.getElementById('cp-new-password').value = '';
+    document.getElementById('cp-confirm-password').value = '';
+    showToast('Password updated successfully', 'success');
+  } catch (err) {
+    showToast(err.message || 'Failed to update password', 'error');
   }
 }
 

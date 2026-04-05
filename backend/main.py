@@ -2337,6 +2337,25 @@ def reset_password(request: Request, body: ResetPasswordIn):
 
 
 # ---------------------------------------------------------------------------
+# Routes — Change Password (authenticated)
+# ---------------------------------------------------------------------------
+
+class ChangePasswordIn(BaseModel):
+    password: str = Field(min_length=8, max_length=200)
+
+@app.post("/api/change-password", status_code=200)
+@limiter.limit("10/minute")
+def change_password(request: Request, body: ChangePasswordIn, user: dict = Depends(current_user)):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET password = ? WHERE id = ?",
+            (_hash(body.password), user["id"]),
+        )
+        conn.commit()
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
 # Routes — Contact Form
 # ---------------------------------------------------------------------------
 
