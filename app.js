@@ -3523,14 +3523,29 @@ function renderContact() {
   newForm.addEventListener('submit', submitContact);
 }
 
-function submitContact(e) {
+async function submitContact(e) {
   e.preventDefault();
-  const banner = document.getElementById('contact-success');
-  if (banner) {
-    banner.classList.remove('hidden');
-    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const btn = e.target.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    await apiPost('/api/contact', {
+      name:    document.getElementById('contact-name').value.trim(),
+      email:   document.getElementById('contact-email').value.trim(),
+      role:    document.getElementById('contact-role').value,
+      subject: document.getElementById('contact-subject').value,
+      message: document.getElementById('contact-message').value.trim(),
+    });
+    const banner = document.getElementById('contact-success');
+    if (banner) {
+      banner.classList.remove('hidden');
+      banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    e.target.reset();
+  } catch (err) {
+    showToast(err.message || 'Failed to send message', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Message'; }
   }
-  e.target.reset();
 }
 
 // --- Admin Dashboard ---

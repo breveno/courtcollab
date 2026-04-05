@@ -2337,6 +2337,34 @@ def reset_password(request: Request, body: ResetPasswordIn):
 
 
 # ---------------------------------------------------------------------------
+# Routes — Contact Form
+# ---------------------------------------------------------------------------
+
+class ContactIn(BaseModel):
+    name:    str = Field(min_length=1, max_length=200)
+    email:   EmailStr
+    role:    str = ""
+    subject: str = ""
+    message: str = Field(min_length=1, max_length=5000)
+
+@app.post("/api/contact", status_code=200)
+@limiter.limit("5/minute")
+def submit_contact(request: Request, body: ContactIn):
+    """Forward contact form submissions to the CourtCollab team."""
+    email_body = (
+        f"New contact form submission from {body.name} ({body.email})\n"
+        f"Role: {body.role or 'Not specified'}\n"
+        f"Subject: {body.subject or 'Not specified'}\n\n"
+        f"Message:\n{body.message}\n\n"
+        f"— CourtCollab Contact Form"
+    )
+    subject = f"[CourtCollab Contact] {body.subject or 'New message'} — from {body.name}"
+    for recipient in ["ben@courtcollab.com", "julia@courtcollab.com"]:
+        _send_email(recipient, subject, email_body, event_type="contact_form")
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
 # Routes — Admin
 # ---------------------------------------------------------------------------
 
