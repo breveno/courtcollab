@@ -2499,7 +2499,7 @@ const _CREATOR_COMPLETION_FIELDS = [
     scroll: true,
   },
   {
-    key: 'skill_level', label: 'Set your skill level', icon: '🎾', pct: 5,
+    key: 'skill_level', label: 'Set your skill level', icon: '🏓', pct: 5,
     tip: 'Pickleball skill level helps brands target the right audience.',
     check: p => !!(p.skill_level || '').trim(),
     focusId: 'cp-skill-level',
@@ -3309,7 +3309,7 @@ function startOnboarding(user) {
   const ctaEl   = document.getElementById('onboard-cta-btn');
   const bullEl  = document.getElementById('onboard-bullets');
 
-  if (emojiEl) emojiEl.textContent = isCreator ? '🎾' : '🏢';
+  if (emojiEl) emojiEl.innerHTML = '<img src="logo.svg" alt="CourtCollab" class="w-16 h-16 mx-auto">';
   if (titleEl) titleEl.textContent = `Welcome, ${firstName}!`;
   if (subEl)   subEl.textContent   = isCreator
     ? "Let's get your creator profile ready — it only takes 2 minutes."
@@ -3345,7 +3345,7 @@ function startOnboarding(user) {
   } else {
     if (s2Title) s2Title.textContent = 'Tell us about your brand';
     if (s2Sub)   s2Sub.textContent   = 'Creators will see this when reviewing your campaign briefs.';
-    if (s2Next)  s2Next.textContent  = 'Finish & go to dashboard 🎾';
+    if (s2Next)  s2Next.textContent  = 'Finish & go to dashboard';
     if (brandF)   brandF.classList.remove('hidden');
     if (creatorF) creatorF.classList.add('hidden');
     _onboardPills('onboard-industry-pills', _ONBOARD_INDUSTRIES, 'industry');
@@ -3363,6 +3363,7 @@ function startOnboarding(user) {
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
   }
+  document.body.style.overflow = 'hidden';
 }
 
 function _onboardGoToStep(n) {
@@ -3476,8 +3477,9 @@ function _onboardClose(saved = false) {
   if (_onboardUser) localStorage.setItem(`onboarded_${_onboardUser.id}`, '1');
   const overlay = document.getElementById('onboarding-overlay');
   if (overlay) overlay.style.display = 'none';
+  document.body.style.overflow = '';
   _onboardUser = null;
-  if (saved) showToast('Profile saved! Welcome to CourtCollab 🎾', 'success');
+  if (saved) showToast('Profile saved! Welcome to CourtCollab', 'success');
 }
 
 function _onboardSaveCreatorStep2() {
