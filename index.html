@@ -741,6 +741,26 @@
       <h1 class="text-3xl font-bold mb-2">Your Creator Profile</h1>
       <p class="text-gray-500 mb-4">Set up your profile so brands can find and connect with you</p>
 
+      <!-- Account Settings -->
+      <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div>
+              <p class="text-sm font-semibold text-gray-700">Account Email</p>
+              <p id="cp-account-email" class="text-sm text-gray-500"></p>
+            </div>
+          </div>
+          <button type="button" onclick="togglePasswordFields()" class="text-sm text-pickle-600 font-medium hover:underline">Change Password</button>
+        </div>
+        <div id="cp-password-fields" class="hidden mt-4 pt-4 border-t border-gray-100">
+          <div class="grid md:grid-cols-2 gap-3 mb-3">
+            <input type="password" id="cp-new-password" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="New password (min 8 chars)">
+            <input type="password" id="cp-confirm-password" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Confirm new password">
+          </div>
+          <button type="button" onclick="changePassword()" class="bg-gray-900 text-white px-5 py-2 rounded-lg font-medium hover:bg-gray-700 transition text-sm">Update Password</button>
+        </div>
+      </div>
+
       <!-- Profile completion bar -->
       <div id="creator-profile-completion" class="mb-8"></div>
 
@@ -950,24 +970,6 @@
         </div>
       </form>
 
-      <!-- Account Settings -->
-      <div class="bg-white rounded-2xl border border-gray-200 p-6 mt-6">
-        <h2 class="font-bold text-lg mb-4">Account</h2>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="text" id="cp-account-email" class="w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 text-gray-500 cursor-not-allowed" readonly>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Change Password</label>
-            <div class="grid md:grid-cols-2 gap-3">
-              <input type="password" id="cp-new-password" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="New password">
-              <input type="password" id="cp-confirm-password" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Confirm new password">
-            </div>
-            <button type="button" onclick="changePassword()" class="mt-3 bg-gray-900 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-700 transition text-sm">Update Password</button>
-          </div>
-        </div>
-      </div>
 
       <!-- Deal History — auto-populated from completed deals -->
       <div id="creator-deal-history" class="mt-6"></div>
@@ -2011,6 +2013,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>

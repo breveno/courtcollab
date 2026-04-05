@@ -2617,6 +2617,7 @@ function _buildProfileFromForm() {
   const skills = Array.from(document.querySelectorAll('#cp-skills input:checked')).map(i => i.value);
   return {
     name:            (document.getElementById('cp-name')?.value        || '').trim(),
+    niche:           (document.getElementById('cp-niche')?.value        || '').trim(),
     bio:             (document.getElementById('cp-bio')?.value         || '').trim(),
     location:        (document.getElementById('cp-location')?.value    || '').trim(),
     skill_level:     (document.getElementById('cp-skill-level')?.value || '').trim(),
@@ -2688,7 +2689,7 @@ async function populateCreatorForm() {
     const setSel  = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
 
     const emailEl = document.getElementById('cp-account-email');
-    if (emailEl) emailEl.value = state.currentUser?.email || '';
+    if (emailEl) emailEl.textContent = state.currentUser?.email || '';
     setVal('cp-name',       p.name);
     setVal('cp-location',   p.location);
     setVal('cp-bio',        p.bio);
@@ -2730,9 +2731,16 @@ async function populateCreatorForm() {
     _attachProfileFormListeners();
   } catch (err) {
     // Profile doesn't exist yet (new user) — show empty completion bar
+    const emailEl = document.getElementById('cp-account-email');
+    if (emailEl) emailEl.textContent = state.currentUser?.email || '';
     renderCreatorCompletion({});
     _attachProfileFormListeners();
   }
+}
+
+function togglePasswordFields() {
+  const el = document.getElementById('cp-password-fields');
+  if (el) el.classList.toggle('hidden');
 }
 
 async function changePassword() {
