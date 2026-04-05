@@ -1794,44 +1794,46 @@ async function showCreatorDetail(userId) {
 // --- Save Creator Profile ---
 async function saveCreatorProfile(e) {
   e.preventDefault();
-  const skills = Array.from(document.querySelectorAll('#cp-skills input:checked')).map(i => i.value);
-  const body = {
-    name:            document.getElementById('cp-name').value,
-    location:        document.getElementById('cp-location').value,
-    bio:             document.getElementById('cp-bio').value,
-    niche:           document.getElementById('cp-niche').value,
-    skill_level:     document.getElementById('cp-skill-level').value,
-    skills,
-    followers_ig:    parseInt(document.getElementById('cp-ig').value)         || 0,
-    followers_tt:    parseInt(document.getElementById('cp-tiktok').value)     || 0,
-    followers_yt:    parseInt(document.getElementById('cp-yt').value)         || 0,
-    engagement_rate: parseFloat(document.getElementById('cp-engagement').value) || 0,
-    avg_views:       parseInt(document.getElementById('cp-views').value)      || 0,
-    demo_age:        document.getElementById('cp-age').value,
-    demo_gender:     document.getElementById('cp-gender').value,
-    demo_locations:  document.getElementById('cp-locations').value,
-    demo_interests:  document.getElementById('cp-interests').value,
-    rate_ig:         parseInt(document.getElementById('cp-rate-ig').value)    || 0,
-    rate_tiktok:     parseInt(document.getElementById('cp-rate-tiktok').value) || 0,
-    rate_yt:         parseInt(document.getElementById('cp-rate-yt').value)    || 0,
-    rate_ugc:        parseInt(document.getElementById('cp-rate-ugc').value)   || 0,
-    rate_notes:      document.getElementById('cp-rate-notes').value,
-  };
-  // Social handles — build dict, skip blanks
-  const _ig = (document.getElementById('cp-handle-ig')?.value || '').trim().replace(/^@/, '');
-  const _tt = (document.getElementById('cp-handle-tt')?.value || '').trim().replace(/^@/, '');
-  const _yt = (document.getElementById('cp-handle-yt')?.value || '').trim().replace(/^@/, '');
-  const handles = {};
-  if (_ig) handles.instagram = _ig;
-  if (_tt) handles.tiktok    = _tt;
-  if (_yt) handles.youtube   = _yt;
-  body.social_handles = handles;
+  const btn = e.target?.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
+    const skills = Array.from(document.querySelectorAll('#cp-skills input:checked')).map(i => i.value);
+    const body = {
+      name:            (document.getElementById('cp-name')?.value         || ''),
+      location:        (document.getElementById('cp-location')?.value     || ''),
+      bio:             (document.getElementById('cp-bio')?.value          || ''),
+      niche:           (document.getElementById('cp-niche')?.value        || ''),
+      skill_level:     (document.getElementById('cp-skill-level')?.value  || ''),
+      skills,
+      followers_ig:    parseInt(document.getElementById('cp-ig')?.value)           || 0,
+      followers_tt:    parseInt(document.getElementById('cp-tiktok')?.value)       || 0,
+      followers_yt:    parseInt(document.getElementById('cp-yt')?.value)           || 0,
+      engagement_rate: parseFloat(document.getElementById('cp-engagement')?.value) || 0,
+      avg_views:       parseInt(document.getElementById('cp-views')?.value)        || 0,
+      demo_age:        (document.getElementById('cp-age')?.value          || ''),
+      demo_gender:     (document.getElementById('cp-gender')?.value       || ''),
+      demo_locations:  (document.getElementById('cp-locations')?.value    || ''),
+      demo_interests:  (document.getElementById('cp-interests')?.value    || ''),
+      rate_ig:         parseInt(document.getElementById('cp-rate-ig')?.value)      || 0,
+      rate_tiktok:     parseInt(document.getElementById('cp-rate-tiktok')?.value)  || 0,
+      rate_yt:         parseInt(document.getElementById('cp-rate-yt')?.value)      || 0,
+      rate_ugc:        parseInt(document.getElementById('cp-rate-ugc')?.value)     || 0,
+      rate_notes:      (document.getElementById('cp-rate-notes')?.value   || ''),
+    };
+    // Social handles — build dict, skip blanks
+    const _ig = (document.getElementById('cp-handle-ig')?.value || '').trim().replace(/^@/, '');
+    const _tt = (document.getElementById('cp-handle-tt')?.value || '').trim().replace(/^@/, '');
+    const _yt = (document.getElementById('cp-handle-yt')?.value || '').trim().replace(/^@/, '');
+    const handles = {};
+    if (_ig) handles.instagram = _ig;
+    if (_tt) handles.tiktok    = _tt;
+    if (_yt) handles.youtube   = _yt;
+    body.social_handles = handles;
+
     await apiPut('/api/creator/profile', body);
-    // Use the form data (which was just saved) for completion calculation
-    const formProfile = _buildProfileFromForm();
-    formProfile.social_handles = handles;
-    formProfile.skills = skills;
+
+    // Update completion bar using form data
+    const formProfile = { ...body, social_handles: handles, skills };
     _updateVerifiedBadgeUI(handles);
     renderCreatorCompletion(formProfile);
     const pct = _calcCompletion(formProfile, _CREATOR_COMPLETION_FIELDS);
@@ -1844,9 +1846,11 @@ async function saveCreatorProfile(e) {
     } else {
       _showSavedBanner('Your info has been saved!', '#16a34a');
     }
-    setTimeout(() => navigate('creator-dashboard', 'nav-dashboard-btn'), 2000);
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Profile'; }
   } catch (err) {
-    showToast(err.message || 'Something went wrong', 'error');
+    console.error('[saveCreatorProfile]', err);
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Profile'; }
+    _showSavedBanner('Error: ' + (err.message || 'Could not save. Please try again.'), '#b91c1c');
   }
 }
 
