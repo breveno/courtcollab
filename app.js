@@ -680,10 +680,15 @@ function navigate(page, activeNavId = null) {
   if (!getToken()) { showAuthGate(); return; }
 
   // Pre-clear dynamic content BEFORE making the page visible so the browser
-  // never paints a frame with stale data from a previous visit
+  // never paints a frame with stale data from a previous visit.
+  // Also strip grid-fade-in so the skeleton isn't rendered at opacity:0
+  // (the animation's `from` keyframe) when the page first becomes visible.
   if (page === 'creators') {
     const _cg = document.getElementById('creator-grid');
-    if (_cg) _cg.innerHTML = creatorSkeletonHtml();
+    if (_cg) {
+      _cg.classList.remove('grid-fade-in');
+      _cg.innerHTML = creatorSkeletonHtml();
+    }
   }
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
