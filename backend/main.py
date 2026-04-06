@@ -623,7 +623,9 @@ def list_creators(
     max_rate:      Optional[int] = Query(None),
     user:          dict          = Depends(current_user),
 ):
-    with get_conn() as conn:
+    import traceback as _tb
+    try:
+      with get_conn() as conn:
         # LEFT JOIN from users so every creator account appears even without a profile row.
         # COALESCE fills in sensible defaults for any missing profile fields.
         rows = _rows(conn, """
@@ -657,29 +659,32 @@ def list_creators(
             WHERE u.role = 'creator'
         """)
 
-    results = []
-    for r in rows:
-        r["skills"]         = json.loads(r.get("skills") or "[]")
-        r["social_handles"] = json.loads(r.get("social_handles") or "{}")
-        total = (r.get("followers_ig") or 0) + (r.get("followers_tt") or 0) + (r.get("followers_yt") or 0)
+      results = []
+      for r in rows:
+          r["skills"]         = json.loads(r.get("skills") or "[]")
+          r["social_handles"] = json.loads(r.get("social_handles") or "{}")
+          total = (r.get("followers_ig") or 0) + (r.get("followers_tt") or 0) + (r.get("followers_yt") or 0)
 
-        if niche and r.get("niche") != niche:
-            continue
-        if skill and skill not in r["skills"]:
-            continue
-        if min_followers and total < min_followers:
-            continue
-        if max_rate:
-            min_rate = min(r.get("rate_ig") or 0, r.get("rate_tiktok") or 0,
-                          r.get("rate_yt") or 0, r.get("rate_ugc") or 0)
-            if min_rate > max_rate:
-                continue
+          if niche and r.get("niche") != niche:
+              continue
+          if skill and skill not in r["skills"]:
+              continue
+          if min_followers and total < min_followers:
+              continue
+          if max_rate:
+              min_rate = min(r.get("rate_ig") or 0, r.get("rate_tiktok") or 0,
+                            r.get("rate_yt") or 0, r.get("rate_ugc") or 0)
+              if min_rate > max_rate:
+                  continue
 
-        r["total_followers"] = total
-        results.append(r)
+          r["total_followers"] = total
+          results.append(r)
 
-    results.sort(key=lambda x: x["total_followers"], reverse=True)
-    return results
+      results.sort(key=lambda x: x["total_followers"], reverse=True)
+      return results
+    except Exception as e:
+        print("[list_creators ERROR]", _tb.format_exc())
+        raise HTTPException(500, detail=str(e))
 
 
 @app.get("/api/creators/{user_id}")

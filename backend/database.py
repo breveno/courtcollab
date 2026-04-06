@@ -373,8 +373,42 @@ def _init_pg():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_brand ON saved_creators(brand_id)")
 
         # Migrations — add columns to existing tables if they don't exist yet
+        # users
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token         TEXT")
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TEXT")
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS initials            TEXT NOT NULL DEFAULT ''")
+
+        # creator_profiles — ensure every column exists regardless of when the table was first created
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS name            TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS niche           TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS bio             TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS location        TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS skill_level     TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS followers_ig    INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS followers_tt    INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS followers_yt    INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS engagement_rate REAL    DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS avg_views       INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_ig         INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_tiktok     INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_yt         INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_ugc        INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_notes      TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS skills          TEXT DEFAULT '[]'")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS social_handles  TEXT DEFAULT '{}'")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS demo_age        TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS demo_gender     TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS demo_locations  TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS demo_interests  TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS stripe_account_id TEXT")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS stripe_onboarded  INTEGER DEFAULT 0")
+
+        # campaigns
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS niche         TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS skills        TEXT DEFAULT '[]'")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS target_age    TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_followers INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS max_rate      INTEGER DEFAULT 0")
 
         conn.commit()
 
