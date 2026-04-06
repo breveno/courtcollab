@@ -2058,7 +2058,7 @@ async function postCampaign(e) {
     title:       document.getElementById('camp-title').value,
     description: document.getElementById('camp-desc').value,
     niche:       document.getElementById('camp-niche')?.value || null,
-    budget:      document.getElementById('camp-budget').value,
+    budget:      parseInt(document.getElementById('camp-budget').value) || 0,
     deadline:    document.getElementById('camp-deadline').value,
     skills,
   };

@@ -92,7 +92,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -844,15 +844,28 @@ def delete_brand_profile(user: dict = Depends(current_user)):
 # Schemas — Campaigns
 # ---------------------------------------------------------------------------
 
+def _to_int(v):
+    """Coerce strings/floats to int; treat empty string or None as 0."""
+    if v is None or v == '':
+        return 0
+    try:
+        return int(float(str(v)))
+    except (ValueError, TypeError):
+        return 0
+
 class CampaignIn(BaseModel):
     title:         str                  = Field(min_length=2, max_length=200)
     description:   Optional[str]        = None
     budget:        Optional[int]        = Field(default=0, ge=0)
     niche:         Optional[str]        = None
     skills:        Optional[List[str]]  = []
-    target_age:    Optional[str]        = None   # e.g. "25-34"
+    target_age:    Optional[str]        = None
     min_followers: Optional[int]        = Field(default=0, ge=0)
-    max_rate:      Optional[int]        = Field(default=0, ge=0)      # max $/post brand will pay
+    max_rate:      Optional[int]        = Field(default=0, ge=0)
+
+    @field_validator('budget', 'min_followers', 'max_rate', mode='before')
+    @classmethod
+    def coerce_ints(cls, v): return _to_int(v)
 
 class CampaignUpdateIn(BaseModel):
     title:         Optional[str]       = None
@@ -863,6 +876,10 @@ class CampaignUpdateIn(BaseModel):
     target_age:    Optional[str]       = None
     min_followers: Optional[int]       = None
     max_rate:      Optional[int]       = None
+
+    @field_validator('budget', 'min_followers', 'max_rate', mode='before')
+    @classmethod
+    def coerce_ints(cls, v): return _to_int(v) if v is not None else None
 
 class CampaignStatusIn(BaseModel):
     status: str
