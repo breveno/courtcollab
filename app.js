@@ -681,14 +681,25 @@ function navigate(page, activeNavId = null) {
 
   // Pre-clear dynamic content BEFORE making the page visible so the browser
   // never paints a frame with stale data from a previous visit.
-  // Also strip grid-fade-in so the skeleton isn't rendered at opacity:0
-  // (the animation's `from` keyframe) when the page first becomes visible.
   if (page === 'creators') {
     const _cg = document.getElementById('creator-grid');
-    if (_cg) {
-      _cg.classList.remove('grid-fade-in');
-      _cg.innerHTML = creatorSkeletonHtml();
-    }
+    if (_cg) { _cg.classList.remove('grid-fade-in'); _cg.innerHTML = creatorSkeletonHtml(); }
+  }
+  if (page === 'campaigns') {
+    const _cl = document.getElementById('campaign-list');
+    if (_cl) _cl.innerHTML = campaignSkeletonHtml();
+  }
+  if (page === 'brand-portal') {
+    const _bg = document.getElementById('brand-portal-campaign-grid');
+    const _bs = document.getElementById('brand-portal-stats');
+    if (_bg) _bg.innerHTML = '';
+    if (_bs) _bs.innerHTML = '<div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-20"></div><div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-20"></div><div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-20"></div>';
+  }
+  if (page === 'creator-dashboard') {
+    const _cs = document.getElementById('creator-dash-stats');
+    const _cd = document.getElementById('creator-dash-deals');
+    if (_cs) _cs.innerHTML = '<div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-24"></div><div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-24"></div><div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-24"></div>';
+    if (_cd) _cd.innerHTML = '<div class="p-6 animate-pulse space-y-3"><div class="h-4 bg-gray-100 rounded w-1/2"></div><div class="h-3 bg-gray-100 rounded w-1/3"></div></div>';
   }
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
