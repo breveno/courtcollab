@@ -676,11 +676,11 @@ function navigateToProfile() {
   else navigate('brand-portal');
 }
 
+let _navRafId = null;
 function navigate(page, activeNavId = null) {
   if (!getToken()) { showAuthGate(); return; }
 
-  // Pre-clear dynamic content BEFORE making the page visible so the browser
-  // never paints a frame with stale data from a previous visit.
+  // Pre-clear stale content on the incoming page while it is still hidden
   if (page === 'creators') {
     const _cg = document.getElementById('creator-grid');
     if (_cg) { _cg.classList.remove('grid-fade-in'); _cg.innerHTML = creatorSkeletonHtml(); }
@@ -702,46 +702,51 @@ function navigate(page, activeNavId = null) {
     if (_cd) _cd.innerHTML = '<div class="p-6 animate-pulse space-y-3"><div class="h-4 bg-gray-100 rounded w-1/2"></div><div class="h-3 bg-gray-100 rounded w-1/3"></div></div>';
   }
 
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('page-' + page);
-  if (target) {
-    target.classList.add('active');
-    state.currentPage = page;
-  } else {
-    const notFound = document.getElementById('page-404');
-    if (notFound) notFound.classList.add('active');
-    return;
-  }
+  // Scroll to top while the current page is still showing
   window.scrollTo(0, 0);
   document.body.scrollTop = 0;
   document.documentElement.scrollTop = 0;
-  document.querySelectorAll('.nav-link').forEach(link => {
-    if (activeNavId) {
-      const mobileId = activeNavId + '-mobile';
-      link.classList.toggle('active', link.id === activeNavId || link.id === mobileId);
+
+  // FRAME 1: hide all pages — browser commits this as a blank-content frame
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+  // FRAME 2: show the target page — browser paints it cleanly with no old content
+  if (_navRafId) cancelAnimationFrame(_navRafId);
+  _navRafId = requestAnimationFrame(() => {
+    _navRafId = null;
+    const target = document.getElementById('page-' + page);
+    if (target) {
+      target.classList.add('active');
+      state.currentPage = page;
     } else {
-      link.classList.toggle('active', link.dataset.page === page);
+      document.getElementById('page-404')?.classList.add('active');
+      return;
     }
+    document.querySelectorAll('.nav-link').forEach(link => {
+      if (activeNavId) {
+        const mobileId = activeNavId + '-mobile';
+        link.classList.toggle('active', link.id === activeNavId || link.id === mobileId);
+      } else {
+        link.classList.toggle('active', link.dataset.page === page);
+      }
+    });
+    if (page === 'brand-portal') renderBrandPortal();
+    if (page === 'creators')  { loadSavedCreatorIds().then(() => renderCreators()); }
+    if (page === 'campaigns') renderCampaigns();
+    if (page === 'matching')  runMatching();
+    if (page === 'messages')  { renderConversations(); document.getElementById('nav-messages-dot')?.classList.add('hidden'); }
+    if (page === 'payments')  { renderPayments(); document.getElementById('nav-payments-dot')?.classList.add('hidden'); }
+    const msgDot = document.getElementById('nav-messages-dot');
+    const payDot = document.getElementById('nav-payments-dot');
+    if (msgDot?.classList.contains('hidden') && payDot?.classList.contains('hidden')) {
+      document.getElementById('nav-activity-dot')?.classList.add('hidden');
+    }
+    if (page === 'contact')         renderContact();
+    if (page === 'admin')           renderAdmin();
+    if (page === 'creator-profile') { populateCreatorForm(); renderCreatorDealHistory(); }
+    else { const el = document.getElementById('creator-profile-completion'); if (el) el.innerHTML = ''; }
+    if (page === 'creator-dashboard') renderCreatorDashboard();
   });
-  if (page === 'brand-portal') renderBrandPortal();
-  if (page === 'creators')  {
-    loadSavedCreatorIds().then(() => renderCreators());
-  }
-  if (page === 'campaigns') renderCampaigns();
-  if (page === 'matching')  runMatching();
-  if (page === 'messages')  { renderConversations(); document.getElementById('nav-messages-dot')?.classList.add('hidden'); }
-  if (page === 'payments')  { renderPayments(); document.getElementById('nav-payments-dot')?.classList.add('hidden'); }
-  // Hide the activity dot if both sub-dots are now hidden
-  const msgDot = document.getElementById('nav-messages-dot');
-  const payDot = document.getElementById('nav-payments-dot');
-  if (msgDot?.classList.contains('hidden') && payDot?.classList.contains('hidden')) {
-    document.getElementById('nav-activity-dot')?.classList.add('hidden');
-  }
-  if (page === 'contact')          renderContact();
-  if (page === 'admin')            renderAdmin();
-  if (page === 'creator-profile')    { populateCreatorForm(); renderCreatorDealHistory(); }
-  else { const el = document.getElementById('creator-profile-completion'); if (el) el.innerHTML = ''; }
-  if (page === 'creator-dashboard')  renderCreatorDashboard();
 }
 
 // --- Role Switch ---
