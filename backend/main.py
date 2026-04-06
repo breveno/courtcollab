@@ -624,33 +624,37 @@ def list_creators(
     user:          dict          = Depends(current_user),
 ):
     with get_conn() as conn:
-        # LEFT JOIN so creators who signed up before auto-profile creation still appear.
-        # Backfill a minimal profile row for any creator missing one.
-        creator_users = _rows(conn, """
-            SELECT u.id, u.name, u.email, u.initials
+        # LEFT JOIN from users so every creator account appears even without a profile row.
+        # COALESCE fills in sensible defaults for any missing profile fields.
+        rows = _rows(conn, """
+            SELECT
+                u.id            AS user_id,
+                u.email,
+                u.initials,
+                COALESCE(cp.name,           u.name) AS name,
+                COALESCE(cp.niche,          '')     AS niche,
+                COALESCE(cp.bio,            '')     AS bio,
+                COALESCE(cp.location,       '')     AS location,
+                COALESCE(cp.skill_level,    '')     AS skill_level,
+                COALESCE(cp.followers_ig,   0)      AS followers_ig,
+                COALESCE(cp.followers_tt,   0)      AS followers_tt,
+                COALESCE(cp.followers_yt,   0)      AS followers_yt,
+                COALESCE(cp.engagement_rate,0)      AS engagement_rate,
+                COALESCE(cp.avg_views,      0)      AS avg_views,
+                COALESCE(cp.rate_ig,        0)      AS rate_ig,
+                COALESCE(cp.rate_tiktok,    0)      AS rate_tiktok,
+                COALESCE(cp.rate_yt,        0)      AS rate_yt,
+                COALESCE(cp.rate_ugc,       0)      AS rate_ugc,
+                COALESCE(cp.rate_notes,     '')     AS rate_notes,
+                COALESCE(cp.skills,         '[]')   AS skills,
+                COALESCE(cp.social_handles, '{}')   AS social_handles,
+                COALESCE(cp.demo_age,       '')     AS demo_age,
+                COALESCE(cp.demo_gender,    '')     AS demo_gender,
+                COALESCE(cp.demo_locations, '')     AS demo_locations,
+                COALESCE(cp.demo_interests, '')     AS demo_interests
             FROM users u
             LEFT JOIN creator_profiles cp ON cp.user_id = u.id
-            WHERE u.role = 'creator' AND cp.user_id IS NULL
-        """)
-        for cu in creator_users:
-            conn.execute("""
-                INSERT INTO creator_profiles
-                  (user_id, name, niche, bio, location, skill_level,
-                   followers_ig, followers_tt, followers_yt, engagement_rate, avg_views,
-                   rate_ig, rate_tiktok, rate_yt, rate_ugc, rate_notes,
-                   skills, social_handles,
-                   demo_age, demo_gender, demo_locations, demo_interests, updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
-                ON CONFLICT (user_id) DO NOTHING
-            """, (cu["id"], cu["name"], '', '', '', '', 0, 0, 0, 0.0, 0, 0, 0, 0, 0, '',
-                  '[]', '{}', '', '', '', ''))
-        conn.commit()
-
-        rows = _rows(conn, """
-            SELECT cp.*, u.email
-            FROM creator_profiles cp
-            JOIN users u ON u.id = cp.user_id
-            WHERE 1=1
+            WHERE u.role = 'creator'
         """)
 
     results = []
