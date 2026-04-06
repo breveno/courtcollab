@@ -477,13 +477,14 @@ def signup(request: Request, body: SignupIn):
     if body.role == "creator":
         with get_conn() as conn:
             conn.execute("""
-                INSERT OR IGNORE INTO creator_profiles
+                INSERT INTO creator_profiles
                   (user_id, name, niche, bio, location, skill_level,
                    followers_ig, followers_tt, followers_yt, engagement_rate, avg_views,
                    rate_ig, rate_tiktok, rate_yt, rate_ugc, rate_notes,
                    skills, social_handles,
                    demo_age, demo_gender, demo_locations, demo_interests, updated_at)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+                ON CONFLICT (user_id) DO NOTHING
             """, (uid, body.name.strip(), '', '', '', '', 0, 0, 0, 0.0, 0, 0, 0, 0, 0, '',
                   '[]', '{}', '', '', '', ''))
             conn.commit()
@@ -633,13 +634,14 @@ def list_creators(
         """)
         for cu in creator_users:
             conn.execute("""
-                INSERT OR IGNORE INTO creator_profiles
+                INSERT INTO creator_profiles
                   (user_id, name, niche, bio, location, skill_level,
                    followers_ig, followers_tt, followers_yt, engagement_rate, avg_views,
                    rate_ig, rate_tiktok, rate_yt, rate_ugc, rate_notes,
                    skills, social_handles,
                    demo_age, demo_gender, demo_locations, demo_interests, updated_at)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+                ON CONFLICT (user_id) DO NOTHING
             """, (cu["id"], cu["name"], '', '', '', '', 0, 0, 0, 0.0, 0, 0, 0, 0, 0, '',
                   '[]', '{}', '', '', '', ''))
         conn.commit()
