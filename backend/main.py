@@ -212,7 +212,26 @@ def startup():
 
 @app.get("/debug/version")
 def debug_version():
-    return {"version": "3ffa33e-plus-timeout", "db_mode": "pg" if os.environ.get("DATABASE_URL") else "sqlite"}
+    import traceback as _tb
+    db_info = {}
+    try:
+        with get_conn() as conn:
+            tables = _rows(conn, """
+                SELECT table_name FROM information_schema.tables
+                WHERE table_schema = 'public' ORDER BY table_name
+            """)
+            db_info["tables"] = [t["table_name"] for t in tables]
+            try:
+                cols = _rows(conn, """
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_name = 'creator_profiles' ORDER BY ordinal_position
+                """)
+                db_info["creator_profiles_cols"] = [c["column_name"] for c in cols]
+            except Exception as ce:
+                db_info["creator_profiles_cols_err"] = str(ce)
+    except Exception as e:
+        db_info["db_err"] = str(e)
+    return {"version": "af76cb0-v2", "db_mode": "pg" if os.environ.get("DATABASE_URL") else "sqlite", "db_info": db_info}
 
 
 # ---------------------------------------------------------------------------
