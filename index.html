@@ -448,8 +448,9 @@
           <!-- Dashboard -->
           <button id="nav-dashboard-btn" onclick="navigateDashboard()" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="brand-portal">Dashboard</button>
 
-          <!-- Explore -->
-          <button onclick="navigate('campaigns')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="campaigns">Explore</button>
+          <!-- Explore: brands browse creators, creators browse campaigns -->
+          <button onclick="navigate('creators')" class="brand-only nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="creators">Browse Creators</button>
+          <button onclick="navigate('campaigns')" class="creator-only nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="campaigns">Explore</button>
 
           <!-- Activity dropdown -->
           <div class="nav-dropdown-group" id="dd-activity">
@@ -530,8 +531,8 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
           Dashboard
         </button>
-        <button onclick="navigate('creators');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="creators">Browse Creators</button>
-        <button onclick="navigate('campaigns');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="campaigns">Explore</button>
+        <button onclick="navigate('creators');closeMobileMenu()" class="brand-only nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="creators">Browse Creators</button>
+        <button onclick="navigate('campaigns');closeMobileMenu()" class="creator-only nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="campaigns">Explore</button>
         <button onclick="navigate('matching');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="matching">Discovery</button>
         <button onclick="navigate('messages');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="messages">Messages</button>
         <button onclick="navigate('payments');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="payments">Payments</button>
@@ -2014,6 +2015,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=29"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>
