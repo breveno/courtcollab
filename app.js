@@ -1472,9 +1472,9 @@ async function renderCreators() {
       return;
     }
 
+    // Set content FIRST so the browser never paints a blank/invisible frame,
+    // then restart the animation so the filled grid fades in cleanly.
     grid.classList.remove('grid-fade-in');
-    void grid.offsetWidth; // force reflow so animation re-triggers
-    grid.classList.add('grid-fade-in');
     grid.innerHTML = creators.map(c => {
       const initials   = c.initials || (c.name || 'CC').slice(0, 2).toUpperCase();
       const minRate    = Math.min(c.rate_ig || 0, c.rate_tiktok || 0, c.rate_ugc || 0) || '—';
@@ -1523,6 +1523,8 @@ async function renderCreators() {
         </div>
       `;
     }).join('');
+    void grid.offsetWidth; // force reflow so animation starts fresh
+    grid.classList.add('grid-fade-in');
   } catch (err) {
     grid.innerHTML = `<div class="col-span-full text-center py-16 text-red-400">${err.message}</div>`;
   }
