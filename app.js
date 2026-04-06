@@ -678,6 +678,14 @@ function navigateToProfile() {
 
 function navigate(page, activeNavId = null) {
   if (!getToken()) { showAuthGate(); return; }
+
+  // Pre-clear dynamic content BEFORE making the page visible so the browser
+  // never paints a frame with stale data from a previous visit
+  if (page === 'creators') {
+    const _cg = document.getElementById('creator-grid');
+    if (_cg) _cg.innerHTML = creatorSkeletonHtml();
+  }
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + page);
   if (target) {
@@ -693,7 +701,6 @@ function navigate(page, activeNavId = null) {
   document.documentElement.scrollTop = 0;
   document.querySelectorAll('.nav-link').forEach(link => {
     if (activeNavId) {
-      // Only light up the explicitly clicked button (and its mobile twin)
       const mobileId = activeNavId + '-mobile';
       link.classList.toggle('active', link.id === activeNavId || link.id === mobileId);
     } else {
@@ -702,9 +709,6 @@ function navigate(page, activeNavId = null) {
   });
   if (page === 'brand-portal') renderBrandPortal();
   if (page === 'creators')  {
-    // Set skeletons immediately (before async) so they show during the page fade-in
-    const _cg = document.getElementById('creator-grid');
-    if (_cg) _cg.innerHTML = creatorSkeletonHtml();
     loadSavedCreatorIds().then(() => renderCreators());
   }
   if (page === 'campaigns') renderCampaigns();
