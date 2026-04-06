@@ -514,7 +514,17 @@ function onAuthSuccess(user) {
     roleToggleMobile.classList.toggle('hidden', !isAdmin);
   }
   navigate(isAdmin ? 'admin' : 'landing');
-  if (user.role === 'creator') loadStripeConnectStatus();
+  if (user.role === 'creator') {
+    loadStripeConnectStatus();
+    // Restore verified badge from saved profile without waiting for profile page visit
+    apiGet('/api/creator/profile').then(p => {
+      p.social_handles = (typeof p.social_handles === 'object' && p.social_handles) ? p.social_handles : {};
+      p.skills = Array.isArray(p.skills) ? p.skills : [];
+      const pct = _calcCompletion(p, _CREATOR_COMPLETION_FIELDS);
+      const navBadge = document.getElementById('nav-verified-badge');
+      if (navBadge) navBadge.classList.toggle('hidden', pct < 100);
+    }).catch(() => {});
+  }
   startNotifPolling();
   _connectWS();
 }
@@ -997,6 +1007,8 @@ async function renderCreatorDashboard() {
     const pending      = payments.filter(p => p.status === 'held').reduce((s, p) => s + (p.creator_payout || 0), 0);
     const activeDeals  = deals.filter(d => d.status === 'active').length;
 
+    statsEl.classList.add('grid-fade-in');
+    dealsEl.classList.add('grid-fade-in');
     statsEl.innerHTML = `
       <div class="bg-white rounded-2xl border border-gray-100 p-5">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Total Earned</p>
