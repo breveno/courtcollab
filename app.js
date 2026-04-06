@@ -1835,7 +1835,7 @@ async function saveCreatorProfile(e) {
     // Update completion bar using form data
     const formProfile = { ...body, social_handles: handles, skills };
     _updateVerifiedBadgeUI(handles);
-    renderCreatorCompletion(formProfile);
+    renderCreatorCompletion(formProfile, true);
     const pct = _calcCompletion(formProfile, _CREATOR_COMPLETION_FIELDS);
 
     // First-time 100% completion celebration
@@ -2627,15 +2627,17 @@ function _creatorCompletionFocus(id, scroll) {
   }
 }
 
-function renderCreatorCompletion(profile) {
+function renderCreatorCompletion(profile, updateBadge = false) {
   const el = document.getElementById('creator-profile-completion');
   if (!el) return;
   const missing = _CREATOR_COMPLETION_FIELDS.filter(f => !f.check(profile));
   const pct     = _calcCompletion(profile, _CREATOR_COMPLETION_FIELDS);
   el.innerHTML  = _completionBarHtml(pct, missing, 'creator');
-  // Show/hide nav verified badge
-  const navBadge = document.getElementById('nav-verified-badge');
-  if (navBadge) navBadge.classList.toggle('hidden', pct < 100);
+  // Only update the verified badge when triggered by a real save or page load (not live typing)
+  if (updateBadge) {
+    const navBadge = document.getElementById('nav-verified-badge');
+    if (navBadge) navBadge.classList.toggle('hidden', pct < 100);
+  }
 }
 
 // Build a profile-like object from the live form values (no API call needed)
@@ -2752,7 +2754,7 @@ async function populateCreatorForm() {
     if (ytHandle) ytHandle.value = handles.youtube   || '';
     _updateVerifiedBadgeUI(handles);
 
-    renderCreatorCompletion(p);
+    renderCreatorCompletion(p, true);
     _updateTotalFollowers();
     _attachProfileFormListeners();
   } catch (err) {
