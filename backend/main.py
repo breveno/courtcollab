@@ -473,6 +473,21 @@ def signup(request: Request, body: SignupIn):
     with get_conn() as conn:
         user = _row(conn, "SELECT * FROM users WHERE id = ?", (uid,))
 
+    # Auto-create a blank creator profile so the creator appears on the explore page immediately
+    if body.role == "creator":
+        with get_conn() as conn:
+            conn.execute("""
+                INSERT OR IGNORE INTO creator_profiles
+                  (user_id, name, niche, bio, location, skill_level,
+                   followers_ig, followers_tt, followers_yt, engagement_rate, avg_views,
+                   rate_ig, rate_tiktok, rate_yt, rate_ugc, rate_notes,
+                   skills, social_handles,
+                   demo_age, demo_gender, demo_locations, demo_interests, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+            """, (uid, body.name.strip(), '', '', '', '', 0, 0, 0, 0.0, 0, 0, 0, 0, 0, '',
+                  '[]', '{}', '', '', '', ''))
+            conn.commit()
+
     # Notify platform admins of every new signup
     role_label = "Creator" if body.role == "creator" else "Brand"
     subject    = f"New {role_label} signup — {body.name}"
@@ -608,6 +623,27 @@ def list_creators(
     user:          dict          = Depends(current_user),
 ):
     with get_conn() as conn:
+        # LEFT JOIN so creators who signed up before auto-profile creation still appear.
+        # Backfill a minimal profile row for any creator missing one.
+        creator_users = _rows(conn, """
+            SELECT u.id, u.name, u.email, u.initials
+            FROM users u
+            LEFT JOIN creator_profiles cp ON cp.user_id = u.id
+            WHERE u.role = 'creator' AND cp.user_id IS NULL
+        """)
+        for cu in creator_users:
+            conn.execute("""
+                INSERT OR IGNORE INTO creator_profiles
+                  (user_id, name, niche, bio, location, skill_level,
+                   followers_ig, followers_tt, followers_yt, engagement_rate, avg_views,
+                   rate_ig, rate_tiktok, rate_yt, rate_ugc, rate_notes,
+                   skills, social_handles,
+                   demo_age, demo_gender, demo_locations, demo_interests, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+            """, (cu["id"], cu["name"], '', '', '', '', 0, 0, 0, 0.0, 0, 0, 0, 0, 0, '',
+                  '[]', '{}', '', '', '', ''))
+        conn.commit()
+
         rows = _rows(conn, """
             SELECT cp.*, u.email
             FROM creator_profiles cp
