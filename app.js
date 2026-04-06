@@ -691,7 +691,12 @@ function navigate(page, activeNavId = null) {
     }
   });
   if (page === 'brand-portal') renderBrandPortal();
-  if (page === 'creators')  { loadSavedCreatorIds().then(() => renderCreators()); }
+  if (page === 'creators')  {
+    // Set skeletons immediately (before async) so they show during the page fade-in
+    const _cg = document.getElementById('creator-grid');
+    if (_cg) _cg.innerHTML = creatorSkeletonHtml();
+    loadSavedCreatorIds().then(() => renderCreators());
+  }
   if (page === 'campaigns') renderCampaigns();
   if (page === 'matching')  runMatching();
   if (page === 'messages')  { renderConversations(); document.getElementById('nav-messages-dot')?.classList.add('hidden'); }
@@ -1451,6 +1456,9 @@ async function renderCreators() {
       return;
     }
 
+    grid.classList.remove('grid-fade-in');
+    void grid.offsetWidth; // force reflow so animation re-triggers
+    grid.classList.add('grid-fade-in');
     grid.innerHTML = creators.map(c => {
       const initials   = c.initials || (c.name || 'CC').slice(0, 2).toUpperCase();
       const minRate    = Math.min(c.rate_ig || 0, c.rate_tiktok || 0, c.rate_ugc || 0) || '—';
