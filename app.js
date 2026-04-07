@@ -741,6 +741,10 @@ function navigate(page, activeNavId = null) {
       target.classList.add('active');
       state.previousPage = state.currentPage;
       state.currentPage = page;
+      // Push a history entry so the browser back button stays in-app
+      if (history.state?.page !== page) {
+        history.pushState({ page }, '', '#' + page);
+      }
     } else {
       document.getElementById('page-404')?.classList.add('active');
       return;
@@ -3961,6 +3965,14 @@ async function apiDelete(path, body, opts = {}) {
     return data;
   } finally { if (opts.loading) hideLoading(); }
 }
+
+// --- Browser back/forward button support ---
+window.addEventListener('popstate', (e) => {
+  const page = e.state?.page;
+  if (page && getToken()) {
+    navigate(page);
+  }
+});
 
 // --- Init ---
 document.addEventListener('DOMContentLoaded', async () => {
