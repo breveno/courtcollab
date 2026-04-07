@@ -666,6 +666,9 @@ let _savedCreatorIds = new Set();
 let _creatorsTab     = 'all';
 let _detailCreatorId = null;  // creator user_id currently open in detail modal
 
+// Messaging — partner name lookup so we never embed quoted strings in onclick attrs
+let _partnerNames = {};
+
 // --- Navigation ---
 function navigateDashboard() {
   navigate(state.role === 'brand' ? 'brand-portal' : 'creator-dashboard', 'nav-dashboard-btn');
@@ -2220,6 +2223,8 @@ async function renderConversations() {
     }
 
     const myId = state.currentUser?.id;
+    // Build name lookup so onclick only passes numeric ID (no quote-breaking strings)
+    convs.forEach(conv => { _partnerNames[conv.partner.id] = conv.partner.name; });
     list.innerHTML = convs.map(conv => {
       const partner   = conv.partner;
       const lastMsg   = conv.last_message;
@@ -2236,7 +2241,7 @@ async function renderConversations() {
             : `<span class="text-gray-400 flex-shrink-0">${_SENT_ICON}</span>`)
         : '';
       return `
-        <div class="p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${isActive ? 'bg-pickle-50' : ''}" onclick="openConversation(${partner.id}, ${JSON.stringify(partner.name)})">
+        <div class="p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${isActive ? 'bg-pickle-50' : ''}" onclick="openConversation(${partner.id})">
           <div class="flex items-center gap-3">
             <div class="relative flex-shrink-0">
               <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm">${partner.initials || partner.name.slice(0,2).toUpperCase()}</div>
@@ -2271,8 +2276,9 @@ function _setChatHeader(name) {
 async function openConversation(partnerId, knownName = null) {
   state.activePartner = partnerId;
   _lastMsgId = 0;   // reset so poller sets new baseline for this thread
-  // Show the name + avatar immediately if we already know it (before messages load)
-  if (knownName) _setChatHeader(knownName);
+  // Resolve name: explicit arg → lookup map → fallback
+  const resolvedName = knownName || _partnerNames[partnerId] || null;
+  if (resolvedName) _setChatHeader(resolvedName);
   renderConversations();
 
   try {
@@ -2291,7 +2297,7 @@ async function openConversation(partnerId, knownName = null) {
     const partnerMsg  = messages.find(m => m.sender_id === partnerId);
     const partnerName = partnerMsg?.sender_name
       || (state.role === 'brand' ? deal?.creator_name : deal?.brand_name)
-      || knownName
+      || resolvedName
       || 'Conversation';
     _setChatHeader(partnerName);
     const headerStatus   = document.getElementById('chat-status');
