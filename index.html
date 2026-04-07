@@ -387,7 +387,7 @@
             <div id="brand-signup-fields" style="display:flex;flex-direction:column;gap:1rem;">
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Company Name <span style="color:#ef4444;">*</span></label>
-                <input id="signup-company" type="text" class="auth-input" placeholder="e.g. Selkirk Sport" />
+                <input id="signup-company" type="text" class="auth-input" placeholder="Company name" />
               </div>
             </div>
             <!-- Creator-only social handles (shown when Creator is selected) -->
@@ -804,6 +804,14 @@
                 <option>Advanced (4.0-4.5)</option>
                 <option>Pro (5.0+)</option>
               </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Date of Birth
+                <span class="ml-1.5 text-xs font-normal text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">🔒 Private — only visible to you</span>
+              </label>
+              <input type="date" id="cp-birthday" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" max="">
+              <p class="text-xs text-gray-400 mt-1">Used to verify you are 18 or older. Never shown to brands.</p>
             </div>
           </div>
         </div>
@@ -2011,6 +2019,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=37"></script>
+  <script src="app.js?v=38"></script>
 </body>
 </html>

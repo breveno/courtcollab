@@ -402,6 +402,7 @@ def _init_pg():
         conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS demo_interests  TEXT")
         conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS stripe_account_id TEXT")
         conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS stripe_onboarded  INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS birthday          TEXT")  # YYYY-MM-DD, private
 
         # campaigns
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS niche         TEXT")

@@ -568,6 +568,7 @@ class CreatorProfileIn(BaseModel):
     demo_gender:     Optional[str] = None
     demo_locations:  Optional[str] = None
     demo_interests:  Optional[str] = None
+    birthday:        Optional[str]  = None  # YYYY-MM-DD, private — never returned to other users
 
 # ---------------------------------------------------------------------------
 # Routes — Creator Profiles
@@ -585,8 +586,9 @@ def upsert_creator_profile(body: CreatorProfileIn, user: dict = Depends(current_
                    followers_ig, followers_tt, followers_yt, engagement_rate, avg_views,
                    rate_ig, rate_tiktok, rate_yt, rate_ugc, rate_notes,
                    skills, social_handles,
-                   demo_age, demo_gender, demo_locations, demo_interests, updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+                   demo_age, demo_gender, demo_locations, demo_interests,
+                   birthday, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
                 ON CONFLICT(user_id) DO UPDATE SET
                   name=excluded.name, niche=excluded.niche, bio=excluded.bio,
                   location=excluded.location, skill_level=excluded.skill_level,
@@ -598,6 +600,7 @@ def upsert_creator_profile(body: CreatorProfileIn, user: dict = Depends(current_
                   skills=excluded.skills, social_handles=excluded.social_handles,
                   demo_age=excluded.demo_age, demo_gender=excluded.demo_gender,
                   demo_locations=excluded.demo_locations, demo_interests=excluded.demo_interests,
+                  birthday=excluded.birthday,
                   updated_at=datetime('now')
             """, (
                 user["id"], body.name, body.niche, body.bio, body.location, body.skill_level,
@@ -605,7 +608,8 @@ def upsert_creator_profile(body: CreatorProfileIn, user: dict = Depends(current_
                 body.engagement_rate, body.avg_views,
                 body.rate_ig, body.rate_tiktok, body.rate_yt, body.rate_ugc, body.rate_notes,
                 json.dumps(body.skills), json.dumps(body.social_handles),
-                body.demo_age, body.demo_gender, body.demo_locations, body.demo_interests
+                body.demo_age, body.demo_gender, body.demo_locations, body.demo_interests,
+                body.birthday
             ))
             conn.commit()
         return {"ok": True}

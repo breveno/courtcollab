@@ -1869,6 +1869,7 @@ async function saveCreatorProfile(e) {
       rate_yt:         parseInt(document.getElementById('cp-rate-yt')?.value)      || 0,
       rate_ugc:        parseInt(document.getElementById('cp-rate-ugc')?.value)     || 0,
       rate_notes:      (document.getElementById('cp-rate-notes')?.value   || ''),
+      birthday:        (document.getElementById('cp-birthday')?.value      || null),
     };
     // Social handles — build dict, skip blanks
     const _ig = (document.getElementById('cp-handle-ig')?.value || '').trim().replace(/^@/, '');
@@ -2810,6 +2811,7 @@ async function populateCreatorForm() {
     setNum('cp-rate-yt',    p.rate_yt);
     setNum('cp-rate-ugc',   p.rate_ugc);
     setVal('cp-rate-notes', p.rate_notes);
+    setVal('cp-birthday',   p.birthday);
 
     // Tick skill checkboxes
     const skills = Array.isArray(p.skills) ? p.skills : [];
@@ -2827,6 +2829,14 @@ async function populateCreatorForm() {
     if (ytHandle) ytHandle.value = handles.youtube   || '';
     _updateVerifiedBadgeUI(handles);
 
+    // Cap birthday picker: max = 18 years ago (must be 18+), no future dates
+    const bdEl = document.getElementById('cp-birthday');
+    if (bdEl) {
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() - 18);
+      bdEl.max = maxDate.toISOString().split('T')[0];
+    }
+
     renderCreatorCompletion(p, true);
     _updateTotalFollowers();
     _attachProfileFormListeners();
@@ -2834,6 +2844,13 @@ async function populateCreatorForm() {
     // Profile doesn't exist yet (new user) — show empty completion bar
     const emailEl = document.getElementById('cp-account-email');
     if (emailEl) emailEl.textContent = state.currentUser?.email || '';
+    // Still set birthday max for new users
+    const bdEl = document.getElementById('cp-birthday');
+    if (bdEl) {
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() - 18);
+      bdEl.max = maxDate.toISOString().split('T')[0];
+    }
     renderCreatorCompletion({});
     _attachProfileFormListeners();
   }
