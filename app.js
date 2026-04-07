@@ -1951,7 +1951,7 @@ async function renderCampaigns() {
       const budget     = c.budget ? `$${Number(c.budget).toLocaleString()}` : (c.budget_min && c.budget_max ? `$${c.budget_min.toLocaleString()} – $${c.budget_max.toLocaleString()}` : '—');
       const postedDate = (() => {
         if (!c.created_at) return '';
-        const d = new Date(c.created_at.replace(' ', 'T'));
+        const d = new Date(c.created_at.replace(' ', 'T') + 'Z');
         if (isNaN(d)) return '';
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const dd = String(d.getDate()).padStart(2, '0');
