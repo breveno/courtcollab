@@ -1274,7 +1274,7 @@ function dealStepperMiniHtml(status) {
 
 // --- Saved Creators ---
 async function loadSavedCreatorIds() {
-  if (!state.user || state.user.role !== 'brand') return;
+  if (!state.currentUser || state.role !== 'brand') return;
   try {
     const ids = await apiGet('/api/saved-creators/ids');
     _savedCreatorIds = new Set(ids);
@@ -1291,7 +1291,7 @@ function _updateSavedCountBadge() {
 }
 
 async function toggleSaveCreator(creatorId) {
-  if (!creatorId || !state.user || state.user.role !== 'brand') return;
+  if (!creatorId || !state.currentUser || state.role !== 'brand') return;
   try {
     const { saved } = await apiPost(`/api/saved-creators/${creatorId}`, {});
     if (saved) _savedCreatorIds.add(creatorId);
@@ -1324,7 +1324,7 @@ function _applyBookmarkState(btn, saved) {
 }
 
 function bookmarkBtnHtml(creatorId) {
-  if (!state.user || state.user.role !== 'brand') return '';
+  if (!state.currentUser || state.role !== 'brand') return '';
   const saved     = _savedCreatorIds.has(creatorId);
   const colorCls  = saved
     ? 'text-pickle-700 bg-pickle-50 border-pickle-300'
@@ -1715,7 +1715,7 @@ async function showCreatorDetail(userId) {
       [c.location, c.niche, c.skill_level].filter(Boolean).join(' · ');
 
     // Show save button for brands
-    if (saveBtnEl && state.user?.role === 'brand') {
+    if (saveBtnEl && state.role === 'brand') {
       saveBtnEl.classList.remove('hidden');
       saveBtnEl.classList.add('inline-flex');
       _syncDetailSaveBtn(_savedCreatorIds.has(c.user_id));
