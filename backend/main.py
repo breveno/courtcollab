@@ -992,6 +992,8 @@ def list_campaigns(
     results = []
     for r in rows:
         r["skills"] = json.loads(r.get("skills") or "[]")
+        # Brands only see their own campaigns; creators see all
+        if user["role"] == "brand" and r.get("brand_id") != user["id"]: continue
         if mine   and r.get("brand_id") != user["id"]: continue
         if niche  and r.get("niche")    != niche:      continue
         if status and r.get("status")   != status:     continue
