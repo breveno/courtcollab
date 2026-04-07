@@ -2261,12 +2261,18 @@ async function renderConversations() {
   }
 }
 
+function _setChatHeader(name) {
+  const nameEl   = document.getElementById('chat-name');
+  const avatarEl = document.getElementById('chat-avatar');
+  if (nameEl)   nameEl.textContent   = name;
+  if (avatarEl) avatarEl.textContent = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
 async function openConversation(partnerId, knownName = null) {
   state.activePartner = partnerId;
   _lastMsgId = 0;   // reset so poller sets new baseline for this thread
-  // Show the name immediately if we already know it (before messages load)
-  const headerName = document.getElementById('chat-name');
-  if (headerName && knownName) headerName.textContent = knownName;
+  // Show the name + avatar immediately if we already know it (before messages load)
+  if (knownName) _setChatHeader(knownName);
   renderConversations();
 
   try {
@@ -2287,9 +2293,8 @@ async function openConversation(partnerId, knownName = null) {
       || (state.role === 'brand' ? deal?.creator_name : deal?.brand_name)
       || knownName
       || 'Conversation';
-    const headerName     = document.getElementById('chat-name');
+    _setChatHeader(partnerName);
     const headerStatus   = document.getElementById('chat-status');
-    if (headerName)   headerName.textContent   = partnerName;
     const dealStatusText = deal
       ? `Deal: $${(deal.amount || 0).toLocaleString()} — ${deal.status.charAt(0).toUpperCase() + deal.status.slice(1)}`
       : 'No active deal';
