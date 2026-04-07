@@ -2249,7 +2249,10 @@ async function openConversation(partnerId, knownName = null) {
   _lastMsgId = 0;   // reset so poller sets new baseline for this thread
   // Resolve name: explicit arg → lookup map → fallback
   const resolvedName = knownName || _partnerNames[partnerId] || null;
-  if (resolvedName) _setChatHeader(resolvedName);
+  if (resolvedName) {
+    _partnerNames[partnerId] = resolvedName;  // cache so re-renders always have it
+    _setChatHeader(resolvedName);
+  }
   renderConversations();
 
   try {
@@ -2434,7 +2437,7 @@ async function sendMessage() {
 async function startConversation() {
   if (!state.selectedCreator) return;
   const creatorUserId = state.selectedCreator.user_id;
-  const creatorName   = state.selectedCreator.name || null;
+  const creatorName   = state.selectedCreator.name || state.selectedCreator.account_name || null;
   closeModal('creator-detail-modal');
   navigate('messages');
   setTimeout(() => openConversation(creatorUserId, creatorName), 200);
