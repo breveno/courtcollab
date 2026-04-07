@@ -2278,8 +2278,11 @@ async function openConversation(partnerId) {
       d.brand_id === partnerId || d.creator_id === partnerId
     ) || null;
 
-    // Update header
-    const partnerName    = messages[0]?.sender_name || messages[0]?.sender_initials || 'Conversation';
+    // Update header — find a message sent BY the partner so we get their name, not ours
+    const partnerMsg  = messages.find(m => m.sender_id === partnerId);
+    const partnerName = partnerMsg?.sender_name
+      || (state.role === 'brand' ? deal?.creator_name : deal?.brand_name)
+      || 'Conversation';
     const headerName     = document.getElementById('chat-name');
     const headerStatus   = document.getElementById('chat-status');
     if (headerName)   headerName.textContent   = partnerName;
