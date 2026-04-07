@@ -828,6 +828,8 @@ function closeModal(id) {
     document.getElementById('admin-detail-meta')?.classList.add('hidden');
   }
   if (id === 'campaign-modal') {
+    const submitBtn = document.querySelector('#campaign-modal button[type="submit"], #campaign-modal button[onclick*="postCampaign"]');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Post Campaign'; }
     const input = document.getElementById('camp-attachments');
     const list  = document.getElementById('camp-attachment-list');
     if (input) input.value = '';
@@ -2049,6 +2051,7 @@ async function postCampaign(e) {
     }
     const result = await apiPost('/api/campaigns', body);
     if (coverFile && body.cover_image) saveCover(result?.id || result?.campaign?.id, body.cover_image);
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origBtnText; }
     closeModal('campaign-modal');
     showToast('Campaign brief posted!');
     renderCampaigns();
