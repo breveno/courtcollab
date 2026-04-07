@@ -486,8 +486,11 @@ def signup(request: Request, body: SignupIn):
             )
             conn.commit()
             uid = cur.lastrowid
-    except sqlite3.IntegrityError:
-        raise HTTPException(409, "An account with that email already exists")
+    except Exception as _dup_err:
+        msg = str(_dup_err).lower()
+        if "unique" in msg or "duplicate" in msg or "already exists" in msg:
+            raise HTTPException(409, "An account with that email already exists")
+        raise
 
     with get_conn() as conn:
         user = _row(conn, "SELECT * FROM users WHERE id = ?", (uid,))
