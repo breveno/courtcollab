@@ -3619,6 +3619,20 @@ async function _onboardSaveBrand() {
   } catch (_) { /* best-effort */ }
 }
 
+// --- FAQ accordion ---
+function toggleFaq(btn) {
+  const body = btn.nextElementSibling;
+  const chevron = btn.querySelector('.faq-chevron');
+  const isOpen = !body.classList.contains('hidden');
+  // Close all in same list
+  btn.closest('.space-y-4')?.querySelectorAll('.faq-body').forEach(b => b.classList.add('hidden'));
+  btn.closest('.space-y-4')?.querySelectorAll('.faq-chevron').forEach(c => c.style.transform = '');
+  if (!isOpen) {
+    body.classList.remove('hidden');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+  }
+}
+
 // --- Contact ---
 function renderContact() {
   const form = document.getElementById('contact-form');

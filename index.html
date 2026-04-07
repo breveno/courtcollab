@@ -1819,6 +1819,134 @@
     </div>
   </div>
 
+  <!-- FAQ for Creators Page -->
+  <div id="page-faq-creators" class="page bg-gray-50 min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <button onclick="history.back()" class="text-sm text-pickle-600 hover:underline mb-6 flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back
+      </button>
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">FAQ for Creators</h1>
+      <p class="text-gray-500 mb-10">Everything you need to know about using CourtCollab as a creator.</p>
+      <div class="space-y-4" id="faq-creators-list">
+        <!-- Q1 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            How do I create a profile as a creator?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            After signing up as a creator, navigate to <strong>My Profile</strong> from the menu. Fill in your display name, bio, content niche, social handles, follower counts, and rates. The more complete your profile, the more discoverable you are to brands.
+          </div>
+        </div>
+        <!-- Q2 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            How do I apply to a campaign?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            Go to <strong>Campaigns</strong> in the navigation to browse open campaign briefs. Click <strong>Apply Now</strong> on any campaign that interests you. The brand will be notified and can reach out via the Messages section to discuss details.
+          </div>
+        </div>
+        <!-- Q3 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            How do I get paid?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            Once a brand marks a deal as complete, funds held in escrow are released to your connected Stripe account. Navigate to <strong>Payments</strong> and complete the Stripe Connect onboarding to receive payouts. CourtCollab retains a 15% platform fee; you receive the remaining 85%.
+          </div>
+        </div>
+        <!-- Q4 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            Is my date of birth kept private?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            Yes. Your date of birth is collected only to verify that you are 18 or older. It is never displayed to brands or other users on the platform.
+          </div>
+        </div>
+        <!-- Q5 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            How do I contact support?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            Use the <button onclick="navigate('contact')" class="text-pickle-600 font-medium hover:underline">Contact Us</button> page to send us a message. Our team typically responds within one business day.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ for Brands Page -->
+  <div id="page-faq-brands" class="page bg-gray-50 min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <button onclick="history.back()" class="text-sm text-pickle-600 hover:underline mb-6 flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back
+      </button>
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">FAQ for Brands</h1>
+      <p class="text-gray-500 mb-10">Everything you need to know about using CourtCollab as a brand.</p>
+      <div class="space-y-4" id="faq-brands-list">
+        <!-- Q1 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            How do I post a campaign?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            From your brand dashboard, click <strong>Create Campaign</strong>. Fill in the campaign title, description, content type, target audience, rate, deadline, and required creator skills. Once posted, creators can browse and apply to your campaign.
+          </div>
+        </div>
+        <!-- Q2 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            Can other brands see my campaigns?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            No. Your campaigns are only visible to creators. Other brand accounts cannot see your campaign briefs, keeping your strategy and pricing private.
+          </div>
+        </div>
+        <!-- Q3 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            How do I find and message a creator?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            Go to <strong>Browse Creators</strong> to search and filter creators by niche, follower count, skills, and rate. Click a creator card to view their full profile, then click <strong>Message Creator</strong> to start a conversation directly.
+          </div>
+        </div>
+        <!-- Q4 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            How does payment work?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            Once you and a creator agree on a deal, you can pay via Stripe through the Messages & Deals section. Funds are held in escrow until you mark the deal as complete, at which point 85% is released to the creator and CourtCollab retains a 15% platform fee.
+          </div>
+        </div>
+        <!-- Q5 -->
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button onclick="toggleFaq(this)" class="w-full text-left px-6 py-5 flex items-center justify-between font-semibold text-gray-900 hover:bg-gray-50 transition">
+            How do I contact support?
+            <svg class="w-5 h-5 text-gray-400 faq-chevron transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-body hidden px-6 pb-5 text-sm text-gray-600 leading-relaxed">
+            Use the <button onclick="navigate('contact')" class="text-pickle-600 font-medium hover:underline">Contact Us</button> page to send us a message. Our team typically responds within one business day.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Onboarding Wizard Overlay -->
   <div id="onboarding-overlay" class="fixed inset-0 hidden items-center justify-center p-4" style="background:rgba(10,25,10,0.82);z-index:9998;display:none;">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" style="max-height:90vh;">
@@ -1995,6 +2123,8 @@
         <div class="flex flex-col gap-3">
           <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Support</p>
           <a href="#" onclick="navigate('contact');return false;" class="text-sm text-gray-400 hover:text-white transition">Contact Us</a>
+          <a href="#" onclick="navigate('faq-creators');return false;" class="text-sm text-gray-400 hover:text-white transition">FAQ for Creators</a>
+          <a href="#" onclick="navigate('faq-brands');return false;" class="text-sm text-gray-400 hover:text-white transition">FAQ for Brands</a>
         </div>
         <!-- Social icons -->
         <div class="flex flex-col gap-3">
@@ -2033,6 +2163,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=50"></script>
+  <script src="app.js?v=51"></script>
 </body>
 </html>
