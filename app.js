@@ -2236,7 +2236,7 @@ async function renderConversations() {
             : `<span class="text-gray-400 flex-shrink-0">${_SENT_ICON}</span>`)
         : '';
       return `
-        <div class="p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${isActive ? 'bg-pickle-50' : ''}" onclick="openConversation(${partner.id})">
+        <div class="p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${isActive ? 'bg-pickle-50' : ''}" onclick="openConversation(${partner.id}, ${JSON.stringify(partner.name)})">
           <div class="flex items-center gap-3">
             <div class="relative flex-shrink-0">
               <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm">${partner.initials || partner.name.slice(0,2).toUpperCase()}</div>
@@ -2261,9 +2261,12 @@ async function renderConversations() {
   }
 }
 
-async function openConversation(partnerId) {
+async function openConversation(partnerId, knownName = null) {
   state.activePartner = partnerId;
   _lastMsgId = 0;   // reset so poller sets new baseline for this thread
+  // Show the name immediately if we already know it (before messages load)
+  const headerName = document.getElementById('chat-name');
+  if (headerName && knownName) headerName.textContent = knownName;
   renderConversations();
 
   try {
@@ -2282,6 +2285,7 @@ async function openConversation(partnerId) {
     const partnerMsg  = messages.find(m => m.sender_id === partnerId);
     const partnerName = partnerMsg?.sender_name
       || (state.role === 'brand' ? deal?.creator_name : deal?.brand_name)
+      || knownName
       || 'Conversation';
     const headerName     = document.getElementById('chat-name');
     const headerStatus   = document.getElementById('chat-status');
@@ -2448,9 +2452,10 @@ async function sendMessage() {
 async function startConversation() {
   if (!state.selectedCreator) return;
   const creatorUserId = state.selectedCreator.user_id;
+  const creatorName   = state.selectedCreator.name || null;
   closeModal('creator-detail-modal');
   navigate('messages');
-  setTimeout(() => openConversation(creatorUserId), 200);
+  setTimeout(() => openConversation(creatorUserId, creatorName), 200);
 }
 
 // --- Deal Flow ---
