@@ -674,6 +674,7 @@ function closeMobileMenu() {
 let state = {
   role: 'brand',
   currentPage: 'landing',
+  previousPage: 'landing',
   selectedCreator: null,
   activePartner: null,   // partner user_id for messaging
   currentUser: null,
@@ -738,6 +739,7 @@ function navigate(page, activeNavId = null) {
     const target = document.getElementById('page-' + page);
     if (target) {
       target.classList.add('active');
+      state.previousPage = state.currentPage;
       state.currentPage = page;
     } else {
       document.getElementById('page-404')?.classList.add('active');
@@ -3617,6 +3619,10 @@ async function _onboardSaveBrand() {
     if (desc)             payload.description = desc;
     if (Object.keys(payload).length) await apiPut('/api/brand/profile', payload);
   } catch (_) { /* best-effort */ }
+}
+
+function navigateBack() {
+  navigate(state.previousPage || 'landing');
 }
 
 // --- FAQ accordion ---
