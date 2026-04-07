@@ -2225,6 +2225,13 @@ async function renderConversations() {
     const myId = state.currentUser?.id;
     // Build name lookup so onclick only passes numeric ID (no quote-breaking strings)
     convs.forEach(conv => { _partnerNames[conv.partner.id] = conv.partner.name; });
+
+    // Auto-open first conversation if none is active yet
+    if (!state.activePartner && convs.length > 0) {
+      const first = convs[0];
+      setTimeout(() => openConversation(first.partner.id, first.partner.name), 0);
+    }
+
     list.innerHTML = convs.map(conv => {
       const partner   = conv.partner;
       const lastMsg   = conv.last_message;
