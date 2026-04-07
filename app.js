@@ -336,6 +336,13 @@ function highlightRole() {
   const socialFields = document.getElementById('creator-social-fields');
   if (brandFields) brandFields.style.display = brandChecked ? 'flex' : 'none';
   if (socialFields) socialFields.style.display = brandChecked ? 'none' : 'flex';
+  // Set birthday max = 18 years ago so the picker enforces 18+
+  const bdInput = document.getElementById('signup-birthday');
+  if (bdInput && !bdInput.max) {
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() - 18);
+    bdInput.max = maxDate.toISOString().split('T')[0];
+  }
 }
 
 function showAuthError(msg) {
@@ -420,6 +427,16 @@ async function handleSignup(e) {
 
   // Role-specific validation
   if (role === 'creator') {
+    const bday = (document.getElementById('signup-birthday')?.value || '').trim();
+    if (!bday) {
+      showAuthError('Please enter your date of birth.');
+      return;
+    }
+    const age = (new Date() - new Date(bday)) / (1000 * 60 * 60 * 24 * 365.25);
+    if (age < 18) {
+      showAuthError('You must be 18 or older to create a creator account.');
+      return;
+    }
     const ig = (document.getElementById('signup-instagram').value || '').trim();
     const tt = (document.getElementById('signup-tiktok').value || '').trim();
     if (!ig && !tt) {
@@ -447,7 +464,8 @@ async function handleSignup(e) {
         const handles = {};
         if (ig) handles.instagram = ig;
         if (tt) handles.tiktok = tt;
-        await apiPut('/api/creator/profile', { social_handles: handles });
+        const birthday = (document.getElementById('signup-birthday')?.value || '') || null;
+        await apiPut('/api/creator/profile', { social_handles: handles, birthday });
       } catch (_) { /* best-effort */ }
     }
     if (role === 'brand') {
@@ -1869,7 +1887,6 @@ async function saveCreatorProfile(e) {
       rate_yt:         parseInt(document.getElementById('cp-rate-yt')?.value)      || 0,
       rate_ugc:        parseInt(document.getElementById('cp-rate-ugc')?.value)     || 0,
       rate_notes:      (document.getElementById('cp-rate-notes')?.value   || ''),
-      birthday:        (document.getElementById('cp-birthday')?.value      || null),
     };
     // Social handles — build dict, skip blanks
     const _ig = (document.getElementById('cp-handle-ig')?.value || '').trim().replace(/^@/, '');
@@ -2811,7 +2828,6 @@ async function populateCreatorForm() {
     setNum('cp-rate-yt',    p.rate_yt);
     setNum('cp-rate-ugc',   p.rate_ugc);
     setVal('cp-rate-notes', p.rate_notes);
-    setVal('cp-birthday',   p.birthday);
 
     // Tick skill checkboxes
     const skills = Array.isArray(p.skills) ? p.skills : [];
@@ -2829,14 +2845,6 @@ async function populateCreatorForm() {
     if (ytHandle) ytHandle.value = handles.youtube   || '';
     _updateVerifiedBadgeUI(handles);
 
-    // Cap birthday picker: max = 18 years ago (must be 18+), no future dates
-    const bdEl = document.getElementById('cp-birthday');
-    if (bdEl) {
-      const maxDate = new Date();
-      maxDate.setFullYear(maxDate.getFullYear() - 18);
-      bdEl.max = maxDate.toISOString().split('T')[0];
-    }
-
     renderCreatorCompletion(p, true);
     _updateTotalFollowers();
     _attachProfileFormListeners();
@@ -2844,13 +2852,6 @@ async function populateCreatorForm() {
     // Profile doesn't exist yet (new user) — show empty completion bar
     const emailEl = document.getElementById('cp-account-email');
     if (emailEl) emailEl.textContent = state.currentUser?.email || '';
-    // Still set birthday max for new users
-    const bdEl = document.getElementById('cp-birthday');
-    if (bdEl) {
-      const maxDate = new Date();
-      maxDate.setFullYear(maxDate.getFullYear() - 18);
-      bdEl.max = maxDate.toISOString().split('T')[0];
-    }
     renderCreatorCompletion({});
     _attachProfileFormListeners();
   }

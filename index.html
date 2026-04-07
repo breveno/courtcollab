@@ -392,6 +392,11 @@
             </div>
             <!-- Creator-only social handles (shown when Creator is selected) -->
             <div id="creator-social-fields" style="display:none;flex-direction:column;gap:1rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Date of Birth <span style="color:#ef4444;">*</span></label>
+                <input id="signup-birthday" type="date" class="auth-input" max="" />
+                <p style="font-size:0.75rem;color:#6b7280;margin:0.3rem 0 0;">You must be 18 or older to create a creator account.</p>
+              </div>
               <div style="background:#f0f5f0;border-radius:0.5rem;padding:0.6rem 0.75rem;">
                 <p style="font-size:0.8rem;color:#2F4F2F;font-weight:600;margin:0;">At least one social handle is required</p>
                 <p style="font-size:0.75rem;color:#6b7280;margin:0.2rem 0 0;">This makes you discoverable to brands.</p>
@@ -804,14 +809,6 @@
                 <option>Advanced (4.0-4.5)</option>
                 <option>Pro (5.0+)</option>
               </select>
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                Date of Birth
-                <span class="ml-1.5 text-xs font-normal text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">🔒 Private — only visible to you</span>
-              </label>
-              <input type="date" id="cp-birthday" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" max="">
-              <p class="text-xs text-gray-400 mt-1">Used to verify you are 18 or older. Never shown to brands.</p>
             </div>
           </div>
         </div>
@@ -2019,6 +2016,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=38"></script>
+  <script src="app.js?v=39"></script>
 </body>
 </html>
