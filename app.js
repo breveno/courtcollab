@@ -1948,7 +1948,7 @@ async function renderCampaigns() {
     list.innerHTML = campaigns.map(c => {
       const skills     = Array.isArray(c.skills) ? c.skills : [];
       const brandLabel = c.company_name || c.brand_name || 'Brand';
-      const budget     = c.budget || (c.budget_min && c.budget_max ? `$${c.budget_min.toLocaleString()} – $${c.budget_max.toLocaleString()}` : '—');
+      const budget     = c.budget ? `$${Number(c.budget).toLocaleString()}` : (c.budget_min && c.budget_max ? `$${c.budget_min.toLocaleString()} – $${c.budget_max.toLocaleString()}` : '—');
       const postedDate = c.created_at ? c.created_at.split('T')[0] : '';
       const isActive   = (c.status || 'open') === 'open';
       return `
@@ -1962,7 +1962,7 @@ async function renderCampaigns() {
               <p class="text-brand-600 font-medium">${brandLabel}</p>
             </div>
             <div class="flex items-center gap-4 text-sm text-gray-500">
-              <span>Budget: <strong class="text-gray-900">${budget}</strong></span>
+              <span>Rate: <strong class="text-gray-900">${budget}</strong></span>
               ${c.deadline ? `<span>Deadline: <strong class="text-gray-900">${c.deadline}</strong></span>` : ''}
             </div>
           </div>
