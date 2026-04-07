@@ -951,10 +951,8 @@ async function renderBrandPortal() {
 
     // Stats row — 4 tiles (change grid to 4-col)
     if (statsEl) {
-      statsEl.className = 'grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8';
+      statsEl.className = 'grid grid-cols-3 gap-4 mb-8';
       const active = campaigns.filter(c => (c.status || 'open') === 'open').length;
-      const avgRating   = brandProfile?.avg_rating;
-      const ratingCount = brandProfile?.rating_count || 0;
       statsEl.innerHTML = `
         <div class="bg-white rounded-2xl border border-gray-100 p-5">
           <div class="text-3xl font-bold text-gray-900">${campaigns.length}</div>
@@ -968,67 +966,17 @@ async function renderBrandPortal() {
           <div class="text-3xl font-bold text-brand-700">${campaigns.length - active}</div>
           <div class="text-sm text-gray-500 mt-1">Closed Campaigns</div>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-100 p-5">
-          ${avgRating
-            ? `<div class="text-2xl font-bold text-yellow-500 leading-none mb-1">${renderStars(avgRating)}</div>
-               <div class="text-sm font-semibold text-gray-800">${avgRating} / 5</div>
-               <div class="text-xs text-gray-400 mt-0.5">${ratingCount} creator rating${ratingCount !== 1 ? 's' : ''}</div>`
-            : `<div class="text-2xl text-gray-200 leading-none mb-1">★★★★★</div>
-               <div class="text-sm text-gray-400">No ratings yet</div>
-               <div class="text-xs text-gray-300 mt-0.5">Complete deals to earn reviews</div>`}
-        </div>
       `;
     }
 
     // Profile completion bar (top of portal)
     renderBrandCompletion(brandProfile);
-    // Ratings from creators card (below the campaign grid, populated after grid renders)
     renderBrandPortalGrid(campaigns);
-    renderBrandRatingsCard(brandProfile);
   } catch (err) {
     grid.innerHTML = `<div class="col-span-full text-center py-8 text-red-400">${err.message}</div>`;
   }
 }
 
-function renderBrandRatingsCard(brandProfile) {
-  // Find or create the ratings card container (below the campaign grid)
-  let card = document.getElementById('brand-portal-ratings-card');
-  if (!card) {
-    const grid = document.getElementById('brand-portal-campaign-grid');
-    if (!grid) return;
-    card = document.createElement('div');
-    card.id = 'brand-portal-ratings-card';
-    card.className = 'mt-8';
-    grid.parentNode.insertBefore(card, grid.nextSibling);
-  }
-
-  const ratings = brandProfile?.recent_ratings || [];
-  if (!ratings.length) { card.innerHTML = ''; return; }
-
-  card.innerHTML = `
-    <div class="bg-white rounded-2xl border border-gray-100 p-6">
-      <h2 class="font-bold text-lg mb-1">Creator Reviews</h2>
-      <p class="text-sm text-gray-500 mb-4">What creators say about working with you</p>
-      <div class="divide-y divide-gray-50">
-        ${ratings.map(r => `
-          <div class="py-3 flex items-start justify-between gap-4">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="font-medium text-sm">${escHtml(r.creator_name || 'Creator')}</span>
-                <span class="text-xs text-gray-400">on "${escHtml(r.campaign_title || '')}"</span>
-              </div>
-              ${r.comment ? `<p class="text-sm text-gray-600 italic">"${escHtml(r.comment)}"</p>` : ''}
-            </div>
-            <div class="flex-shrink-0 text-right">
-              <div>${renderStars(r.score)}</div>
-              <div class="text-xs text-gray-400 mt-0.5">${fmtDateUTC(r.created_at)}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
 
 // --- Creator Dashboard ---
 async function renderCreatorDashboard() {
