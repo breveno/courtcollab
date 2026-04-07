@@ -969,8 +969,6 @@ async function renderBrandPortal() {
       `;
     }
 
-    // Profile completion bar (top of portal)
-    renderBrandCompletion(brandProfile);
     renderBrandPortalGrid(campaigns);
   } catch (err) {
     grid.innerHTML = `<div class="col-span-full text-center py-8 text-red-400">${err.message}</div>`;
