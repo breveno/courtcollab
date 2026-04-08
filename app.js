@@ -803,7 +803,7 @@ function navigate(page, activeNavId = null) {
       state.currentPage = page;
       // Push a history entry so the browser back button stays in-app
       if (history.state?.page !== page) {
-        history.pushState({ page }, '', page === 'landing' ? '/' : '#' + page);
+        history.pushState({ page }, '', page === 'landing' ? '/' : '/' + page);
       }
     } else {
       document.getElementById('page-404')?.classList.add('active');
@@ -4049,10 +4049,8 @@ async function apiDelete(path, body, opts = {}) {
 
 // --- Browser back/forward button support ---
 window.addEventListener('popstate', (e) => {
-  const page = e.state?.page;
-  if (page && getToken()) {
-    navigate(page);
-  }
+  const page = e.state?.page || window.location.pathname.replace(/^\//, '') || 'landing';
+  if (getToken()) navigate(page);
 });
 
 // --- Init ---
@@ -4111,6 +4109,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const user = await apiGet('/api/me', { silent: true });
       onAuthSuccess(user);
+      // Restore the page from the URL path (e.g. courtcollab.com/messages → messages)
+      const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
+      if (path) navigate(path);
     } catch {
       clearToken();
       showAuthGate();
