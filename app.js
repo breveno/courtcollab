@@ -817,6 +817,7 @@ function navigate(page, activeNavId = null) {
         link.classList.toggle('active', link.dataset.page === page);
       }
     });
+    if (page === 'landing')    startHeroCarousel();
     if (page === 'brand-portal') renderBrandPortal();
     if (page === 'creators')  { loadSavedCreatorIds().then(() => renderCreators()); }
     if (page === 'campaigns') renderCampaigns();
@@ -4053,11 +4054,54 @@ window.addEventListener('popstate', (e) => {
   if (getToken()) navigate(page);
 });
 
+// ─── Hero Creator Carousel ────────────────────────────────────────────────────
+let _heroIdx   = 0;
+let _heroTimer = null;
+
+function _heroStep() {
+  const cards = document.querySelectorAll('.hero-card');
+  const dots  = document.querySelectorAll('.hero-dot');
+  if (cards.length < 2) return;
+
+  const prev = _heroIdx;
+  _heroIdx = (_heroIdx + 1) % cards.length;
+
+  cards[prev].classList.remove('active');
+  cards[prev].classList.add('exiting');
+  setTimeout(() => cards[prev].classList.remove('exiting'), 500);
+
+  cards[_heroIdx].classList.add('active');
+
+  dots.forEach((d, i) => {
+    d.classList.toggle('active', i === _heroIdx);
+    d.style.width = i === _heroIdx ? '22px' : '6px';
+  });
+}
+
+function startHeroCarousel() {
+  stopHeroCarousel();
+  _heroIdx = 0;
+  document.querySelectorAll('.hero-card').forEach((c, i) => {
+    c.classList.remove('active', 'exiting');
+    if (i === 0) c.classList.add('active');
+  });
+  document.querySelectorAll('.hero-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === 0);
+    d.style.width = i === 0 ? '22px' : '6px';
+  });
+  _heroTimer = setInterval(_heroStep, 3000);
+}
+
+function stopHeroCarousel() {
+  if (_heroTimer) { clearInterval(_heroTimer); _heroTimer = null; }
+}
+
 // --- Init ---
 document.addEventListener('DOMContentLoaded', async () => {
   const roleEl = document.getElementById('user-role');
   if (roleEl) roleEl.value = state.role;
   highlightRole();
+  startHeroCarousel();
   handleStripeReturn();
 
   // Handle password reset link (?reset_token=...)

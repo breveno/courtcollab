@@ -80,6 +80,34 @@
     .nav-dropdown-item:hover { background: #163a70; color: #C8F135; }
     .nav-dropdown-item svg { color: rgba(255,255,255,0.4); flex-shrink: 0; }
     .nav-dropdown-item:hover svg { color: #C8F135; }
+  /* Hero Creator Carousel */
+  .hero-card {
+    position: absolute; inset: 0;
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+    transition: opacity 0.55s cubic-bezier(0.4,0,0.2,1), transform 0.55s cubic-bezier(0.4,0,0.2,1);
+    pointer-events: none;
+  }
+  .hero-card.active {
+    opacity: 1; transform: translateY(0) scale(1);
+    pointer-events: auto;
+    animation: heroFloat 5s ease-in-out infinite 0.7s;
+  }
+  .hero-card.exiting {
+    opacity: 0; transform: translateY(-16px) scale(0.98);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    animation: none;
+  }
+  @keyframes heroFloat {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-7px); }
+  }
+  .hero-dot {
+    height: 6px; width: 6px; border-radius: 3px;
+    background: rgba(255,255,255,0.25);
+    transition: all 0.35s ease; cursor: pointer;
+  }
+  .hero-dot.active { background: #C8F135; width: 22px; }
   /* Loading overlay */
   #loading-overlay {
     display: none;
@@ -570,18 +598,127 @@
   <!-- Landing Page -->
   <div id="page-landing" class="page active">
     <div class="gradient-bg text-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
-        <div class="max-w-3xl">
-          <div class="inline-block bg-white/10 backdrop-blur rounded-full px-4 py-1.5 text-sm font-medium mb-6">The #1 Pickleball Creator Marketplace</div>
-          <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-6">Connect Pickleball <br>Creators with <span class="text-pickle-300">Top Brands</span></h1>
-          <p class="text-lg md:text-xl text-pickle-100 mb-10 max-w-2xl">The marketplace where pickleball creators showcase their audience, skills, and rates — and brands discover the perfect partners for their campaigns.</p>
-          <div class="flex flex-wrap gap-4" id="landing-hero-btns">
-            <button onclick="navigate('creators')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-browse-creators">Browse Creators</button>
-            <button onclick="switchRole('creator');navigate('creator-profile')" class="border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-white/10 transition" id="btn-join-creator">Join as Creator</button>
-            <button onclick="navigate('creator-dashboard','nav-dashboard-btn')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-creator-dashboard" style="display:none;">My Creator Dashboard</button>
-            <button onclick="navigate('brand-portal')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-brand-dashboard" style="display:none;">My Brand Portal</button>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
+        <div class="grid lg:grid-cols-2 gap-12 xl:gap-20 items-center">
+          <!-- Left: headline + CTA -->
+          <div>
+            <div class="inline-block bg-white/10 backdrop-blur rounded-full px-4 py-1.5 text-sm font-medium mb-6">The #1 Pickleball Creator Marketplace</div>
+            <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-6">Connect Pickleball <br>Creators with <span class="text-pickle-300">Top Brands</span></h1>
+            <p class="text-lg md:text-xl text-pickle-100 mb-10 max-w-xl">The marketplace where pickleball creators showcase their audience, skills, and rates — and brands discover the perfect partners for their campaigns.</p>
+            <div class="flex flex-wrap gap-4" id="landing-hero-btns">
+              <button onclick="navigate('creators')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-browse-creators">Browse Creators</button>
+              <button onclick="switchRole('creator');navigate('creator-profile')" class="border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-white/10 transition" id="btn-join-creator">Join as Creator</button>
+              <button onclick="navigate('creator-dashboard','nav-dashboard-btn')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-creator-dashboard" style="display:none;">My Creator Dashboard</button>
+              <button onclick="navigate('brand-portal')" class="bg-white text-pickle-800 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-pickle-50 transition" id="btn-brand-dashboard" style="display:none;">My Brand Portal</button>
+            </div>
           </div>
-        </div>
+
+          <!-- Right: animated creator card carousel -->
+          <div class="hidden lg:flex flex-col items-center gap-5">
+            <!-- Stack depth effect + carousel -->
+            <div class="relative w-full max-w-xs" style="padding-bottom: 20px;">
+              <!-- Stack shadows (decorative, always visible) -->
+              <div class="absolute inset-x-3 bottom-0 h-full rounded-2xl" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); transform:translateY(16px) scale(0.93);"></div>
+              <div class="absolute inset-x-1.5 bottom-0 h-full rounded-2xl" style="background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.11); transform:translateY(8px) scale(0.965);"></div>
+              <!-- Carousel track -->
+              <div id="hero-carousel-track" class="relative" style="height:252px;">
+
+                <!-- Card 1 — Sarah K. -->
+                <div class="hero-card active rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm" style="background:#C8F135;color:#0B1F4A">SK</div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-white text-sm leading-tight">Sarah K.</div>
+                      <div class="text-xs mt-0.5" style="color:rgba(255,255,255,0.5)">Pro Player · Austin, TX</div>
+                    </div>
+                    <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">96% fit</span>
+                  </div>
+                  <div class="space-y-2.5 mb-4">
+                    <div class="flex items-center gap-2.5">
+                      <svg class="w-4 h-4 flex-shrink-0" style="color:#e1306c" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                      <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">@sarahkpkl</span>
+                      <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">45.2K</span>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                      <svg class="w-4 h-4 flex-shrink-0 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 100 12.68 6.34 6.34 0 006.33-6.34V8.19a8.16 8.16 0 004.79 1.53V6.27a4.85 4.85 0 01-1.02.42z"/></svg>
+                      <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">@sarahkpkl</span>
+                      <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">89.1K</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,0.08)">
+                    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Engagement Rate</span>
+                    <span class="text-xs font-bold" style="color:#C8F135">6.8%</span>
+                  </div>
+                </div>
+
+                <!-- Card 2 — Marcus J. -->
+                <div class="hero-card rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm text-white" style="background:#1E6EA6">MJ</div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-white text-sm leading-tight">Marcus J.</div>
+                      <div class="text-xs mt-0.5" style="color:rgba(255,255,255,0.5)">Tournament Coverage</div>
+                    </div>
+                    <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">91% fit</span>
+                  </div>
+                  <div class="space-y-2.5 mb-4">
+                    <div class="flex items-center gap-2.5">
+                      <svg class="w-4 h-4 flex-shrink-0" style="color:#ff0000" fill="currentColor" viewBox="0 0 24 24"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 00.5 6.2 31.2 31.2 0 000 12a31.2 31.2 0 00.5 5.8 3 3 0 002.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 002.1-2.1A31.2 31.2 0 0024 12a31.2 31.2 0 00-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+                      <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">@marcuspickleball</span>
+                      <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">120K</span>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                      <svg class="w-4 h-4 flex-shrink-0" style="color:#e1306c" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                      <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">@marcusjpkl</span>
+                      <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">32.4K</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,0.08)">
+                    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Engagement Rate</span>
+                    <span class="text-xs font-bold" style="color:#C8F135">4.2%</span>
+                  </div>
+                </div>
+
+                <!-- Card 3 — Emma L. -->
+                <div class="hero-card rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm text-white" style="background:#7c3aed">EL</div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-white text-sm leading-tight">Emma L.</div>
+                      <div class="text-xs mt-0.5" style="color:rgba(255,255,255,0.5)">Coaching &amp; Strategy</div>
+                    </div>
+                    <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">88% fit</span>
+                  </div>
+                  <div class="space-y-2.5 mb-4">
+                    <div class="flex items-center gap-2.5">
+                      <svg class="w-4 h-4 flex-shrink-0" style="color:#e1306c" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                      <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">@emmalcoaches</span>
+                      <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">67.3K</span>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                      <svg class="w-4 h-4 flex-shrink-0 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 100 12.68 6.34 6.34 0 006.33-6.34V8.19a8.16 8.16 0 004.79 1.53V6.27a4.85 4.85 0 01-1.02.42z"/></svg>
+                      <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">@emmalcoaches</span>
+                      <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">41.8K</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,0.08)">
+                    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Engagement Rate</span>
+                    <span class="text-xs font-bold" style="color:#C8F135">7.4%</span>
+                  </div>
+                </div>
+
+              </div><!-- /track -->
+            </div><!-- /stack wrapper -->
+
+            <!-- Dot indicators -->
+            <div class="flex items-center gap-2">
+              <div class="hero-dot active"></div>
+              <div class="hero-dot"></div>
+              <div class="hero-dot"></div>
+            </div>
+          </div><!-- /carousel column -->
+
+        </div><!-- /grid -->
       </div>
     </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -2259,6 +2396,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=58"></script>
+  <script src="app.js?v=59"></script>
 </body>
 </html>
