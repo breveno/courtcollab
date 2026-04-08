@@ -2444,11 +2444,14 @@ def reset_password(request: Request, body: ResetPasswordIn):
 # ---------------------------------------------------------------------------
 
 class ChangePasswordIn(BaseModel):
-    password: str = Field(min_length=8, max_length=200)
+    current_password: str = Field(min_length=1)
+    password:         str = Field(min_length=8, max_length=200)
 
 @app.post("/api/change-password", status_code=200)
 @limiter.limit("10/minute")
 def change_password(request: Request, body: ChangePasswordIn, user: dict = Depends(current_user)):
+    if not _verify(body.current_password, user["password"]):
+        raise HTTPException(400, "Current password is incorrect")
     with get_conn() as conn:
         conn.execute(
             "UPDATE users SET password = ? WHERE id = ?",
@@ -2456,6 +2459,49 @@ def change_password(request: Request, body: ChangePasswordIn, user: dict = Depen
         )
         conn.commit()
     return {"ok": True}
+
+
+class AccountUpdateIn(BaseModel):
+    name:         Optional[str]      = None
+    email:        Optional[EmailStr] = None
+    company_name: Optional[str]      = None
+
+@app.put("/api/account", response_model=UserOut)
+@limiter.limit("20/minute")
+def update_account(request: Request, body: AccountUpdateIn, user: dict = Depends(current_user)):
+    with get_conn() as conn:
+        if body.name is not None or body.email is not None:
+            updates, params = [], []
+            if body.name is not None:
+                clean = body.name.strip()
+                if len(clean) < 2:
+                    raise HTTPException(400, "Name must be at least 2 characters")
+                updates.append("name = ?")
+                params.append(clean)
+                updates.append("initials = ?")
+                params.append(_initials(clean))
+            if body.email is not None:
+                updates.append("email = ?")
+                params.append(body.email.lower())
+            if updates:
+                params.append(user["id"])
+                conn.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", params)
+        if body.company_name is not None and user["role"] == "brand":
+            conn.execute("""
+                INSERT INTO brand_profiles (user_id, company_name, updated_at)
+                VALUES (?, ?, NOW())
+                ON CONFLICT(user_id) DO UPDATE SET
+                  company_name = excluded.company_name,
+                  updated_at   = NOW()
+            """, (user["id"], body.company_name.strip()))
+        conn.commit()
+        updated = _row(conn, "SELECT * FROM users WHERE id = ?", (user["id"],))
+    updated = dict(updated)
+    if updated["role"] == "brand":
+        with get_conn() as conn:
+            bp = _row(conn, "SELECT company_name FROM brand_profiles WHERE user_id = ?", (updated["id"],))
+        updated["company_name"] = bp["company_name"] if bp else None
+    return UserOut(**updated)
 
 
 # ---------------------------------------------------------------------------

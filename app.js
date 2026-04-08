@@ -695,7 +695,67 @@ function navigateDashboard() {
 
 function navigateToProfile() {
   if (state.role === 'creator') navigate('creator-profile');
-  else navigate('brand-portal');
+  else openAccountSettings();
+}
+
+function openAccountSettings() {
+  const user = state.currentUser || {};
+  const isBrand = user.role === 'brand';
+  // Show/hide company name row
+  const companyRow = document.getElementById('acct-company-row');
+  if (companyRow) companyRow.classList.toggle('hidden', !isBrand);
+  // Pre-fill fields
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  setVal('acct-company', user.company_name || '');
+  setVal('acct-name',    user.name         || '');
+  setVal('acct-email',   user.email        || '');
+  setVal('acct-current-pw', '');
+  setVal('acct-new-pw',     '');
+  setVal('acct-confirm-pw', '');
+  openModal('account-settings-modal');
+}
+
+async function saveAccountInfo() {
+  const user = state.currentUser || {};
+  const name        = (document.getElementById('acct-name')?.value    || '').trim();
+  const email       = (document.getElementById('acct-email')?.value   || '').trim();
+  const companyName = (document.getElementById('acct-company')?.value || '').trim();
+  if (!name)  return showToast('Name cannot be empty', 'error');
+  if (!email) return showToast('Email cannot be empty', 'error');
+  const body = { name, email };
+  if (user.role === 'brand') body.company_name = companyName;
+  try {
+    const updated = await apiPut('/api/account', body);
+    state.currentUser = { ...state.currentUser, ...updated };
+    document.getElementById('nav-user-name').textContent =
+      (updated.role === 'brand' && updated.company_name) ? updated.company_name : updated.name;
+    const initials = updated.initials || updated.name.slice(0, 2).toUpperCase();
+    document.getElementById('nav-user-initials').textContent = initials;
+    document.getElementById('nav-user-initials-mobile').textContent = initials;
+    showToast('Account updated!', 'success');
+    closeModal('account-settings-modal');
+  } catch (err) {
+    showToast(err.message || 'Could not save changes', 'error');
+  }
+}
+
+async function saveAccountPassword() {
+  const currentPw = document.getElementById('acct-current-pw')?.value || '';
+  const newPw     = document.getElementById('acct-new-pw')?.value     || '';
+  const confirmPw = document.getElementById('acct-confirm-pw')?.value || '';
+  if (!currentPw) return showToast('Enter your current password', 'error');
+  if (newPw.length < 8) return showToast('New password must be at least 8 characters', 'error');
+  if (newPw !== confirmPw) return showToast('New passwords do not match', 'error');
+  try {
+    await apiPost('/api/change-password', { current_password: currentPw, password: newPw });
+    document.getElementById('acct-current-pw').value = '';
+    document.getElementById('acct-new-pw').value     = '';
+    document.getElementById('acct-confirm-pw').value = '';
+    showToast('Password updated!', 'success');
+    closeModal('account-settings-modal');
+  } catch (err) {
+    showToast(err.message || 'Could not update password', 'error');
+  }
 }
 
 let _navRafId = null;
