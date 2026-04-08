@@ -4151,14 +4151,14 @@ function heroNav(dir) {
   stopHeroCarousel();
   _heroGoTo(_heroIdx + dir);
   const cards = document.querySelectorAll('.hero-card');
-  if (cards.length > 1) _heroTimer = setInterval(_heroStep, 3000);
+  if (cards.length > 1) _heroTimer = setInterval(_heroStep, 10000);
 }
 
 function heroGoToDot(idx) {
   stopHeroCarousel();
   _heroGoTo(idx);
   const cards = document.querySelectorAll('.hero-card');
-  if (cards.length > 1) _heroTimer = setInterval(_heroStep, 3000);
+  if (cards.length > 1) _heroTimer = setInterval(_heroStep, 10000);
 }
 
 function heroViewProfile(userId) {
@@ -4179,7 +4179,7 @@ function _heroStart() {
     d.onclick = () => heroGoToDot(i);
   });
   if (document.querySelectorAll('.hero-card').length > 1) {
-    _heroTimer = setInterval(_heroStep, 3000);
+    _heroTimer = setInterval(_heroStep, 10000);
   }
 }
 
