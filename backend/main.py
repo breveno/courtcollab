@@ -456,11 +456,12 @@ class LoginIn(BaseModel):
     remember: bool     = False
 
 class UserOut(BaseModel):
-    id:       int
-    name:     str
-    email:    str
-    role:     str
-    initials: str
+    id:           int
+    name:         str
+    email:        str
+    role:         str
+    initials:     str
+    company_name: Optional[str] = None
 
 class AuthOut(BaseModel):
     token: str
@@ -538,11 +539,21 @@ def login(request: Request, body: LoginIn):
     ttl = TOKEN_TTL_REMEMBER if body.remember else TOKEN_TTL_HRS
     exp = datetime.now(timezone.utc) + timedelta(hours=ttl)
     token = jwt.encode({"sub": str(user["id"]), "exp": exp}, SECRET_KEY, algorithm=ALGORITHM)
+    user = dict(user)
+    if user["role"] == "brand":
+        with get_conn() as conn:
+            bp = _row(conn, "SELECT company_name FROM brand_profiles WHERE user_id = ?", (user["id"],))
+        user["company_name"] = bp["company_name"] if bp else None
     return {"token": token, "user": UserOut(**user)}
 
 
 @app.get("/api/me", response_model=UserOut)
 def me(user: dict = Depends(current_user)):
+    user = dict(user)
+    if user["role"] == "brand":
+        with get_conn() as conn:
+            bp = _row(conn, "SELECT company_name FROM brand_profiles WHERE user_id = ?", (user["id"],))
+        user["company_name"] = bp["company_name"] if bp else None
     return UserOut(**user)
 
 # ---------------------------------------------------------------------------

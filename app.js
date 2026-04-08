@@ -498,7 +498,7 @@ function onAuthSuccess(user) {
   const initials = user.initials || user.name.slice(0, 2).toUpperCase();
   document.getElementById('nav-user-initials').textContent = initials;
   document.getElementById('nav-user-initials-mobile').textContent = initials;
-  document.getElementById('nav-user-name').textContent = user.name;
+  document.getElementById('nav-user-name').textContent = (user.role === 'brand' && user.company_name) ? user.company_name : user.name;
   updateLandingHeroButtons(user.role);
   // Show admin nav link only for platform admins
   const isAdmin = ADMIN_EMAILS.includes(user.email);
