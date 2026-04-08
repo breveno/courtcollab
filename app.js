@@ -4058,6 +4058,72 @@ window.addEventListener('popstate', (e) => {
 let _heroIdx   = 0;
 let _heroTimer = null;
 
+const _AVATAR_COLORS = ['#1E6EA6','#7c3aed','#0B1F4A','#059669','#b45309'];
+
+function _fmtFollowers(n) {
+  if (!n) return null;
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000)    return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+
+function _heroCardHtml(creator, colorIdx) {
+  const avatarColor = creator.followers_ig > creator.followers_tt && creator.followers_ig > creator.followers_tt
+    ? '#C8F135' : _AVATAR_COLORS[colorIdx % _AVATAR_COLORS.length];
+  const avatarText  = avatarColor === '#C8F135' ? '#0B1F4A' : '#ffffff';
+  const initials    = creator.initials || creator.name.slice(0, 2).toUpperCase();
+  const niche       = [creator.niche, creator.location].filter(Boolean).join(' · ') || 'Creator';
+  const handles     = creator.social_handles || {};
+
+  // Compute a simple brand fit score (engagement + follower mix, capped 60–99)
+  const total = creator.total_followers || 0;
+  const eng   = parseFloat(creator.engagement_rate) || 0;
+  const fit   = Math.min(99, Math.max(60, Math.round(55 + Math.log10(total + 1) * 7 + eng * 2)));
+
+  // Platform rows — only show platforms with followers > 0
+  const platforms = [
+    { key: 'ig', followers: creator.followers_ig, handle: handles.instagram || handles.ig,
+      color: '#e1306c',
+      svg: `<svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>` },
+    { key: 'tt', followers: creator.followers_tt, handle: handles.tiktok || handles.tt,
+      color: '#ffffff',
+      svg: `<svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 100 12.68 6.34 6.34 0 006.33-6.34V8.19a8.16 8.16 0 004.79 1.53V6.27a4.85 4.85 0 01-1.02.42z"/></svg>` },
+    { key: 'yt', followers: creator.followers_yt, handle: handles.youtube || handles.yt,
+      color: '#ff0000',
+      svg: `<svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 00.5 6.2 31.2 31.2 0 000 12a31.2 31.2 0 00.5 5.8 3 3 0 002.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 002.1-2.1A31.2 31.2 0 0024 12a31.2 31.2 0 00-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>` },
+  ].filter(p => p.followers > 0).slice(0, 2);
+
+  const platformRows = platforms.map(p => {
+    const handleStr = p.handle ? `@${p.handle.replace(/^@/, '')}` : `@${creator.name.toLowerCase().replace(/\s+/g, '')}`;
+    return `<div class="flex items-center gap-2.5">
+      <span style="color:${p.color}">${p.svg}</span>
+      <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">${handleStr}</span>
+      <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">${_fmtFollowers(p.followers)}</span>
+    </div>`;
+  }).join('');
+
+  // Fallback row if no platforms filled in
+  const platformSection = platformRows || `<div class="text-xs" style="color:rgba(255,255,255,0.45)">Profile in progress…</div>`;
+
+  const engDisplay = eng > 0 ? eng.toFixed(1) + '%' : '—';
+
+  return `<div class="hero-card rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
+  <div class="flex items-center gap-3 mb-4">
+    <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm" style="background:${avatarColor};color:${avatarText}">${initials}</div>
+    <div class="min-w-0">
+      <div class="font-bold text-white text-sm leading-tight truncate">${creator.name}</div>
+      <div class="text-xs mt-0.5 truncate" style="color:rgba(255,255,255,0.5)">${niche}</div>
+    </div>
+    <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">${fit}% fit</span>
+  </div>
+  <div class="space-y-2.5 mb-4">${platformSection}</div>
+  <div class="flex items-center justify-between rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,0.08)">
+    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Engagement Rate</span>
+    <span class="text-xs font-bold" style="color:#C8F135">${engDisplay}</span>
+  </div>
+</div>`;
+}
+
 function _heroStep() {
   const cards = document.querySelectorAll('.hero-card');
   const dots  = document.querySelectorAll('.hero-dot');
@@ -4078,7 +4144,7 @@ function _heroStep() {
   });
 }
 
-function startHeroCarousel() {
+function _heroStart() {
   stopHeroCarousel();
   _heroIdx = 0;
   document.querySelectorAll('.hero-card').forEach((c, i) => {
@@ -4089,7 +4155,29 @@ function startHeroCarousel() {
     d.classList.toggle('active', i === 0);
     d.style.width = i === 0 ? '22px' : '6px';
   });
-  _heroTimer = setInterval(_heroStep, 3000);
+  if (document.querySelectorAll('.hero-card').length > 1) {
+    _heroTimer = setInterval(_heroStep, 3000);
+  }
+}
+
+async function startHeroCarousel() {
+  const track    = document.getElementById('hero-carousel-track');
+  const dotsWrap = document.querySelector('.hero-dots-wrap');
+  if (!track) return;
+
+  try {
+    const creators = await fetch('/api/featured-creators').then(r => r.json());
+    if (!Array.isArray(creators) || creators.length === 0) { _heroStart(); return; }
+
+    track.innerHTML = creators.map((c, i) => _heroCardHtml(c, i)).join('');
+    if (dotsWrap) {
+      dotsWrap.innerHTML = creators.map((_, i) =>
+        `<div class="hero-dot${i === 0 ? ' active' : ''}" style="width:${i === 0 ? '22px' : '6px'}"></div>`
+      ).join('');
+    }
+  } catch (_) { /* keep static fallback cards */ }
+
+  _heroStart();
 }
 
 function stopHeroCarousel() {
