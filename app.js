@@ -327,9 +327,9 @@ function showAuthTab(tab) {
 
 function highlightRole() {
   const brandChecked = document.getElementById('role-brand').checked;
-  document.getElementById('role-brand-label').style.borderColor = brandChecked ? '#2F4F2F' : '#e5e7eb';
+  document.getElementById('role-brand-label').style.borderColor = brandChecked ? '#C8F135' : '#e5e7eb';
   document.getElementById('role-brand-label').style.background = brandChecked ? '#f0f5f0' : '';
-  document.getElementById('role-creator-label').style.borderColor = !brandChecked ? '#2F4F2F' : '#e5e7eb';
+  document.getElementById('role-creator-label').style.borderColor = !brandChecked ? '#C8F135' : '#e5e7eb';
   document.getElementById('role-creator-label').style.background = !brandChecked ? '#f0f5f0' : '';
   // Show brand fields for brands, social handle fields for creators
   const brandFields = document.getElementById('brand-signup-fields');
@@ -1033,7 +1033,7 @@ async function renderCreatorDashboard() {
           <svg class="w-10 h-10 mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           <p class="font-medium text-gray-500 mb-1">No deals yet</p>
           <p class="text-sm">Browse campaigns and apply to start earning.</p>
-          <button onclick="navigate('campaigns')" class="mt-4 bg-pickle-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-pickle-700 transition">Browse Campaigns</button>
+          <button onclick="navigate('campaigns')" class="mt-4 bg-lime-400 text-gray-900 px-4 py-2 rounded-xl text-sm font-medium hover:bg-lime-500 transition">Browse Campaigns</button>
         </div>`;
       return;
     }
@@ -1080,7 +1080,7 @@ function renderBrandPortalGrid(campaigns) {
           <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
         </div>
         <p class="text-gray-500 mb-4 text-sm">No campaigns yet</p>
-        <button onclick="openModal('campaign-modal')" class="bg-pickle-700 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-pickle-800 text-sm">Post Your First Campaign</button>
+        <button onclick="openModal('campaign-modal')" class="bg-lime-400 text-gray-900 px-5 py-2.5 rounded-xl font-medium hover:bg-lime-500 text-sm">Post Your First Campaign</button>
       </div>
     `;
     return;
@@ -1185,12 +1185,12 @@ function dealStepperHtml(deal) {
     const current = i === step;
 
     const circleCls = done
-      ? 'bg-pickle-600 text-white border-2 border-pickle-600'
+      ? 'bg-lime-400 text-gray-900 border-2 border-lime-400'
       : current
-        ? 'bg-white text-pickle-700 border-2 border-pickle-600 ring-4 ring-pickle-100'
+        ? 'bg-white text-pickle-600 border-2 border-lime-400 ring-4 ring-lime-100'
         : 'bg-white text-gray-300 border-2 border-gray-200';
     const labelCls = done    ? 'text-pickle-600 font-medium'
-                   : current ? 'text-pickle-700 font-semibold'
+                   : current ? 'text-pickle-600 font-semibold'
                    :           'text-gray-400';
 
     html += `
@@ -1225,8 +1225,8 @@ function dealStepperMiniHtml(status) {
   if (step === -1) return `<span class="tag bg-red-100 text-red-600">Declined</span>`;
 
   const dots = _DEAL_STEPS.map((label, i) => {
-    const cls = i < step  ? 'bg-pickle-600'
-              : i === step ? 'bg-pickle-600 ring-2 ring-pickle-200'
+    const cls = i < step  ? 'bg-lime-400'
+              : i === step ? 'bg-lime-400 ring-2 ring-lime-200'
               :              'bg-gray-200';
     return `<div class="w-2 h-2 rounded-full flex-shrink-0 ${cls}" title="${label}"></div>`;
   });
@@ -1338,7 +1338,7 @@ function switchCreatorsTab(tab) {
   _creatorsTab = tab;
   const allBtn   = document.getElementById('tab-all-creators');
   const savedBtn = document.getElementById('tab-saved-creators');
-  const activeCls   = 'bg-pickle-600 text-white border-transparent';
+  const activeCls   = 'bg-lime-400 text-gray-900 border-transparent';
   const inactiveCls = 'border border-gray-300 text-gray-600 bg-white hover:bg-gray-50';
   if (allBtn)   allBtn.className   = `px-4 py-1.5 rounded-full text-sm font-medium transition ${tab === 'all'   ? activeCls : inactiveCls}`;
   if (savedBtn) savedBtn.className = `px-4 py-1.5 rounded-full text-sm font-medium transition flex items-center gap-1.5 ${tab === 'saved' ? activeCls : inactiveCls}`;
@@ -1991,7 +1991,7 @@ async function renderCampaigns() {
           </div>
           <div class="flex items-center justify-between pt-4 border-t border-gray-100">
             <span class="text-sm text-gray-400">${postedDate ? 'Posted ' + postedDate : ''}</span>
-            <button onclick="applyCampaign(${c.id})" class="bg-pickle-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-pickle-700 transition">
+            <button onclick="applyCampaign(${c.id})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">
               ${state.role === 'creator' ? 'Apply Now' : 'View Applicants'}
             </button>
           </div>
@@ -2112,7 +2112,7 @@ async function runMatching() {
       const colorClass = score >= 80 ? 'border-pickle-400' : score >= 60 ? 'border-yellow-400' : 'border-gray-300';
       const textClass  = score >= 80 ? 'text-pickle-600' : score >= 60 ? 'text-yellow-600' : 'text-gray-500';
       const label      = score >= 80 ? 'Strong Match' : score >= 60 ? 'Good Match' : 'Potential Match';
-      const barColor   = score >= 80 ? 'linear-gradient(90deg, #4f8a4f, #2F4F2F)' : score >= 60 ? 'linear-gradient(90deg, #eab308, #ca8a04)' : '#9ca3af';
+      const barColor   = score >= 80 ? 'linear-gradient(90deg, #C8F135, #acd120)' : score >= 60 ? 'linear-gradient(90deg, #eab308, #ca8a04)' : '#9ca3af';
       const minRate    = Math.min(c.rate_ig || 9999, c.rate_tiktok || 9999, c.rate_ugc || 9999);
       return `
         <div class="bg-white rounded-2xl border border-gray-200 p-5 card-hover cursor-pointer" onclick="showCreatorDetail(${c.user_id})">
@@ -2193,9 +2193,9 @@ async function renderConversations() {
     if (convs.length === 0) {
       const cta = state.role === 'brand'
         ? `<p class="text-xs text-gray-400 mt-1">Browse creators to find the right match for your campaign.</p>
-           <button onclick="navigate('creators');closeMobileMenu()" class="mt-3 text-xs bg-pickle-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-pickle-700 transition">Browse Creators</button>`
+           <button onclick="navigate('creators');closeMobileMenu()" class="mt-3 text-xs bg-lime-400 text-gray-900 px-3 py-1.5 rounded-lg font-medium hover:bg-lime-500 transition">Browse Creators</button>`
         : `<p class="text-xs text-gray-400 mt-1">Apply to campaigns to start a conversation with brands.</p>
-           <button onclick="navigate('campaigns');closeMobileMenu()" class="mt-3 text-xs bg-pickle-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-pickle-700 transition">Browse Campaigns</button>`;
+           <button onclick="navigate('campaigns');closeMobileMenu()" class="mt-3 text-xs bg-lime-400 text-gray-900 px-3 py-1.5 rounded-lg font-medium hover:bg-lime-500 transition">Browse Campaigns</button>`;
       list.innerHTML = `
         <div class="p-6 text-center flex flex-col items-center">
           <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center mb-3">
@@ -2229,7 +2229,7 @@ async function renderConversations() {
       const msgTime   = lastMsg ? _fmtMsgTime(lastMsg.created_at) : '';
       const seenIcon  = iMine
         ? (wasSeen
-            ? `<span class="text-pickle-500 flex-shrink-0">${_SEEN_ICON}</span>`
+            ? `<span class="text-lime-600 flex-shrink-0">${_SEEN_ICON}</span>`
             : `<span class="text-gray-400 flex-shrink-0">${_SENT_ICON}</span>`)
         : '';
       return `
@@ -2237,7 +2237,7 @@ async function renderConversations() {
           <div class="flex items-center gap-3">
             <div class="relative flex-shrink-0">
               <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm">${partner.initials || partner.name.slice(0,2).toUpperCase()}</div>
-              ${unread > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-pickle-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">${unread > 9 ? '9+' : unread}</span>` : ''}
+              ${unread > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-lime-400 text-gray-900 text-[10px] font-bold rounded-full flex items-center justify-center">${unread > 9 ? '9+' : unread}</span>` : ''}
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between gap-1 mb-0.5">
@@ -2330,7 +2330,7 @@ async function openConversation(partnerId, knownName = null) {
       if (deal && deal.status === 'pending' && state.role === 'creator') {
         dealActions.classList.remove('hidden');
         dealActions.innerHTML = `
-          <button onclick="updateDealStatus(${deal.id}, 'active')"   class="bg-pickle-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-700 transition">Accept Deal</button>
+          <button onclick="updateDealStatus(${deal.id}, 'active')"   class="bg-lime-400 text-gray-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Accept Deal</button>
           <button onclick="updateDealStatus(${deal.id}, 'declined')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-200 transition">Decline</button>
         `;
       } else if (deal && deal.status === 'active') {
@@ -2342,7 +2342,7 @@ async function openConversation(partnerId, knownName = null) {
           if (btn) btn.innerHTML = `${badge} ${c.is_fully_signed ? 'Contract Signed' : c.i_have_signed ? 'Awaiting Co-Sign' : 'Sign Contract'}`;
         }).catch(() => {});
         dealActions.innerHTML = state.role === 'brand'
-          ? `<button onclick="updateDealStatus(${deal.id}, 'completed')" class="bg-pickle-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-700 transition">Mark Complete</button>
+          ? `<button onclick="updateDealStatus(${deal.id}, 'completed')" class="bg-lime-400 text-gray-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Mark Complete</button>
              <button onclick="stripeCheckout(${deal.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Pay with Stripe</button>
              <button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>
              <button onclick="openDisputeModal(${deal.id})" class="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition" title="File a dispute">🚩</button>`
@@ -2422,7 +2422,7 @@ async function openConversation(partnerId, knownName = null) {
               <div class="text-xs text-gray-400 mt-1 ${isMe ? 'text-right' : ''}">
                 ${time}
                 ${showSeen
-                  ? `<span class="ml-1.5 inline-flex items-center gap-0.5 text-pickle-500 font-medium">${_SEEN_ICON} Seen${seenTime ? ' · ' + seenTime : ''}</span>`
+                  ? `<span class="ml-1.5 inline-flex items-center gap-0.5 text-lime-600 font-medium">${_SEEN_ICON} Seen${seenTime ? ' · ' + seenTime : ''}</span>`
                   : (isMe ? `<span class="ml-1 text-gray-300">${_SENT_ICON}</span>` : '')}
               </div>
             </div>
@@ -2641,7 +2641,7 @@ function _completionBarHtml(pct, missingFields, role) {
   const isComplete = pct >= 100;
   let barColor, bgColor, textColor, borderColor;
   if (isComplete)    { barColor = '#16a34a'; bgColor = 'bg-green-50';  textColor = 'text-green-800';  borderColor = 'border-green-200'; }
-  else if (pct >= 75){ barColor = '#2F4F2F'; bgColor = 'bg-pickle-50'; textColor = 'text-pickle-800'; borderColor = 'border-pickle-200'; }
+  else if (pct >= 75){ barColor = '#C8F135'; bgColor = 'bg-lime-50'; textColor = 'text-gray-900'; borderColor = 'border-lime-300'; }
   else if (pct >= 40){ barColor = '#d97706'; bgColor = 'bg-amber-50';  textColor = 'text-amber-800';  borderColor = 'border-amber-200'; }
   else               { barColor = '#dc2626'; bgColor = 'bg-red-50';    textColor = 'text-red-800';    borderColor = 'border-red-200'; }
 
@@ -3009,7 +3009,7 @@ async function renderPayments() {
               <div class="font-bold">${state.role === 'brand' ? '$' + (p.amount || 0).toLocaleString() : '$' + (p.creator_payout || 0).toLocaleString()}</div>
               <span class="tag ${payStatusColor} text-xs">${p.status}</span>
               ${p.status === 'held' && state.role === 'brand' ?
-                `<button onclick="releasePayment(${p.id})" class="ml-1 text-xs bg-pickle-600 text-white px-2 py-1 rounded-lg hover:bg-pickle-700 transition">Release</button>` : ''}
+                `<button onclick="releasePayment(${p.id})" class="ml-1 text-xs bg-lime-400 text-gray-900 px-2 py-1 rounded-lg hover:bg-lime-500 transition">Release</button>` : ''}
             </div>
           </div>
           <div class="flex items-center gap-1 pt-2 border-t border-gray-50">
@@ -3078,7 +3078,7 @@ async function loadStripeConnectStatus() {
             <span class="font-medium">Connect your bank to receive your deal payouts.</span>
           </div>
           <button id="stripe-connect-btn" onclick="stripeConnectOnboard()"
-            class="shrink-0 bg-[#2F4F2F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#1f3a1f] transition">
+            class="shrink-0 bg-lime-400 text-gray-900 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-lime-500 transition">
             Connect Stripe Payouts
           </button>
         </div>`;
@@ -3318,7 +3318,7 @@ async function openDisputeDetailModal(dealId) {
               <div class="text-xs text-gray-500 mb-0.5 ${isMe ? 'text-right' : ''}">
                 ${escHtml(c.author_name)}${adminBadge}
               </div>
-              <div class="${isMe ? 'bg-pickle-600 text-white' : 'bg-gray-100 text-gray-800'} px-3 py-2 rounded-xl text-sm">
+              <div class="${isMe ? 'bg-lime-400 text-gray-900' : 'bg-gray-100 text-gray-800'} px-3 py-2 rounded-xl text-sm">
                 ${escHtml(c.body)}
               </div>
               <div class="text-xs text-gray-400 mt-0.5 ${isMe ? 'text-right' : ''}">${time}</div>
@@ -3429,12 +3429,12 @@ function startOnboarding(user) {
 
   if (bullEl) {
     bullEl.innerHTML = isCreator
-      ? `<div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Your profile is your media kit.</strong><p class="text-xs text-gray-500 mt-0.5">Brands discover you by niche, skill level, and audience size.</p></div></div>
-         <div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Every deal builds your track record.</strong><p class="text-xs text-gray-500 mt-0.5">Completed campaigns and reviews appear on your public profile.</p></div></div>
-         <div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Contracts, payments & protection built in.</strong><p class="text-xs text-gray-500 mt-0.5">Auto-generated contracts, escrow payments, and dispute support.</p></div></div>`
-      : `<div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Browse verified pickleball creators.</strong><p class="text-xs text-gray-500 mt-0.5">Filter by niche, audience size, skill level, and rates.</p></div></div>
-         <div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Post campaigns and get matched instantly.</strong><p class="text-xs text-gray-500 mt-0.5">Our AI scores creators against your brief and budget.</p></div></div>
-         <div class="flex items-start gap-3"><span class="text-pickle-500 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Deals, contracts & payments in one place.</strong><p class="text-xs text-gray-500 mt-0.5">No more back-and-forth emails or chasing invoices.</p></div></div>`;
+      ? `<div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Your profile is your media kit.</strong><p class="text-xs text-gray-500 mt-0.5">Brands discover you by niche, skill level, and audience size.</p></div></div>
+         <div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Every deal builds your track record.</strong><p class="text-xs text-gray-500 mt-0.5">Completed campaigns and reviews appear on your public profile.</p></div></div>
+         <div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Contracts, payments & protection built in.</strong><p class="text-xs text-gray-500 mt-0.5">Auto-generated contracts, escrow payments, and dispute support.</p></div></div>`
+      : `<div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Browse verified pickleball creators.</strong><p class="text-xs text-gray-500 mt-0.5">Filter by niche, audience size, skill level, and rates.</p></div></div>
+         <div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Post campaigns and get matched instantly.</strong><p class="text-xs text-gray-500 mt-0.5">Our AI scores creators against your brief and budget.</p></div></div>
+         <div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Deals, contracts & payments in one place.</strong><p class="text-xs text-gray-500 mt-0.5">No more back-and-forth emails or chasing invoices.</p></div></div>`;
   }
 
   // ── Step 2 setup ──
@@ -3504,7 +3504,7 @@ function _onboardGoToStep(n) {
     const dot = document.getElementById(`onboard-dot-${i}`);
     if (!dot) continue;
     if (i <= n) {
-      dot.style.background = '#2F4F2F';
+      dot.style.background = '#C8F135';
     } else {
       dot.style.background = '#e5e7eb';
     }
@@ -3795,7 +3795,7 @@ async function renderAdmin() {
               <p class="text-xs text-gray-600 line-clamp-2">${escHtml(reasonSnippet)}</p>
             </div>
             <button onclick="openDisputeDetailModal(${d.deal_id})"
-              class="text-xs bg-pickle-600 text-white px-3 py-1.5 rounded-lg hover:bg-pickle-700 transition font-medium whitespace-nowrap flex-shrink-0">
+              class="text-xs bg-lime-400 text-gray-900 px-3 py-1.5 rounded-lg hover:bg-lime-500 transition font-medium whitespace-nowrap flex-shrink-0">
               ${d.status === 'open' ? 'Review' : 'View'}
             </button>
           </div>

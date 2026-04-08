@@ -11,7 +11,8 @@
       theme: {
         extend: {
           colors: {
-            pickle: { 50:'#f0f5f0', 100:'#d6e8d6', 200:'#acceac', 300:'#7db07d', 400:'#4f8a4f', 500:'#2F4F2F', 600:'#264226', 700:'#1e351e', 800:'#162816', 900:'#0f1c0f' },
+            pickle: { 50:'#e6f0f8', 100:'#bdd6ec', 200:'#80afd6', 300:'#4f8ec0', 400:'#1E6EA6', 500:'#163a70', 600:'#0B1F4A', 700:'#091840', 800:'#061230', 900:'#040b20' },
+            lime:   { 50:'#f5fde0', 100:'#e8fb9e', 200:'#d9f770', 300:'#ccf045', 400:'#C8F135', 500:'#acd120', 600:'#8db018', 700:'#728e13' },
             brand: { 50:'#eff6ff', 100:'#dbeafe', 200:'#bfdbfe', 300:'#93c5fd', 400:'#60a5fa', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 800:'#1e40af', 900:'#1e3a8a' }
           },
           fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
@@ -25,25 +26,25 @@
     .page.active { display: block; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .grid-fade-in { animation: fadeUp 0.22s ease forwards; }
-    .nav-link.active { color: #2F4F2F; border-bottom: 2px solid #2F4F2F; }
+    .nav-link.active { color: #C8F135; border-bottom: 2px solid #C8F135; }
     .tag { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; margin: 2px; }
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; }
     .modal-content { background: white; border-radius: 1rem; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
     .stat-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
-    .stat-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #4f8a4f, #2F4F2F); }
+    .stat-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #C8F135, #acd120); }
     .card-hover { transition: all 0.2s; }
     .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); }
-    .gradient-bg { background: linear-gradient(135deg, #0f1c0f 0%, #162816 50%, #1e351e 100%); }
-    .match-score { background: linear-gradient(135deg, #4f8a4f, #2F4F2F); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: #2F4F2F; box-shadow: 0 0 0 3px rgba(79,138,79,0.15); }
+    .gradient-bg { background: linear-gradient(135deg, #0B1F4A 0%, #163a70 50%, #0d2a60 100%); }
+    .match-score { background: linear-gradient(135deg, #C8F135, #acd120); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #C8F135; box-shadow: 0 0 0 3px rgba(200,241,53,0.2); }
     button { transition: transform 0.1s ease; }
     button:active:not(:disabled) { transform: scale(0.96); }
     @keyframes onboardFadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     .onboard-step-visible { animation: onboardFadeIn 0.28s ease; }
     #onboarding-overlay { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-    .onboard-pill-active { border-color: #2F4F2F !important; background: #f0f5f0 !important; color: #1e351e !important; font-weight: 600; }
+    .onboard-pill-active { border-color: #C8F135 !important; background: #f5fde0 !important; color: #0B1F4A !important; font-weight: 600; }
     .message-bubble-left { background: #f3f4f6; border-radius: 0 12px 12px 12px; }
-    .message-bubble-right { background: #d6e8d6; border-radius: 12px 0 12px 12px; }
+    .message-bubble-right { background: #e8fb9e; border-radius: 12px 0 12px 12px; }
     /* Nav dropdowns */
     .nav-dropdown-group { position: relative; }
     .nav-dropdown-menu {
@@ -51,10 +52,10 @@
       position: absolute;
       top: calc(100% - 1px);
       left: 0;
-      background: white;
-      border: 1px solid #e5e7eb;
+      background: #0B1F4A;
+      border: 1px solid #1E6EA6;
       border-radius: 0.75rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
       min-width: 180px;
       z-index: 100;
       padding: 0.375rem;
@@ -69,23 +70,23 @@
       padding: 0.6rem 0.875rem;
       font-size: 0.875rem;
       font-weight: 500;
-      color: #374151;
+      color: rgba(255,255,255,0.8);
       border-radius: 0.5rem;
       transition: background 0.15s;
       background: none;
       border: none;
       cursor: pointer;
     }
-    .nav-dropdown-item:hover { background: #f0f5f0; color: #2F4F2F; }
-    .nav-dropdown-item svg { color: #9ca3af; flex-shrink: 0; }
-    .nav-dropdown-item:hover svg { color: #4f8a4f; }
+    .nav-dropdown-item:hover { background: #163a70; color: #C8F135; }
+    .nav-dropdown-item svg { color: rgba(255,255,255,0.4); flex-shrink: 0; }
+    .nav-dropdown-item:hover svg { color: #C8F135; }
   /* Loading overlay */
   #loading-overlay {
     display: none;
     position: fixed;
     inset: 0;
     z-index: 99999;
-    background: rgba(15, 28, 15, 0.72);
+    background: rgba(11, 31, 74, 0.82);
     backdrop-filter: blur(3px);
     align-items: center;
     justify-content: center;
@@ -94,7 +95,7 @@
   }
   #loading-overlay.active { display: flex; }
   #loading-overlay p {
-    color: #a7c4a7;
+    color: #C8F135;
     font-size: 0.95rem;
     font-weight: 500;
     letter-spacing: 0.02em;
@@ -116,16 +117,16 @@
   body { max-width: 100vw; }
   #auth-gate { position:fixed; inset:0; z-index:9999; display:flex; }
   #auth-gate.hidden { display:none; }
-  .auth-left { width:55%; background:linear-gradient(145deg,#0f1c0f 0%,#162816 55%,#1e351e 100%); display:flex; flex-direction:column; justify-content:center; padding:4rem; position:relative; overflow:hidden; }
-  .auth-left::after { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%234f8a4f' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); pointer-events:none; }
+  .auth-left { width:55%; background:linear-gradient(145deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%); display:flex; flex-direction:column; justify-content:center; padding:4rem; position:relative; overflow:hidden; }
+  .auth-left::after { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231E6EA6' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); pointer-events:none; }
   .auth-right { width:45%; background:white; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:3rem 2.5rem; overflow-y:auto; }
   .auth-tab { flex:1; padding:0.45rem 1rem; font-weight:600; font-size:0.85rem; border-radius:0.45rem; cursor:pointer; transition:all 0.2s; text-align:center; }
-  .auth-tab.active { background:#2F4F2F; color:white; }
+  .auth-tab.active { background:#0B1F4A; color:#C8F135; }
   .auth-tab:not(.active) { color:#6b7280; }
   .auth-input { width:100%; border:1.5px solid #e5e7eb; border-radius:0.6rem; padding:0.7rem 1rem; font-size:0.95rem; transition:border-color 0.2s; }
-  .auth-input:focus { border-color:#2F4F2F; outline:none; }
-  .auth-btn { width:100%; background:#2F4F2F; color:white; padding:0.8rem; border-radius:0.6rem; font-weight:700; font-size:1rem; cursor:pointer; transition:background 0.2s; }
-  .auth-btn:hover { background:#1e351e; }
+  .auth-input:focus { border-color:#C8F135; outline:none; }
+  .auth-btn { width:100%; background:#C8F135; color:#0B1F4A; padding:0.8rem; border-radius:0.6rem; font-weight:700; font-size:1rem; cursor:pointer; transition:background 0.2s; }
+  .auth-btn:hover { background:#acd120; }
   .auth-error { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:0.5rem; padding:0.6rem 1rem; font-size:0.85rem; }
   @media(max-width:768px) {
     #auth-gate { flex-direction:column; overflow-y:auto; }
@@ -153,12 +154,12 @@
   /* Initial app splash */
   #app-splash {
     position: fixed; inset: 0; z-index: 100000;
-    background: #0f1c0f;
+    background: #0B1F4A;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem;
   }
   #app-splash.fade-out { animation: splashFade 0.4s ease forwards; }
   @keyframes splashFade { to { opacity: 0; pointer-events: none; } }
-  #app-splash svg.splash-logo { filter: drop-shadow(0 0 24px rgba(47,79,47,0.6)); }
+  #app-splash svg.splash-logo { filter: drop-shadow(0 0 24px rgba(200,241,53,0.4)); }
   </style>
 </head>
 <body class="font-sans bg-gray-50 text-gray-900 min-h-screen">
@@ -167,30 +168,30 @@
   <div id="app-splash">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" height="48" class="splash-logo" style="max-width:240px;" aria-label="CourtCollab">
       <defs>
-        <g id="sp-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/></g>
-        <g id="sp-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#fff" opacity=".15"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#fff" opacity=".15"/></g>
+        <g id="sp-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#1E6EA6"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#1E6EA6"/></g>
+        <g id="sp-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#C8F135" opacity=".9"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#C8F135" opacity=".9"/></g>
       </defs>
       <g transform="translate(60,60) scale(0.4)">
-        <circle cx="0" cy="0" r="96" fill="#2F4F2F"/>
-        <circle cx="0" cy="0" r="90" fill="none" stroke="#3d6b3d" stroke-width="1.5"/>
+        <circle cx="0" cy="0" r="96" fill="#0B1F4A"/>
+        <circle cx="0" cy="0" r="90" fill="none" stroke="#1E6EA6" stroke-width="1.5"/>
         <use href="#sp-pb" transform="rotate(38)"/>
         <use href="#sp-pf" transform="rotate(-38)"/>
-        <circle cx="0" cy="0" r="7" fill="#2F4F2F" stroke="#7db07d" stroke-width="2"/>
+        <circle cx="0" cy="0" r="7" fill="#0B1F4A" stroke="#C8F135" stroke-width="2"/>
       </g>
-      <text x="118" y="68" font-family="'Inter',system-ui,sans-serif" font-weight="800" font-size="46" dominant-baseline="middle" text-anchor="start"><tspan fill="#7db07d">Court</tspan><tspan fill="#a7c4a7">Collab</tspan></text>
+      <text x="118" y="68" font-family="'Inter',system-ui,sans-serif" font-weight="800" font-size="46" dominant-baseline="middle" text-anchor="start"><tspan fill="#C8F135">Court</tspan><tspan fill="#ffffff">Collab</tspan></text>
     </svg>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="80" height="80">
-      <circle r="45" fill="#1a2e1a"/>
-      <circle r="41" fill="none" stroke="#2F4F2F" stroke-width="1.2"/>
+      <circle r="45" fill="#163a70"/>
+      <circle r="41" fill="none" stroke="#1E6EA6" stroke-width="1.2"/>
       <g class="ldr-paddle-a">
-        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#4f8a4f"/>
-        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#4f8a4f"/>
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#1E6EA6"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#1E6EA6"/>
       </g>
       <g class="ldr-paddle-b">
-        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#7db07d"/>
-        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#7db07d"/>
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#C8F135"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#C8F135"/>
       </g>
-      <circle r="2.8" fill="#1a2e1a" stroke="#4f8a4f" stroke-width="0.8"/>
+      <circle r="2.8" fill="#163a70" stroke="#C8F135" stroke-width="0.8"/>
     </svg>
   </div>
 
@@ -198,20 +199,20 @@
   <div id="loading-overlay">
     <!-- viewBox centered at 0,0 so transform-origin:0px 0px = center of circle -->
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="100" height="100">
-      <circle r="45" fill="#1a2e1a"/>
-      <circle r="41" fill="none" stroke="#2F4F2F" stroke-width="1.2"/>
+      <circle r="45" fill="#163a70"/>
+      <circle r="41" fill="none" stroke="#1E6EA6" stroke-width="1.2"/>
       <!-- Paddle A: blade above 0,0 (y=-18.4 to 0), handle below (y=0 to 15.2) -->
       <!-- Rotates around 0,0 = center of circle -->
       <g class="ldr-paddle-a">
-        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#4f8a4f"/>
-        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#4f8a4f"/>
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#1E6EA6"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#1E6EA6"/>
       </g>
-      <!-- Paddle B: same shape, lighter green -->
+      <!-- Paddle B: lime paddle -->
       <g class="ldr-paddle-b">
-        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#7db07d"/>
-        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#7db07d"/>
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#C8F135"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#C8F135"/>
       </g>
-      <circle r="2.8" fill="#1a2e1a" stroke="#4f8a4f" stroke-width="0.8"/>
+      <circle r="2.8" fill="#163a70" stroke="#C8F135" stroke-width="0.8"/>
     </svg>
     <p id="loading-message">Loading…</p>
   </div>
@@ -225,41 +226,41 @@
         <div class="flex items-center gap-3 mb-10">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="48" height="48">
             <defs>
-              <g id="ag-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/></g>
-              <g id="ag-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#fff"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#fff"/></g>
+              <g id="ag-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#1E6EA6"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#1E6EA6"/></g>
+              <g id="ag-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#C8F135"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#C8F135"/></g>
             </defs>
-            <circle cx="60" cy="60" r="56" fill="#2F4F2F"/>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="#3d6b3d" stroke-width="1.5"/>
-            <g transform="translate(60,60) scale(0.4)"><use href="#ag-pb" transform="rotate(38)"/><use href="#ag-pf" transform="rotate(-38)"/><circle cx="0" cy="0" r="7" fill="#2F4F2F" stroke="#7db07d" stroke-width="2"/></g>
+            <circle cx="60" cy="60" r="56" fill="#0B1F4A"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#1E6EA6" stroke-width="1.5"/>
+            <g transform="translate(60,60) scale(0.4)"><use href="#ag-pb" transform="rotate(38)"/><use href="#ag-pf" transform="rotate(-38)"/><circle cx="0" cy="0" r="7" fill="#0B1F4A" stroke="#C8F135" stroke-width="2"/></g>
           </svg>
-          <span style="font-size:1.8rem;font-weight:900;letter-spacing:-0.03em;"><span style="color:#7db07d;">Court</span><span style="color:#fff;">Collab</span></span>
+          <span style="font-size:1.8rem;font-weight:900;letter-spacing:-0.03em;"><span style="color:#C8F135;">Court</span><span style="color:#fff;">Collab</span></span>
         </div>
 
         <h1 style="color:white;font-size:2.2rem;font-weight:800;line-height:1.2;margin-bottom:1rem;">The Pickleball Creator &amp; Brand Marketplace</h1>
-        <p class="auth-left-tagline" style="color:#a7c4a7;font-size:1.05rem;line-height:1.7;margin-bottom:2.5rem;">CourtCollab connects pickleball content creators with brands looking to reach the sport's passionate and fast-growing audience — all in one streamlined platform.</p>
+        <p class="auth-left-tagline" style="color:rgba(255,255,255,0.7);font-size:1.05rem;line-height:1.7;margin-bottom:2.5rem;">CourtCollab connects pickleball content creators with brands looking to reach the sport's passionate and fast-growing audience — all in one streamlined platform.</p>
         <div class="auth-left-signin-hint" style="display:none;margin-top:1rem;gap:0.75rem;">
-          <button onclick="showAuthTab('login');document.querySelector('.auth-right').scrollIntoView({behavior:'smooth'})" style="flex:1;background:#2F4F2F;color:white;padding:0.65rem 1rem;border-radius:0.5rem;font-weight:600;font-size:0.9rem;cursor:pointer;border:none;">Sign In</button>
-          <button onclick="showAuthTab('signup');document.querySelector('.auth-right').scrollIntoView({behavior:'smooth'})" style="flex:1;background:transparent;color:#7db07d;padding:0.65rem 1rem;border-radius:0.5rem;font-weight:600;font-size:0.9rem;cursor:pointer;border:2px solid #7db07d;">Create Account</button>
+          <button onclick="showAuthTab('login');document.querySelector('.auth-right').scrollIntoView({behavior:'smooth'})" style="flex:1;background:#C8F135;color:#0B1F4A;padding:0.65rem 1rem;border-radius:0.5rem;font-weight:600;font-size:0.9rem;cursor:pointer;border:none;">Sign In</button>
+          <button onclick="showAuthTab('signup');document.querySelector('.auth-right').scrollIntoView({behavior:'smooth'})" style="flex:1;background:transparent;color:#C8F135;padding:0.65rem 1rem;border-radius:0.5rem;font-weight:600;font-size:0.9rem;cursor:pointer;border:2px solid #C8F135;">Create Account</button>
         </div>
 
         <div class="auth-left-features" style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:3rem;">
           <div style="display:flex;align-items:flex-start;gap:1rem;">
-            <div style="width:2.5rem;height:2.5rem;background:rgba(79,138,79,0.25);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg width="18" height="18" fill="none" stroke="#7db07d" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            <div style="width:2.5rem;height:2.5rem;background:rgba(200,241,53,0.15);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="18" height="18" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
             </div>
-            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Creator Profiles &amp; Media Kits</p><p style="color:#a7c4a7;font-size:0.9rem;margin:0;">Showcase your stats, niche, skills, and rates to attract the right brand partners.</p></div>
+            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Creator Profiles &amp; Media Kits</p><p style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin:0;">Showcase your stats, niche, skills, and rates to attract the right brand partners.</p></div>
           </div>
           <div style="display:flex;align-items:flex-start;gap:1rem;">
-            <div style="width:2.5rem;height:2.5rem;background:rgba(79,138,79,0.25);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg width="18" height="18" fill="none" stroke="#7db07d" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <div style="width:2.5rem;height:2.5rem;background:rgba(200,241,53,0.15);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="18" height="18" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
-            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Smart Brand Discovery</p><p style="color:#a7c4a7;font-size:0.9rem;margin:0;">Brands find perfectly matched creators using filters, niches, and our AI scoring engine.</p></div>
+            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Smart Brand Discovery</p><p style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin:0;">Brands find perfectly matched creators using filters, niches, and our AI scoring engine.</p></div>
           </div>
           <div style="display:flex;align-items:flex-start;gap:1rem;">
-            <div style="width:2.5rem;height:2.5rem;background:rgba(79,138,79,0.25);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg width="18" height="18" fill="none" stroke="#7db07d" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div style="width:2.5rem;height:2.5rem;background:rgba(200,241,53,0.15);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="18" height="18" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
-            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Secure Deal &amp; Payment Flow</p><p style="color:#a7c4a7;font-size:0.9rem;margin:0;">Message, negotiate, and pay through the platform — with automatic platform fee splits.</p></div>
+            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Secure Deal &amp; Payment Flow</p><p style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin:0;">Message, negotiate, and pay through the platform — with automatic platform fee splits.</p></div>
           </div>
         </div>
 
@@ -291,7 +292,7 @@
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
                 <label style="font-size:0.85rem;font-weight:600;color:#374151;">Password</label>
-                <button type="button" onclick="showForgotPassword()" style="font-size:0.8rem;color:#2F4F2F;font-weight:500;background:none;border:none;cursor:pointer;">Forgot password?</button>
+                <button type="button" onclick="showForgotPassword()" style="font-size:0.8rem;color:#0B1F4A;font-weight:500;background:none;border:none;cursor:pointer;">Forgot password?</button>
               </div>
               <div style="position:relative;">
                 <input id="login-password" type="password" class="auth-input" placeholder="••••••••" required style="padding-right:2.75rem;" />
@@ -301,12 +302,12 @@
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:0.5rem;">
-              <input type="checkbox" id="remember-me" style="width:1rem;height:1rem;accent-color:#2F4F2F;cursor:pointer;" checked />
+              <input type="checkbox" id="remember-me" style="width:1rem;height:1rem;accent-color:#C8F135;cursor:pointer;" checked />
               <label for="remember-me" style="font-size:0.85rem;color:#374151;cursor:pointer;">Remember me</label>
             </div>
             <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Sign In</button>
           </div>
-          <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Don't have an account? <button type="button" onclick="showAuthTab('signup')" style="color:#2F4F2F;font-weight:600;background:none;border:none;cursor:pointer;">Create one</button></p>
+          <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Don't have an account? <button type="button" onclick="showAuthTab('signup')" style="color:#0B1F4A;font-weight:600;background:none;border:none;cursor:pointer;">Create one</button></p>
         </form>
 
         <!-- Forgot Password Form -->
@@ -317,7 +318,7 @@
           </button>
           <h3 style="font-size:1.2rem;font-weight:700;color:#111;margin:0 0 0.4rem;">Reset your password</h3>
           <p style="font-size:0.88rem;color:#6b7280;margin:0 0 1.25rem;">Enter your email and we'll send you a reset link.</p>
-          <div id="forgot-success" style="display:none;background:#f0f5f0;border:1px solid #acceac;border-radius:0.65rem;padding:0.85rem 1rem;font-size:0.88rem;color:#1e351e;margin-bottom:1rem;">
+          <div id="forgot-success" style="display:none;background:#f5fde0;border:1px solid #C8F135;border-radius:0.65rem;padding:0.85rem 1rem;font-size:0.88rem;color:#0B1F4A;margin-bottom:1rem;">
             ✓ Check your email for a reset link. It expires in 1 hour.
           </div>
           <div style="display:flex;flex-direction:column;gap:0.85rem;">
@@ -396,8 +397,8 @@
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Date of Birth <span style="color:#ef4444;">*</span></label>
                 <input id="signup-birthday" type="date" class="auth-input" max="" />
               </div>
-              <div style="background:#f0f5f0;border-radius:0.5rem;padding:0.6rem 0.75rem;">
-                <p style="font-size:0.8rem;color:#2F4F2F;font-weight:600;margin:0;">At least one social handle is required</p>
+              <div style="background:#f5fde0;border-radius:0.5rem;padding:0.6rem 0.75rem;">
+                <p style="font-size:0.8rem;color:#0B1F4A;font-weight:600;margin:0;">At least one social handle is required</p>
                 <p style="font-size:0.75rem;color:#6b7280;margin:0.2rem 0 0;">This makes you discoverable to brands.</p>
               </div>
               <div>
@@ -417,7 +418,7 @@
             </div>
             <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Create Account</button>
           </div>
-          <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Already have an account? <button type="button" onclick="showAuthTab('login')" style="color:#2F4F2F;font-weight:600;background:none;border:none;cursor:pointer;">Sign in</button></p>
+          <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Already have an account? <button type="button" onclick="showAuthTab('login')" style="color:#0B1F4A;font-weight:600;background:none;border:none;cursor:pointer;">Sign in</button></p>
         </form>
 
         <p style="text-align:center;margin-top:2rem;font-size:0.78rem;color:#9ca3af;">By continuing, you agree to CourtCollab's Terms of Service and Privacy Policy.</p>
@@ -426,39 +427,39 @@
   </div>
 
   <!-- Nav -->
-  <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+  <nav class="bg-pickle-600 border-b border-pickle-500 sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16 pr-4 sm:pr-0">
         <div class="flex items-center cursor-pointer" onclick="navigate('landing')">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" height="36" style="max-width:180px;width:auto;" aria-label="CourtCollab">
             <defs>
-              <g id="nav-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#4f8a4f"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#4f8a4f"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#3a6b3a" stroke-width="1.5" stroke-linecap="round"/></g>
-              <g id="nav-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#fff"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#fff"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#d0d0d0" stroke-width="1.5" stroke-linecap="round"/></g>
+              <g id="nav-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#1E6EA6"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#1E6EA6"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#0B1F4A" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#0B1F4A" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#0B1F4A" stroke-width="1.5" stroke-linecap="round"/></g>
+              <g id="nav-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#C8F135"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#C8F135"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#acd120" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#acd120" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#acd120" stroke-width="1.5" stroke-linecap="round"/></g>
             </defs>
             <g transform="translate(60,60) scale(0.4)">
-              <circle cx="0" cy="0" r="96" fill="#2F4F2F"/>
-              <circle cx="0" cy="0" r="90" fill="none" stroke="#3d6b3d" stroke-width="1.5"/>
+              <circle cx="0" cy="0" r="96" fill="#0B1F4A"/>
+              <circle cx="0" cy="0" r="90" fill="none" stroke="#1E6EA6" stroke-width="1.5"/>
               <use href="#nav-pb" transform="rotate(38)"/>
               <use href="#nav-pf" transform="rotate(-38)"/>
-              <circle cx="0" cy="0" r="7" fill="#2F4F2F" stroke="#7db07d" stroke-width="2"/>
+              <circle cx="0" cy="0" r="7" fill="#0B1F4A" stroke="#C8F135" stroke-width="2"/>
             </g>
-            <text x="118" y="68" font-family="'Inter',system-ui,sans-serif" font-weight="800" font-size="46" dominant-baseline="middle" text-anchor="start"><tspan fill="#1e351e">Court</tspan><tspan fill="#2F4F2F">Collab</tspan></text>
+            <text x="118" y="68" font-family="'Inter',system-ui,sans-serif" font-weight="800" font-size="46" dominant-baseline="middle" text-anchor="start"><tspan fill="#C8F135">Court</tspan><tspan fill="#ffffff">Collab</tspan></text>
           </svg>
         </div>
         <div class="hidden md:flex items-center gap-1" id="main-nav">
           <!-- Home -->
-          <button id="nav-home-btn" onclick="navigate('landing','nav-home-btn')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="landing">Home</button>
+          <button id="nav-home-btn" onclick="navigate('landing','nav-home-btn')" class="nav-link px-4 py-5 text-sm font-medium text-white/80 hover:text-lime-400 border-b-2 border-transparent" data-page="landing">Home</button>
 
           <!-- Dashboard -->
-          <button id="nav-dashboard-btn" onclick="navigateDashboard()" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="brand-portal">Dashboard</button>
+          <button id="nav-dashboard-btn" onclick="navigateDashboard()" class="nav-link px-4 py-5 text-sm font-medium text-white/80 hover:text-lime-400 border-b-2 border-transparent" data-page="brand-portal">Dashboard</button>
 
           <!-- Explore: brands browse creators, creators browse campaigns -->
-          <button onclick="navigate('creators')" class="brand-only nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="creators">Browse Creators</button>
-          <button onclick="navigate('campaigns')" class="creator-only nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="campaigns">Explore</button>
+          <button onclick="navigate('creators')" class="brand-only nav-link px-4 py-5 text-sm font-medium text-white/80 hover:text-lime-400 border-b-2 border-transparent" data-page="creators">Browse Creators</button>
+          <button onclick="navigate('campaigns')" class="creator-only nav-link px-4 py-5 text-sm font-medium text-white/80 hover:text-lime-400 border-b-2 border-transparent" data-page="campaigns">Explore</button>
 
           <!-- Activity dropdown -->
           <div class="nav-dropdown-group" id="dd-activity">
-            <button class="nav-dropdown-trigger nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent flex items-center gap-1" onclick="toggleNavDropdown('dd-activity')">
+            <button class="nav-dropdown-trigger nav-link px-4 py-5 text-sm font-medium text-white/80 hover:text-lime-400 border-b-2 border-transparent flex items-center gap-1" onclick="toggleNavDropdown('dd-activity')">
               <span class="relative">
                 Activity
                 <span id="nav-activity-dot" class="hidden absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -480,7 +481,7 @@
           </div>
 
           <!-- Contact -->
-          <button onclick="navigate('contact')" class="nav-link px-4 py-5 text-sm font-medium text-gray-600 hover:text-pickle-600 border-b-2 border-transparent" data-page="contact">Contact</button>
+          <button onclick="navigate('contact')" class="nav-link px-4 py-5 text-sm font-medium text-white/80 hover:text-lime-400 border-b-2 border-transparent" data-page="contact">Contact</button>
 
           <!-- Admin -->
           <button id="nav-admin-link" onclick="navigate('admin')" class="nav-link px-4 py-5 text-sm font-medium text-red-600 hover:text-red-700 border-b-2 border-transparent hidden" data-page="admin">⚙ Admin</button>
@@ -502,61 +503,61 @@
           </div>
           <div class="hidden md:flex items-center gap-2">
             <button onclick="navigateToProfile()" class="flex items-center gap-2 hover:opacity-80 transition" title="View profile">
-              <div class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center">
-                <span id="nav-user-initials" class="text-xs font-bold text-pickle-700"></span>
+              <div class="w-8 h-8 rounded-full bg-lime-400 flex items-center justify-center">
+                <span id="nav-user-initials" class="text-xs font-bold text-gray-900"></span>
               </div>
-              <span id="nav-user-name" class="text-sm font-medium text-gray-700 max-w-[120px] truncate"></span>
+              <span id="nav-user-name" class="text-sm font-medium text-white/80 max-w-[120px] truncate"></span>
               <svg id="nav-verified-badge" class="w-3.5 h-3.5 text-green-500 flex-shrink-0 hidden" fill="currentColor" viewBox="0 0 20 20" title="Profile complete"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
             </button>
-            <button onclick="handleLogout()" class="text-sm text-gray-400 hover:text-red-500 transition font-medium ml-1" title="Sign out">
+            <button onclick="handleLogout()" class="text-sm text-white/40 hover:text-red-400 transition font-medium ml-1" title="Sign out">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
             </button>
           </div>
           <!-- Mobile: user initials only + hamburger on far right -->
           <div class="md:hidden flex items-center gap-2">
-            <button class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Open menu">
+            <button class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-pickle-500 transition" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Open menu">
               <span style="font-size:1.4rem;line-height:1;">☰</span>
             </button>
-            <button onclick="navigateToProfile()" class="w-8 h-8 rounded-full bg-pickle-100 flex items-center justify-center hover:opacity-80 transition" title="View profile">
-              <span id="nav-user-initials-mobile" class="text-xs font-bold text-pickle-700"></span>
+            <button onclick="navigateToProfile()" class="w-8 h-8 rounded-full bg-lime-400 flex items-center justify-center hover:opacity-80 transition" title="View profile">
+              <span id="nav-user-initials-mobile" class="text-xs font-bold text-gray-900"></span>
             </button>
           </div>
         </div>
       </div>
     </div>
     <!-- Mobile dropdown menu -->
-    <div id="mobile-menu-dropdown" class="md:hidden border-t border-gray-100 bg-white shadow-lg">
+    <div id="mobile-menu-dropdown" class="md:hidden border-t border-pickle-500 bg-pickle-600 shadow-lg">
       <div class="flex flex-col py-2">
-        <button id="nav-home-btn-mobile" onclick="navigate('landing','nav-home-btn');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-2" data-page="landing">
+        <button id="nav-home-btn-mobile" onclick="navigate('landing','nav-home-btn');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b border-pickle-500 flex items-center gap-2" data-page="landing">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
           Home
         </button>
-        <button id="nav-dashboard-btn-mobile" onclick="navigateDashboard();closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-2" data-page="brand-portal">
+        <button id="nav-dashboard-btn-mobile" onclick="navigateDashboard();closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b border-pickle-500 flex items-center gap-2" data-page="brand-portal">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
           Dashboard
         </button>
-        <button onclick="navigate('creators');closeMobileMenu()" class="brand-only nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="creators">Browse Creators</button>
-        <button onclick="navigate('campaigns');closeMobileMenu()" class="creator-only nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="campaigns">Explore</button>
-        <button onclick="navigate('matching');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="matching">Discovery</button>
-        <button onclick="navigate('messages');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="messages">Messages</button>
-        <button onclick="navigate('payments');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="payments">Payments</button>
-        <button onclick="navigate('contact');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 border-b-0 border-transparent" data-page="contact">Contact</button>
-        <button id="nav-admin-link-mobile" onclick="navigate('admin');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-red-600 hover:bg-red-50 border-b-0 border-transparent hidden" data-page="admin">⚙ Admin</button>
+        <button onclick="navigate('creators');closeMobileMenu()" class="brand-only nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="creators">Browse Creators</button>
+        <button onclick="navigate('campaigns');closeMobileMenu()" class="creator-only nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="campaigns">Explore</button>
+        <button onclick="navigate('matching');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="matching">Discovery</button>
+        <button onclick="navigate('messages');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="messages">Messages</button>
+        <button onclick="navigate('payments');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="payments">Payments</button>
+        <button onclick="navigate('contact');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="contact">Contact</button>
+        <button id="nav-admin-link-mobile" onclick="navigate('admin');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-red-400 hover:bg-pickle-500 border-b-0 border-transparent hidden" data-page="admin">⚙ Admin</button>
         <!-- Admin role toggle in mobile menu -->
-        <div id="admin-role-toggle-mobile" class="hidden px-5 py-3 border-t border-gray-100">
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">View As</p>
+        <div id="admin-role-toggle-mobile" class="hidden px-5 py-3 border-t border-pickle-500">
+          <p class="text-xs font-semibold text-white/40 uppercase tracking-wide mb-2">View As</p>
           <div class="flex gap-2">
             <button id="admin-toggle-creator-mobile" onclick="adminSwitchView('creator');closeMobileMenu()"
-              class="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-pickle-100 transition">
+              class="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-pickle-500 hover:bg-pickle-400 text-white transition">
               🎥 Creator
             </button>
             <button id="admin-toggle-brand-mobile" onclick="adminSwitchView('brand');closeMobileMenu()"
-              class="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-pickle-100 transition">
+              class="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-pickle-500 hover:bg-pickle-400 text-white transition">
               🏢 Brand
             </button>
           </div>
         </div>
-        <button onclick="handleLogout();closeMobileMenu()" class="text-left px-5 py-3 text-sm font-medium text-red-500 hover:bg-red-50 border-t border-gray-100 flex items-center gap-2">
+        <button onclick="handleLogout();closeMobileMenu()" class="text-left px-5 py-3 text-sm font-medium text-red-400 hover:bg-pickle-500 border-t border-pickle-500 flex items-center gap-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           Sign Out
         </button>
@@ -662,13 +663,13 @@
           <h1 class="text-3xl font-bold">Browse Creators</h1>
           <p class="text-gray-500 mt-1">Find the perfect pickleball creator for your campaign</p>
         </div>
-        <button onclick="switchRole('creator');navigate('creator-profile')" class="bg-pickle-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-pickle-700 transition whitespace-nowrap creator-only">+ Create Your Profile</button>
+        <button onclick="switchRole('creator');navigate('creator-profile')" class="bg-lime-400 text-gray-900 px-5 py-2.5 rounded-xl font-medium hover:bg-lime-500 transition whitespace-nowrap creator-only">+ Create Your Profile</button>
       </div>
 
       <!-- All / Saved tabs — brands only -->
       <div class="brand-only flex items-center gap-2 mb-4">
         <button id="tab-all-creators" onclick="switchCreatorsTab('all')"
-          class="px-4 py-1.5 rounded-full text-sm font-medium transition bg-pickle-600 text-white border border-transparent">
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition bg-lime-400 text-gray-900 border border-transparent">
           All Creators
         </button>
         <button id="tab-saved-creators" onclick="switchCreatorsTab('saved')"
@@ -971,7 +972,7 @@
         </div>
 
         <div class="flex gap-4">
-          <button type="submit" class="bg-pickle-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-pickle-700 transition">Save Profile</button>
+          <button type="submit" class="bg-lime-400 text-gray-900 px-8 py-3 rounded-xl font-semibold hover:bg-lime-500 transition">Save Profile</button>
           <button type="button" onclick="navigate('creators')" class="border border-gray-300 text-gray-600 px-8 py-3 rounded-xl font-medium hover:bg-gray-50 transition">Cancel</button>
         </div>
       </form>
@@ -1076,7 +1077,7 @@
               </div>
             </div>
             <div id="deal-actions" class="hidden">
-              <button onclick="updateDealStatus('accepted')" class="bg-pickle-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-pickle-700">Accept Deal</button>
+              <button onclick="updateDealStatus('accepted')" class="bg-lime-400 text-gray-900 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-lime-500">Accept Deal</button>
               <button onclick="updateDealStatus('declined')" class="border border-red-300 text-red-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-50 ml-2">Decline</button>
             </div>
           </div>
@@ -1096,7 +1097,7 @@
           <div class="p-4 border-t border-gray-100">
             <div class="flex gap-2">
               <input type="text" id="message-input" placeholder="Type a message..." class="flex-1 border border-gray-300 rounded-lg px-4 py-2.5" onkeypress="if(event.key==='Enter')sendMessage()" oninput="_sendTyping(this.value)">
-              <button onclick="sendMessage()" class="bg-pickle-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-pickle-700 transition">Send</button>
+              <button onclick="sendMessage()" class="bg-lime-400 text-gray-900 px-5 py-2.5 rounded-lg font-medium hover:bg-lime-500 transition">Send</button>
               <button onclick="openDealModal()" class="border border-pickle-300 text-pickle-700 px-4 py-2.5 rounded-lg font-medium hover:bg-pickle-50 transition text-sm brand-only" title="Propose Deal">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               </button>
@@ -1128,7 +1129,7 @@
       </div>
       <div id="detail-content"></div>
       <div class="flex gap-3 mt-6">
-        <button id="detail-message-btn" onclick="startConversation()" class="bg-pickle-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-pickle-700 transition flex-1">Message Creator</button>
+        <button id="detail-message-btn" onclick="startConversation()" class="bg-lime-400 text-gray-900 px-6 py-2.5 rounded-xl font-medium hover:bg-lime-500 transition flex-1">Message Creator</button>
         <button id="detail-save-btn" onclick="toggleSaveCreator(_detailCreatorId)" class="hidden items-center gap-2 border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">
           <svg class="w-4 h-4 flex-shrink-0" id="detail-save-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
           <span id="detail-save-label">Save</span>
@@ -1180,7 +1181,7 @@
           <span class="text-sm text-gray-700">I have read and agree to all terms and conditions in this agreement. I understand this constitutes a legally binding digital signature.</span>
         </label>
         <div class="flex gap-3">
-          <button onclick="signContract()" class="flex-1 bg-pickle-600 text-white py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition text-sm">
+          <button onclick="signContract()" class="flex-1 bg-lime-400 text-gray-900 py-2.5 rounded-xl font-semibold hover:bg-lime-500 transition text-sm">
             ✍️ Sign Agreement
           </button>
           <button onclick="closeModal('contract-modal')" class="border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Close</button>
@@ -1218,7 +1219,7 @@
       </div>
       <textarea id="rating-comment" rows="3" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="Optional: share a note about this collaboration…"></textarea>
       <div class="flex gap-3">
-        <button onclick="submitRating()" class="flex-1 bg-pickle-600 text-white py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition text-sm">Submit Rating</button>
+        <button onclick="submitRating()" class="flex-1 bg-lime-400 text-gray-900 py-2.5 rounded-xl font-semibold hover:bg-lime-500 transition text-sm">Submit Rating</button>
         <button onclick="closeModal('rating-modal')" class="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Skip</button>
       </div>
     </div>
@@ -1289,7 +1290,7 @@
       <div id="dispute-comment-area">
         <textarea id="dispute-comment-input" rows="2" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm mb-2 resize-none focus:outline-none focus:ring-2 focus:ring-pickle-400"
           placeholder="Add a message to this dispute thread…"></textarea>
-        <button onclick="submitDisputeComment()" class="w-full bg-pickle-600 text-white py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition text-sm">Send Message</button>
+        <button onclick="submitDisputeComment()" class="w-full bg-lime-400 text-gray-900 py-2.5 rounded-xl font-semibold hover:bg-lime-500 transition text-sm">Send Message</button>
       </div>
 
       <!-- Admin resolution controls -->
@@ -1346,7 +1347,7 @@
         </div>
       </div>
       <div class="flex gap-3 mt-6">
-        <button onclick="saveBrandProfileModal()" class="flex-1 bg-pickle-600 text-white py-2.5 rounded-xl font-semibold hover:bg-pickle-700 transition">Save Profile</button>
+        <button onclick="saveBrandProfileModal()" class="flex-1 bg-lime-400 text-gray-900 py-2.5 rounded-xl font-semibold hover:bg-lime-500 transition">Save Profile</button>
         <button onclick="closeModal('bp-edit-modal')" class="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">Cancel</button>
       </div>
     </div>
@@ -1480,7 +1481,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
           <textarea id="deal-notes" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Any additional terms or notes..."></textarea>
         </div>
-        <button type="submit" class="w-full bg-pickle-600 text-white py-3 rounded-xl font-semibold hover:bg-pickle-700 transition">Send Proposal</button>
+        <button type="submit" class="w-full bg-lime-400 text-gray-900 py-3 rounded-xl font-semibold hover:bg-lime-500 transition">Send Proposal</button>
       </form>
     </div>
   </div>
@@ -1613,7 +1614,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
             <textarea id="contact-message" rows="5" class="w-full border border-gray-300 rounded-lg px-3 py-2.5" placeholder="Tell us what's on your mind..." required></textarea>
           </div>
-          <button type="submit" class="bg-pickle-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-pickle-700 transition w-full md:w-auto">Send Message</button>
+          <button type="submit" class="bg-lime-400 text-gray-900 px-8 py-3 rounded-xl font-semibold hover:bg-lime-500 transition w-full md:w-auto">Send Message</button>
         </form>
       </div>
 
@@ -1677,7 +1678,7 @@
         </div>
         <!-- Filter pills -->
         <div class="flex gap-2 mb-6 flex-wrap">
-          <button onclick="filterBrandPortal('all',this)" class="portal-pill px-3.5 py-1.5 rounded-full text-sm font-medium bg-gray-900 text-white">All</button>
+          <button onclick="filterBrandPortal('all',this)" class="portal-pill px-3.5 py-1.5 rounded-full text-sm font-medium bg-lime-400 text-gray-900">All</button>
           <button onclick="filterBrandPortal('active',this)" class="portal-pill px-3.5 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition">Active</button>
           <button onclick="filterBrandPortal('closed',this)" class="portal-pill px-3.5 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition">Closed</button>
         </div>
@@ -1966,7 +1967,7 @@
           <p class="text-gray-500 text-sm mb-6" id="onboard-sub">Let's set up your profile in just a couple of steps.</p>
           <div class="text-left bg-pickle-50 rounded-2xl p-5 mb-7 space-y-3.5" id="onboard-bullets"></div>
           <button onclick="onboardNext()" id="onboard-cta-btn"
-            class="w-full bg-pickle-600 text-white py-3.5 rounded-xl font-bold text-base hover:bg-pickle-700 transition">
+            class="w-full bg-lime-400 text-gray-900 py-3.5 rounded-xl font-bold text-base hover:bg-lime-500 transition">
             Let's set it up →
           </button>
           <button onclick="onboardSkip()"
@@ -2028,7 +2029,7 @@
 
           <div class="flex gap-3 mt-6">
             <button onclick="onboardBack()" class="flex-1 border border-gray-300 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50 transition text-sm">← Back</button>
-            <button onclick="onboardNext()" id="onboard-s2-next" class="flex-1 bg-pickle-600 text-white py-3 rounded-xl font-bold hover:bg-pickle-700 transition text-sm">Next →</button>
+            <button onclick="onboardNext()" id="onboard-s2-next" class="flex-1 bg-lime-400 text-gray-900 py-3 rounded-xl font-bold hover:bg-lime-500 transition text-sm">Next →</button>
           </div>
         </div>
 
@@ -2093,7 +2094,7 @@
 
           <div class="flex gap-3 mt-6">
             <button onclick="onboardBack()" class="flex-1 border border-gray-300 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50 transition text-sm">← Back</button>
-            <button onclick="onboardFinish()" class="flex-1 bg-pickle-600 text-white py-3 rounded-xl font-bold hover:bg-pickle-700 transition text-sm">Go to Dashboard</button>
+            <button onclick="onboardFinish()" class="flex-1 bg-lime-400 text-gray-900 py-3 rounded-xl font-bold hover:bg-lime-500 transition text-sm">Go to Dashboard</button>
           </div>
           <button onclick="onboardSkip()" class="w-full mt-3 text-sm text-gray-400 hover:text-gray-600 transition py-1">Skip for now</button>
         </div>
@@ -2111,35 +2112,35 @@
   </div><!-- /overlay -->
 
   <!-- Footer -->
-  <footer class="bg-gray-900 text-gray-400 mt-auto">
+  <footer class="bg-pickle-600 text-white/60 mt-auto">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div class="flex flex-col md:flex-row md:items-start justify-between gap-10">
         <!-- Logo + tagline -->
         <div class="flex flex-col gap-2">
-          <span class="text-white font-bold text-lg tracking-tight"><span class="text-pickle-400">Court</span>Collab</span>
-          <p class="text-sm text-gray-500">The Pickleball Creator &amp; Brand Marketplace</p>
+          <span class="text-white font-bold text-lg tracking-tight"><span class="text-lime-400">Court</span>Collab</span>
+          <p class="text-sm text-white/40">The Pickleball Creator &amp; Brand Marketplace</p>
         </div>
         <!-- Support -->
         <div class="flex flex-col gap-3">
-          <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Support</p>
-          <a href="#" onclick="navigate('contact');return false;" class="text-sm text-gray-400 hover:text-white transition">Contact Us</a>
-          <a href="#" onclick="navigate('faq-creators');return false;" class="text-sm text-gray-400 hover:text-white transition">FAQ for Creators</a>
-          <a href="#" onclick="navigate('faq-brands');return false;" class="text-sm text-gray-400 hover:text-white transition">FAQ for Brands</a>
+          <p class="text-xs font-semibold uppercase tracking-widest text-white/40">Support</p>
+          <a href="#" onclick="navigate('contact');return false;" class="text-sm text-white/60 hover:text-lime-400 transition">Contact Us</a>
+          <a href="#" onclick="navigate('faq-creators');return false;" class="text-sm text-white/60 hover:text-lime-400 transition">FAQ for Creators</a>
+          <a href="#" onclick="navigate('faq-brands');return false;" class="text-sm text-white/60 hover:text-lime-400 transition">FAQ for Brands</a>
         </div>
         <!-- Social icons -->
         <div class="flex flex-col gap-3">
-          <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Follow Us</p>
+          <p class="text-xs font-semibold uppercase tracking-widest text-white/40">Follow Us</p>
           <div class="flex items-center gap-4">
           <!-- Instagram -->
           <a href="https://www.instagram.com/courtcollab" target="_blank" rel="noopener" aria-label="Instagram"
-             class="w-9 h-9 rounded-full bg-gray-800 hover:bg-pickle-700 flex items-center justify-center transition">
+             class="w-9 h-9 rounded-full bg-pickle-500 hover:bg-lime-400 flex items-center justify-center transition">
             <svg class="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.516 2.497 5.783 2.225 7.15 2.163 8.416 2.105 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.333.013 7.053.072 5.197.157 3.355.673 2.014 2.014.673 3.355.157 5.197.072 7.053.013 8.333 0 8.741 0 12c0 3.259.013 3.668.072 4.948.085 1.856.601 3.698 1.942 5.038 1.341 1.341 3.183 1.857 5.038 1.942C8.333 23.987 8.741 24 12 24s3.667-.013 4.947-.072c1.856-.085 3.698-.601 5.038-1.942 1.341-1.34 1.857-3.182 1.942-5.038C23.987 15.667 24 15.259 24 12s-.013-3.667-.072-4.947c-.085-1.856-.601-3.698-1.942-5.038C20.645.673 18.803.157 16.947.072 15.667.013 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zm0 10.162a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
             </svg>
           </a>
           <!-- TikTok -->
           <a href="https://www.tiktok.com/@courtcollab" target="_blank" rel="noopener" aria-label="TikTok"
-             class="w-9 h-9 rounded-full bg-gray-800 hover:bg-pickle-700 flex items-center justify-center transition">
+             class="w-9 h-9 rounded-full bg-pickle-500 hover:bg-lime-400 flex items-center justify-center transition">
             <svg class="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
               <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
             </svg>
@@ -2148,21 +2149,21 @@
         </div>
       </div>
       <!-- Divider -->
-      <div class="border-t border-gray-800 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
+      <div class="border-t border-pickle-500 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
         <span>© 2026 CourtCollab. All rights reserved.</span>
         <div class="flex items-center gap-5">
-          <a href="#" onclick="navigate('privacy');return false;" class="hover:text-white transition">Privacy Policy</a>
-          <a href="#" onclick="navigate('terms');return false;" class="hover:text-white transition">Terms of Service</a>
+          <a href="#" onclick="navigate('privacy');return false;" class="hover:text-lime-400 transition">Privacy Policy</a>
+          <a href="#" onclick="navigate('terms');return false;" class="hover:text-lime-400 transition">Terms of Service</a>
         </div>
       </div>
     </div>
   </footer>
 
   <!-- Toast Notification -->
-  <div id="toast" class="fixed bottom-6 right-6 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-lg hidden transition-all transform translate-y-2 opacity-0 z-50">
+  <div id="toast" class="fixed bottom-6 right-6 bg-pickle-600 text-white px-6 py-3 rounded-xl shadow-lg hidden transition-all transform translate-y-2 opacity-0 z-50">
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=53"></script>
+  <script src="app.js?v=54"></script>
 </body>
 </html>
