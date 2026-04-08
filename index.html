@@ -2094,9 +2094,52 @@
 
           <div class="flex gap-3 mt-6">
             <button onclick="onboardBack()" class="flex-1 border border-gray-300 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50 transition text-sm">← Back</button>
-            <button onclick="onboardFinish()" class="flex-1 bg-lime-400 text-gray-900 py-3 rounded-xl font-bold hover:bg-lime-500 transition text-sm">Go to Dashboard</button>
+            <button onclick="onboardFinish()" class="flex-1 bg-lime-400 text-gray-900 py-3 rounded-xl font-bold hover:bg-lime-500 transition text-sm">Next →</button>
           </div>
           <button onclick="onboardSkip()" class="w-full mt-3 text-sm text-gray-400 hover:text-gray-600 transition py-1">Skip for now</button>
+        </div>
+
+        <!-- Step 4: Connect bank account (creators only) -->
+        <div id="onboard-step-4" class="onboard-step hidden p-8">
+          <div class="flex flex-col items-center text-center mb-6">
+            <div class="w-16 h-16 rounded-2xl bg-lime-50 flex items-center justify-center mb-4">
+              <svg class="w-8 h-8 text-lime-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+              </svg>
+            </div>
+            <h2 class="text-xl font-black text-gray-900 mb-1">Connect your bank account</h2>
+            <p class="text-sm text-gray-500 max-w-xs">Get paid directly when brands release your deal payment. Takes about 2 minutes.</p>
+          </div>
+
+          <div class="bg-gray-50 rounded-2xl p-4 mb-6 space-y-3">
+            <div class="flex items-start gap-3">
+              <span class="text-lime-500 font-bold mt-0.5">✓</span>
+              <div>
+                <p class="text-sm font-semibold text-gray-800">85% goes straight to you</p>
+                <p class="text-xs text-gray-500">CourtCollab keeps 15% as a platform fee.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="text-lime-500 font-bold mt-0.5">✓</span>
+              <div>
+                <p class="text-sm font-semibold text-gray-800">Powered by Stripe</p>
+                <p class="text-xs text-gray-500">Bank-level security. Your details go directly to Stripe — we never see them.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="text-lime-500 font-bold mt-0.5">✓</span>
+              <div>
+                <p class="text-sm font-semibold text-gray-800">Set up once, get paid every time</p>
+                <p class="text-xs text-gray-500">Funds transfer automatically once a brand confirms delivery.</p>
+              </div>
+            </div>
+          </div>
+
+          <button id="onboard-stripe-btn" onclick="onboardConnectStripe()" class="w-full bg-lime-400 text-gray-900 py-3.5 rounded-xl font-bold hover:bg-lime-500 transition flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+            Connect Bank Account
+          </button>
+          <button onclick="onboardSkipStripe()" class="w-full mt-3 text-sm text-gray-400 hover:text-gray-600 transition py-1">I'll do this later</button>
         </div>
 
       </div><!-- /steps wrapper -->
@@ -2106,6 +2149,7 @@
         <div class="w-2 h-2 rounded-full transition-colors duration-300" id="onboard-dot-1"></div>
         <div class="w-2 h-2 rounded-full transition-colors duration-300" id="onboard-dot-2"></div>
         <div class="w-2 h-2 rounded-full transition-colors duration-300" id="onboard-dot-3"></div>
+        <div class="w-2 h-2 rounded-full transition-colors duration-300" id="onboard-dot-4"></div>
       </div>
 
     </div><!-- /card -->
@@ -2164,6 +2208,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=55"></script>
+  <script src="app.js?v=56"></script>
 </body>
 </html>

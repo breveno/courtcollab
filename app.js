@@ -3105,9 +3105,9 @@ async function stripeCheckout(dealId) {
 function handleStripeReturn() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('stripe_onboard')) {
-    showToast('🎉 Stripe account connected! You\'re ready to receive payouts.', 'success');
-    history.replaceState({}, '', window.location.pathname);
-    navigate('profile');
+    showToast('Bank account connected! You\'re all set to receive payouts.', 'success');
+    history.replaceState({}, '', '/');
+    navigate('creator-dashboard');
   }
   if (params.get('deal_id') && params.get('session_id')) {
     showToast('💳 Payment complete! Funds are held in escrow until you confirm delivery.');
@@ -3410,7 +3410,7 @@ function startOnboarding(user) {
   _onboardIndustry   = '';
 
   const isCreator      = user.role === 'creator';
-  _onboardTotalSteps   = isCreator ? 3 : 2;
+  _onboardTotalSteps   = isCreator ? 4 : 2;
   const firstName      = user.name.split(' ')[0];
 
   // ── Welcome step ──
@@ -3464,7 +3464,9 @@ function startOnboarding(user) {
 
   // ── Dot visibility ──
   const dot3 = document.getElementById('onboard-dot-3');
+  const dot4 = document.getElementById('onboard-dot-4');
   if (dot3) dot3.style.display = isCreator ? '' : 'none';
+  if (dot4) dot4.style.display = isCreator ? '' : 'none';
 
   _onboardGoToStep(1);
 
@@ -3482,7 +3484,7 @@ function _onboardGoToStep(n) {
   _onboardStep = n;
 
   // Show correct step panel with animation
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 4; i++) {
     const el = document.getElementById(`onboard-step-${i}`);
     if (!el) continue;
     if (i === n) {
@@ -3500,7 +3502,7 @@ function _onboardGoToStep(n) {
   if (bar) bar.style.width = pct + '%';
 
   // Step dots
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 4; i++) {
     const dot = document.getElementById(`onboard-dot-${i}`);
     if (!dot) continue;
     if (i <= n) {
@@ -3557,7 +3559,7 @@ function onboardBack() {
 }
 
 async function onboardFinish() {
-  // Save step 3 (creator audience & rates)
+  // Save step 3 (creator audience & rates) then advance to step 4 (Stripe)
   try {
     const ig  = parseInt(document.getElementById('onboard-ig')?.value  || '0') || 0;
     const tt  = parseInt(document.getElementById('onboard-tt')?.value  || '0') || 0;
@@ -3578,7 +3580,26 @@ async function onboardFinish() {
     if (rUgc) payload.rate_ugc        = rUgc;
     if (Object.keys(payload).length) await apiPut('/api/creator/profile', payload);
   } catch (_) { /* best-effort */ }
+  // Advance to Stripe connect step
+  _onboardGoToStep(4);
+}
+
+async function onboardConnectStripe() {
+  const btn = document.getElementById('onboard-stripe-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
+  try {
+    const data = await apiPost('/api/stripe/connect/onboard', {});
+    _onboardClose(true);
+    window.location.href = data.url;  // redirect to Stripe onboarding
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg class="w-4 h-4 inline mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>Connect Bank Account'; }
+    showToast(err.message || 'Could not connect Stripe. Please try again.', 'error');
+  }
+}
+
+function onboardSkipStripe() {
   _onboardClose(true);
+  showToast('Profile saved! You can connect your bank account anytime from your profile.', 'success');
 }
 
 function onboardSkip() {
