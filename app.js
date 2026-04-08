@@ -4108,7 +4108,7 @@ function _heroCardHtml(creator, colorIdx) {
   const engDisplay = eng > 0 ? eng.toFixed(1) + '%' : '—';
 
   return `<div class="hero-card rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
-  <div class="flex items-center gap-3 mb-4">
+  <div class="flex items-center gap-3 mb-3">
     <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm" style="background:${avatarColor};color:${avatarText}">${initials}</div>
     <div class="min-w-0">
       <div class="font-bold text-white text-sm leading-tight truncate">${creator.name}</div>
@@ -4116,32 +4116,54 @@ function _heroCardHtml(creator, colorIdx) {
     </div>
     <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">${fit}% fit</span>
   </div>
-  <div class="space-y-2.5 mb-4">${platformSection}</div>
-  <div class="flex items-center justify-between rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,0.08)">
+  <div class="space-y-2 mb-3">${platformSection}</div>
+  <div class="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3" style="background:rgba(255,255,255,0.08)">
     <span class="text-xs" style="color:rgba(255,255,255,0.55)">Engagement Rate</span>
     <span class="text-xs font-bold" style="color:#C8F135">${engDisplay}</span>
   </div>
+  <button onclick="heroViewProfile(${creator.user_id})" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:rgba(255,255,255,0.13);color:white;border:1px solid rgba(255,255,255,0.22);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.13)'">View Profile →</button>
 </div>`;
 }
 
-function _heroStep() {
+function _heroGoTo(idx) {
   const cards = document.querySelectorAll('.hero-card');
   const dots  = document.querySelectorAll('.hero-dot');
-  if (cards.length < 2) return;
+  if (!cards.length) return;
+  const next = ((idx % cards.length) + cards.length) % cards.length;
+  if (next === _heroIdx && cards[_heroIdx].classList.contains('active')) return;
 
-  const prev = _heroIdx;
-  _heroIdx = (_heroIdx + 1) % cards.length;
+  cards[_heroIdx].classList.remove('active');
+  cards[_heroIdx].classList.add('exiting');
+  setTimeout(() => cards[_heroIdx].classList.remove('exiting'), 500);
 
-  cards[prev].classList.remove('active');
-  cards[prev].classList.add('exiting');
-  setTimeout(() => cards[prev].classList.remove('exiting'), 500);
-
+  _heroIdx = next;
   cards[_heroIdx].classList.add('active');
 
   dots.forEach((d, i) => {
     d.classList.toggle('active', i === _heroIdx);
     d.style.width = i === _heroIdx ? '22px' : '6px';
   });
+}
+
+function _heroStep() { _heroGoTo(_heroIdx + 1); }
+
+function heroNav(dir) {
+  stopHeroCarousel();
+  _heroGoTo(_heroIdx + dir);
+  const cards = document.querySelectorAll('.hero-card');
+  if (cards.length > 1) _heroTimer = setInterval(_heroStep, 3000);
+}
+
+function heroGoToDot(idx) {
+  stopHeroCarousel();
+  _heroGoTo(idx);
+  const cards = document.querySelectorAll('.hero-card');
+  if (cards.length > 1) _heroTimer = setInterval(_heroStep, 3000);
+}
+
+function heroViewProfile(userId) {
+  if (!getToken()) { showAuthGate(); return; }
+  showCreatorDetail(userId);
 }
 
 function _heroStart() {
@@ -4154,6 +4176,7 @@ function _heroStart() {
   document.querySelectorAll('.hero-dot').forEach((d, i) => {
     d.classList.toggle('active', i === 0);
     d.style.width = i === 0 ? '22px' : '6px';
+    d.onclick = () => heroGoToDot(i);
   });
   if (document.querySelectorAll('.hero-card').length > 1) {
     _heroTimer = setInterval(_heroStep, 3000);

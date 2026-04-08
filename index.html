@@ -621,7 +621,7 @@
               <div class="absolute inset-x-3 bottom-0 h-full rounded-2xl" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); transform:translateY(16px) scale(0.93);"></div>
               <div class="absolute inset-x-1.5 bottom-0 h-full rounded-2xl" style="background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.11); transform:translateY(8px) scale(0.965);"></div>
               <!-- Carousel track -->
-              <div id="hero-carousel-track" class="relative" style="height:252px;">
+              <div id="hero-carousel-track" class="relative" style="height:296px;">
 
                 <!-- Card 1 — Sarah K. -->
                 <div class="hero-card active rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
@@ -710,11 +710,19 @@
               </div><!-- /track -->
             </div><!-- /stack wrapper -->
 
-            <!-- Dot indicators (replaced by JS with real creator count) -->
-            <div class="hero-dots-wrap flex items-center gap-2">
-              <div class="hero-dot active" style="width:22px"></div>
-              <div class="hero-dot"></div>
-              <div class="hero-dot"></div>
+            <!-- Navigation: prev · dots · next -->
+            <div class="flex items-center gap-3">
+              <button onclick="heroNav(-1)" aria-label="Previous" class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.18);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <div class="hero-dots-wrap flex items-center gap-2">
+                <div class="hero-dot active" style="width:22px"></div>
+                <div class="hero-dot"></div>
+                <div class="hero-dot"></div>
+              </div>
+              <button onclick="heroNav(1)" aria-label="Next" class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.18);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+              </button>
             </div>
           </div><!-- /carousel column -->
 
@@ -2396,6 +2404,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=60"></script>
+  <script src="app.js?v=61"></script>
 </body>
 </html>
