@@ -743,7 +743,7 @@ function navigate(page, activeNavId = null) {
       state.currentPage = page;
       // Push a history entry so the browser back button stays in-app
       if (history.state?.page !== page) {
-        history.pushState({ page }, '', '#' + page);
+        history.pushState({ page }, '', page === 'landing' ? '/' : '#' + page);
       }
     } else {
       document.getElementById('page-404')?.classList.add('active');
