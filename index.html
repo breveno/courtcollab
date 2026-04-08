@@ -613,8 +613,11 @@
             </div>
           </div>
 
-          <!-- Right: animated creator card carousel -->
-          <div class="hidden lg:flex flex-col items-center gap-5">
+          <!-- Right: role-aware carousel (creator cards for brands, campaign cards for creators) -->
+          <div class="hidden lg:block" id="hero-right-col">
+
+          <!-- Creator cards (default — brands + logged-out) -->
+          <div id="hero-creators-wrap" class="flex flex-col items-center gap-5">
             <!-- Stack depth effect + carousel -->
             <div class="relative w-full max-w-xs" style="padding-bottom: 20px;">
               <!-- Stack shadows (decorative, always visible) -->
@@ -724,7 +727,91 @@
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
               </button>
             </div>
-          </div><!-- /carousel column -->
+          </div><!-- /hero-creators-wrap -->
+
+          <!-- Campaign cards (creators only, hidden by default) -->
+          <div id="hero-campaigns-wrap" class="hidden flex-col items-center gap-5">
+            <div class="relative w-full max-w-xs" style="padding-bottom:20px;">
+              <div class="absolute inset-x-3 bottom-0 h-full rounded-2xl" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);transform:translateY(16px) scale(0.93);"></div>
+              <div class="absolute inset-x-1.5 bottom-0 h-full rounded-2xl" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.11);transform:translateY(8px) scale(0.965);"></div>
+              <div id="hero-camp-track" class="relative" style="height:296px;">
+
+                <!-- Placeholder Card 1 -->
+                <div class="hero-camp-card hero-card active rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm text-white" style="background:#1E6EA6">PT</div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-white text-sm leading-tight truncate">PaddleTech Pro</div>
+                      <div class="text-xs mt-0.5" style="color:rgba(255,255,255,0.5)">Paddles &amp; Equipment</div>
+                    </div>
+                    <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">Sponsored</span>
+                  </div>
+                  <div class="font-semibold text-white text-sm mb-2 leading-snug">Spring Ambassador Program</div>
+                  <div class="text-xs mb-3 line-clamp-2" style="color:rgba(255,255,255,0.65)">Looking for creators to showcase our new paddle line across social media. Pro-level content preferred.</div>
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3" style="background:rgba(255,255,255,0.08)">
+                    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Campaign Budget</span>
+                    <span class="text-xs font-bold" style="color:#C8F135">$800–$1,200</span>
+                  </div>
+                  <button onclick="navigate('campaigns')" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:rgba(255,255,255,0.13);color:white;border:1px solid rgba(255,255,255,0.22);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.13)'">Apply Now →</button>
+                </div>
+
+                <!-- Placeholder Card 2 -->
+                <div class="hero-camp-card hero-card rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm text-white" style="background:#7c3aed">CK</div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-white text-sm leading-tight truncate">Court Kings</div>
+                      <div class="text-xs mt-0.5" style="color:rgba(255,255,255,0.5)">Apparel &amp; Gear</div>
+                    </div>
+                    <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">UGC</span>
+                  </div>
+                  <div class="font-semibold text-white text-sm mb-2 leading-snug">Content Creator Collab</div>
+                  <div class="text-xs mb-3 line-clamp-2" style="color:rgba(255,255,255,0.65)">Partner with us to create authentic content wearing our new performance line for pickleball players.</div>
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3" style="background:rgba(255,255,255,0.08)">
+                    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Campaign Budget</span>
+                    <span class="text-xs font-bold" style="color:#C8F135">$500–$900</span>
+                  </div>
+                  <button onclick="navigate('campaigns')" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:rgba(255,255,255,0.13);color:white;border:1px solid rgba(255,255,255,0.22);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.13)'">Apply Now →</button>
+                </div>
+
+                <!-- Placeholder Card 3 -->
+                <div class="hero-camp-card hero-card rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm text-white" style="background:#059669">PA</div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-white text-sm leading-tight truncate">PicklePro Academy</div>
+                      <div class="text-xs mt-0.5" style="color:rgba(255,255,255,0.5)">Training &amp; Coaching</div>
+                    </div>
+                    <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">Video</span>
+                  </div>
+                  <div class="font-semibold text-white text-sm mb-2 leading-snug">Coaching Content Series</div>
+                  <div class="text-xs mb-3 line-clamp-2" style="color:rgba(255,255,255,0.65)">Create educational coaching videos featuring our training tools and drills for all skill levels.</div>
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3" style="background:rgba(255,255,255,0.08)">
+                    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Campaign Budget</span>
+                    <span class="text-xs font-bold" style="color:#C8F135">$400–$700</span>
+                  </div>
+                  <button onclick="navigate('campaigns')" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:rgba(255,255,255,0.13);color:white;border:1px solid rgba(255,255,255,0.22);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.13)'">Apply Now →</button>
+                </div>
+
+              </div><!-- /camp track -->
+            </div>
+            <!-- Navigation -->
+            <div class="flex items-center gap-3">
+              <button onclick="campNav(-1)" aria-label="Previous" class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.18);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <div class="hero-camp-dots flex items-center gap-2">
+                <div class="hero-dot active" style="width:22px"></div>
+                <div class="hero-dot"></div>
+                <div class="hero-dot"></div>
+              </div>
+              <button onclick="campNav(1)" aria-label="Next" class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all" style="background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.18);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div><!-- /hero-campaigns-wrap -->
+
+          </div><!-- /hero-right-col -->
 
         </div><!-- /grid -->
       </div>
@@ -2404,6 +2491,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=61"></script>
+  <script src="app.js?v=62"></script>
 </body>
 </html>

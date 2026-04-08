@@ -532,6 +532,7 @@ function onAuthSuccess(user) {
     roleToggleMobile.classList.toggle('hidden', !isAdmin);
   }
   navigate(isAdmin ? 'admin' : 'landing');
+  _heroShowForRole(user.role);
   if (user.role === 'creator') {
     loadStripeConnectStatus();
     // Restore verified badge from saved profile without waiting for profile page visit
@@ -817,7 +818,7 @@ function navigate(page, activeNavId = null) {
         link.classList.toggle('active', link.dataset.page === page);
       }
     });
-    if (page === 'landing')    startHeroCarousel();
+    if (page === 'landing')    _heroShowForRole(state.role);
     if (page === 'brand-portal') renderBrandPortal();
     if (page === 'creators')  { loadSavedCreatorIds().then(() => renderCreators()); }
     if (page === 'campaigns') renderCampaigns();
@@ -4207,12 +4208,137 @@ function stopHeroCarousel() {
   if (_heroTimer) { clearInterval(_heroTimer); _heroTimer = null; }
 }
 
+// ─── Hero Campaign Carousel (creator view) ───────────────────────────────────
+let _campIdx   = 0;
+let _campTimer = null;
+const _CAMP_AVATAR_COLORS = ['#1E6EA6','#7c3aed','#059669','#b45309','#0B1F4A'];
+
+function _campCardHtml(c, idx) {
+  const brandName  = c.company_name || c.brand_name || 'Brand';
+  const initials   = brandName.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const color      = _CAMP_AVATAR_COLORS[idx % _CAMP_AVATAR_COLORS.length];
+  const niche      = c.niche || 'Campaign';
+  const skills     = Array.isArray(c.skills) ? c.skills : [];
+  const dealType   = skills.find(s => ['UGC','Sponsored Post','Video','Reel','Story','Review'].includes(s)) || (niche.includes('Training') ? 'Video' : 'Sponsored');
+  const desc       = (c.description || 'Exciting brand collaboration opportunity for pickleball creators.').slice(0, 120);
+  const budget     = c.budget > 0 ? `$${c.budget.toLocaleString()}` : (c.max_rate > 0 ? `Up to $${c.max_rate.toLocaleString()}` : 'Negotiable');
+
+  return `<div class="hero-camp-card hero-card rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
+  <div class="flex items-center gap-3 mb-3">
+    <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-sm text-white" style="background:${color}">${initials}</div>
+    <div class="min-w-0">
+      <div class="font-bold text-white text-sm leading-tight truncate">${brandName}</div>
+      <div class="text-xs mt-0.5 truncate" style="color:rgba(255,255,255,0.5)">${niche}</div>
+    </div>
+    <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">${dealType}</span>
+  </div>
+  <div class="font-semibold text-white text-sm mb-2 leading-snug line-clamp-1">${c.title}</div>
+  <div class="text-xs mb-3 line-clamp-2" style="color:rgba(255,255,255,0.65)">${desc}</div>
+  <div class="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3" style="background:rgba(255,255,255,0.08)">
+    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Campaign Budget</span>
+    <span class="text-xs font-bold" style="color:#C8F135">${budget}</span>
+  </div>
+  <button onclick="navigate('campaigns')" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:rgba(255,255,255,0.13);color:white;border:1px solid rgba(255,255,255,0.22);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.13)'">Apply Now →</button>
+</div>`;
+}
+
+function _campGoTo(idx) {
+  const cards = document.querySelectorAll('#hero-camp-track .hero-camp-card');
+  const dots  = document.querySelectorAll('.hero-camp-dots .hero-dot');
+  if (!cards.length) return;
+  const next = ((idx % cards.length) + cards.length) % cards.length;
+  if (next === _campIdx && cards[_campIdx].classList.contains('active')) return;
+  cards[_campIdx].classList.remove('active');
+  cards[_campIdx].classList.add('exiting');
+  setTimeout(() => cards[_campIdx].classList.remove('exiting'), 500);
+  _campIdx = next;
+  cards[_campIdx].classList.add('active');
+  dots.forEach((d, i) => {
+    d.classList.toggle('active', i === _campIdx);
+    d.style.width = i === _campIdx ? '22px' : '6px';
+  });
+}
+
+function _campStep() { _campGoTo(_campIdx + 1); }
+
+function campNav(dir) {
+  stopCampaignCarousel();
+  _campGoTo(_campIdx + dir);
+  const cards = document.querySelectorAll('#hero-camp-track .hero-camp-card');
+  if (cards.length > 1) _campTimer = setInterval(_campStep, 10000);
+}
+
+function campGoToDot(idx) {
+  stopCampaignCarousel();
+  _campGoTo(idx);
+  const cards = document.querySelectorAll('#hero-camp-track .hero-camp-card');
+  if (cards.length > 1) _campTimer = setInterval(_campStep, 10000);
+}
+
+function _campStart() {
+  stopCampaignCarousel();
+  _campIdx = 0;
+  document.querySelectorAll('#hero-camp-track .hero-camp-card').forEach((c, i) => {
+    c.classList.remove('active', 'exiting');
+    if (i === 0) c.classList.add('active');
+  });
+  document.querySelectorAll('.hero-camp-dots .hero-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === 0);
+    d.style.width = i === 0 ? '22px' : '6px';
+    d.onclick = () => campGoToDot(i);
+  });
+  const cards = document.querySelectorAll('#hero-camp-track .hero-camp-card');
+  if (cards.length > 1) _campTimer = setInterval(_campStep, 10000);
+}
+
+async function startCampaignCarousel() {
+  const track    = document.getElementById('hero-camp-track');
+  const dotsWrap = document.querySelector('.hero-camp-dots');
+  if (!track) return;
+  try {
+    const campaigns = await apiGet('/api/campaigns?status=open');
+    const open = campaigns.filter(c => c.status === 'open').slice(0, 3);
+    if (open.length > 0) {
+      track.innerHTML = open.map((c, i) => _campCardHtml(c, i)).join('');
+      if (dotsWrap) {
+        dotsWrap.innerHTML = open.map((_, i) =>
+          `<div class="hero-dot${i === 0 ? ' active' : ''}" style="width:${i === 0 ? '22px' : '6px'}"></div>`
+        ).join('');
+      }
+    }
+  } catch (_) { /* keep placeholder cards */ }
+  _campStart();
+}
+
+function stopCampaignCarousel() {
+  if (_campTimer) { clearInterval(_campTimer); _campTimer = null; }
+}
+
+// Toggle the hero right column based on user role
+function _heroShowForRole(role) {
+  const creatorsWrap  = document.getElementById('hero-creators-wrap');
+  const campaignsWrap = document.getElementById('hero-campaigns-wrap');
+  if (!creatorsWrap || !campaignsWrap) return;
+  if (role === 'creator') {
+    creatorsWrap.classList.add('hidden');    creatorsWrap.classList.remove('flex');
+    campaignsWrap.classList.remove('hidden');
+    campaignsWrap.classList.add('flex');
+    startCampaignCarousel();
+  } else {
+    campaignsWrap.classList.add('hidden');
+    campaignsWrap.classList.remove('flex');
+    creatorsWrap.classList.remove('hidden');
+    creatorsWrap.classList.add('flex');
+    startHeroCarousel();
+  }
+}
+
 // --- Init ---
 document.addEventListener('DOMContentLoaded', async () => {
   const roleEl = document.getElementById('user-role');
   if (roleEl) roleEl.value = state.role;
   highlightRole();
-  startHeroCarousel();
+  startHeroCarousel(); // show creator cards by default for logged-out visitors
   handleStripeReturn();
 
   // Handle password reset link (?reset_token=...)
