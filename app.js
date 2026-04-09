@@ -247,10 +247,12 @@ function hideLoading() {
 function showAuthGate() {
   const gate = document.getElementById('auth-gate');
   if (gate) gate.classList.remove('hidden');
+  document.body.classList.add('no-scroll');
 }
 function hideAuthGate() {
   const gate = document.getElementById('auth-gate');
   if (gate) gate.classList.add('hidden');
+  document.body.classList.remove('no-scroll');
 }
 
 function togglePassword(inputId, btn) {
@@ -3707,23 +3709,53 @@ function startOnboarding(user) {
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
   }
+  document.body.classList.add('no-scroll');
   document.body.style.overflow = 'hidden';
   document.documentElement.style.overflow = 'hidden';
+  _initOnboardSwipe();
+}
+
+// Touch swipe navigation for onboarding steps
+let _onboardSwipeInited = false;
+function _initOnboardSwipe() {
+  if (_onboardSwipeInited) return;
+  _onboardSwipeInited = true;
+  const wrapper = document.getElementById('onboard-steps-wrapper');
+  if (!wrapper) return;
+  let startX = 0, startY = 0;
+  wrapper.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  wrapper.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    // Only act on predominantly horizontal swipes
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) onboardNext();   // swipe left → forward
+      else onboardBack();            // swipe right → back
+    }
+  }, { passive: true });
 }
 
 function _onboardGoToStep(n) {
+  const prevStep = _onboardStep;
+  const goingForward = n >= prevStep;
   _onboardStep = n;
 
-  // Show correct step panel with animation
+  // Show correct step panel with directional slide animation
   for (let i = 1; i <= 4; i++) {
     const el = document.getElementById(`onboard-step-${i}`);
     if (!el) continue;
     if (i === n) {
       el.classList.remove('hidden');
-      el.classList.add('onboard-step-visible');
+      el.classList.remove('onboard-slide-forward', 'onboard-slide-back');
+      // Force reflow so animation re-triggers
+      void el.offsetWidth;
+      el.classList.add(goingForward ? 'onboard-slide-forward' : 'onboard-slide-back');
     } else {
       el.classList.add('hidden');
-      el.classList.remove('onboard-step-visible');
+      el.classList.remove('onboard-slide-forward', 'onboard-slide-back', 'onboard-step-visible');
     }
   }
 
@@ -3841,8 +3873,10 @@ function _onboardClose(saved = false) {
   if (_onboardUser) localStorage.setItem(`onboarded_${_onboardUser.id}`, '1');
   const overlay = document.getElementById('onboarding-overlay');
   if (overlay) overlay.style.display = 'none';
+  document.body.classList.remove('no-scroll');
   document.body.style.overflow = '';
   document.documentElement.style.overflow = '';
+  _onboardSwipeInited = false; // reset so next onboard session re-attaches
   _onboardUser = null;
   if (saved) showToast('Profile saved! Welcome to CourtCollab', 'success');
 }
