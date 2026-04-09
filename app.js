@@ -106,12 +106,15 @@ function _extractDetail(data) {
 }
 
 // Slow-load detector: show spinner if any fetch takes > 500ms
+// Silent paths: message/conversation polling — never trigger the loading overlay
+const _SILENT_PATHS = ['/api/messages', '/api/conversations', '/api/typing'];
 const _origFetch = window.fetch;
 window.fetch = function(...args) {
   let _slowTimer = null;
   const url = typeof args[0] === 'string' ? args[0] : '';
+  const isSilent = _SILENT_PATHS.some(p => url.includes(p));
   // Only intercept our own API calls (not Stripe etc.)
-  if (url.includes('railway.app') || url.startsWith('/api')) {
+  if (!isSilent && (url.includes('railway.app') || url.startsWith('/api'))) {
     _slowTimer = setTimeout(() => showLoading('Loading…'), 500);
   }
   return _origFetch.apply(this, args).catch(err => {
@@ -2242,14 +2245,73 @@ function _fmtMsgTime(ts) {
 // Double-checkmark SVG (seen indicator)
 const _SEEN_ICON = `<svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l6 6 9-13.5" opacity="0.5"/></svg>`;
 const _SENT_ICON = `<svg class="w-3.5 h-3.5 inline-block opacity-40" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>`;
+let _convCache = null; // cached conversations for instant re-render
+
+function _renderConvList(convs) {
+  const list = document.getElementById('conversation-list');
+  if (!list) return;
+  const myId = state.currentUser?.id;
+  convs.forEach(conv => { _partnerNames[conv.partner.id] = conv.partner.name; });
+  list.innerHTML = convs.map(conv => {
+    const partner    = conv.partner;
+    const lastMsg    = conv.last_message;
+    const unread     = conv.unread_count || 0;
+    const rawPreview = lastMsg ? (lastMsg.body || '') : '';
+    const preview    = rawPreview.substring(0, 55) + (rawPreview.length > 55 ? '…' : '');
+    const isActive   = state.activePartner === partner.id;
+    const iMine      = lastMsg && lastMsg.sender_id === myId;
+    const wasSeen    = iMine && lastMsg.read_at;
+    const msgTime    = lastMsg ? _fmtMsgTime(lastMsg.created_at) : '';
+    const seenIcon   = iMine
+      ? (wasSeen
+          ? `<span class="text-lime-600 flex-shrink-0">${_SEEN_ICON}</span>`
+          : `<span class="text-gray-400 flex-shrink-0">${_SENT_ICON}</span>`)
+      : '';
+    return `
+      <div class="p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${isActive ? 'bg-pickle-50' : ''}" data-partner-id="${partner.id}" onclick="openConversation(${partner.id})">
+        <div class="flex items-center gap-3">
+          <div class="relative flex-shrink-0">
+            <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm">${partner.initials || partner.name.slice(0,2).toUpperCase()}</div>
+            ${unread > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-lime-400 text-gray-900 text-[10px] font-bold rounded-full flex items-center justify-center">${unread > 9 ? '9+' : unread}</span>` : ''}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-1 mb-0.5">
+              <span class="font-semibold text-sm truncate ${unread > 0 ? 'text-gray-900' : 'text-gray-700'}">${escHtml(partner.name)}</span>
+              <span class="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">${msgTime}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              ${seenIcon}
+              <p class="text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}">${escHtml(preview) || '<span class="italic text-gray-400">No messages yet</span>'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Update only the active highlight without re-rendering the whole list
+function _highlightActiveConv(partnerId) {
+  document.querySelectorAll('#conversation-list [data-partner-id]').forEach(el => {
+    const isActive = parseInt(el.dataset.partnerId, 10) === partnerId;
+    el.classList.toggle('bg-pickle-50', isActive);
+  });
+}
 
 async function renderConversations() {
   const list = document.getElementById('conversation-list');
   if (!list) return;
-  list.innerHTML = '<div class="p-4 text-sm text-gray-400">Loading…</div>';
+
+  // Render from cache immediately (no flash) then refresh in background
+  if (_convCache && _convCache.length > 0) {
+    _renderConvList(_convCache);
+  } else {
+    list.innerHTML = '<div class="p-4 text-sm text-gray-400">Loading…</div>';
+  }
 
   try {
     const convs = await apiGet('/api/conversations');
+    _convCache = convs;
 
     if (convs.length === 0) {
       const cta = state.role === 'brand'
@@ -2268,54 +2330,15 @@ async function renderConversations() {
       return;
     }
 
-    const myId = state.currentUser?.id;
-    // Build name lookup so onclick only passes numeric ID (no quote-breaking strings)
-    convs.forEach(conv => { _partnerNames[conv.partner.id] = conv.partner.name; });
+    _renderConvList(convs);
 
     // Auto-open first conversation if none is active yet
     if (!state.activePartner && convs.length > 0) {
       const first = convs[0];
       setTimeout(() => openConversation(first.partner.id, first.partner.name), 0);
     }
-
-    list.innerHTML = convs.map(conv => {
-      const partner   = conv.partner;
-      const lastMsg   = conv.last_message;
-      const unread    = conv.unread_count || 0;
-      const rawPreview = lastMsg ? (lastMsg.body || '') : '';
-      const preview   = rawPreview.substring(0, 55) + (rawPreview.length > 55 ? '…' : '');
-      const isActive  = state.activePartner === partner.id;
-      const iMine     = lastMsg && lastMsg.sender_id === myId;
-      const wasSeen   = iMine && lastMsg.read_at;
-      const msgTime   = lastMsg ? _fmtMsgTime(lastMsg.created_at) : '';
-      const seenIcon  = iMine
-        ? (wasSeen
-            ? `<span class="text-lime-600 flex-shrink-0">${_SEEN_ICON}</span>`
-            : `<span class="text-gray-400 flex-shrink-0">${_SENT_ICON}</span>`)
-        : '';
-      return `
-        <div class="p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${isActive ? 'bg-pickle-50' : ''}" onclick="openConversation(${partner.id})">
-          <div class="flex items-center gap-3">
-            <div class="relative flex-shrink-0">
-              <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm">${partner.initials || partner.name.slice(0,2).toUpperCase()}</div>
-              ${unread > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-lime-400 text-gray-900 text-[10px] font-bold rounded-full flex items-center justify-center">${unread > 9 ? '9+' : unread}</span>` : ''}
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-1 mb-0.5">
-                <span class="font-semibold text-sm truncate ${unread > 0 ? 'text-gray-900' : 'text-gray-700'}">${escHtml(partner.name)}</span>
-                <span class="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">${msgTime}</span>
-              </div>
-              <div class="flex items-center gap-1">
-                ${seenIcon}
-                <p class="text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}">${escHtml(preview) || '<span class="italic text-gray-400">No messages yet</span>'}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
   } catch (err) {
-    list.innerHTML = `<div class="p-4 text-sm text-red-400">${err.message}</div>`;
+    if (!_convCache) list.innerHTML = `<div class="p-4 text-sm text-red-400">${err.message}</div>`;
   }
 }
 
@@ -2335,7 +2358,8 @@ async function openConversation(partnerId, knownName = null) {
     _partnerNames[partnerId] = resolvedName;  // cache so re-renders always have it
     _setChatHeader(resolvedName);
   }
-  renderConversations();
+  // Just update the active highlight — no re-fetch, no "Loading…" flash
+  _highlightActiveConv(partnerId);
 
   try {
     // Fetch messages and partner info in parallel
