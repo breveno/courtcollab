@@ -4331,6 +4331,102 @@ function _heroShowForRole(role) {
     creatorsWrap.classList.add('flex');
     startHeroCarousel();
   }
+  // Toggle below-hero sections
+  const brandSections   = document.getElementById('landing-brand-sections');
+  const creatorSections = document.getElementById('landing-creator-sections');
+  if (brandSections && creatorSections) {
+    if (role === 'creator') {
+      brandSections.classList.add('hidden');
+      creatorSections.classList.remove('hidden');
+      _loadCreatorFeatStrip();
+    } else {
+      creatorSections.classList.add('hidden');
+      brandSections.classList.remove('hidden');
+      _loadBrandFeatStrip();
+    }
+    _initScrollFade();
+  }
+}
+
+// --- Earnings Calculator ---
+function updateEarningsCalc(val) {
+  val = parseInt(val, 10);
+  const slider = document.getElementById('calc-slider');
+  const min = 1000, max = 500000;
+  const pct = Math.round(((val - min) / (max - min)) * 100);
+  if (slider) slider.style.setProperty('--pct', pct + '%');
+  const label = document.getElementById('calc-follower-label');
+  if (label) label.textContent = val >= 1000 ? (val >= 1000000 ? (val/1000000).toFixed(1)+'M' : Math.round(val/1000)+'K') : val;
+  // Rate model: base rate + follower tier multiplier
+  const tier = val < 5000 ? 0.5 : val < 20000 ? 1 : val < 100000 ? 2.5 : val < 250000 ? 6 : 12;
+  const postRate  = Math.round(tier * 80  / 5) * 5;
+  const ugcRate   = Math.round(tier * 120 / 5) * 5;
+  const videoRate = Math.round(tier * 160 / 5) * 5;
+  const fmt = n => '$' + (n >= 1000 ? (n/1000).toFixed(1)+'K' : n);
+  const postEl  = document.getElementById('calc-post');
+  const ugcEl   = document.getElementById('calc-ugc');
+  const videoEl = document.getElementById('calc-video');
+  if (postEl)  postEl.textContent  = fmt(postRate);
+  if (ugcEl)   ugcEl.textContent   = fmt(ugcRate);
+  if (videoEl) videoEl.textContent = fmt(videoRate);
+}
+
+// --- Brand featured creators strip ---
+async function _loadBrandFeatStrip() {
+  const strip = document.getElementById('brand-feat-strip');
+  if (!strip) return;
+  let creators = [];
+  try { creators = await apiFetch('/api/featured-creators'); } catch(e) {}
+  if (!creators || !creators.length) return;
+  const colors = ['#0B1F4A','#163a70','#1E6EA6','#4f8ec0'];
+  strip.innerHTML = creators.map((c, i) => {
+    const total = (c.followers_ig||0)+(c.followers_tt||0)+(c.followers_yt||0);
+    const fmtF = n => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? Math.round(n/1000)+'K' : n;
+    const platforms = [];
+    if (c.followers_ig) platforms.push(`<span class="flex items-center gap-0.5 text-gray-500"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069z"/></svg>${fmtF(c.followers_ig)}</span>`);
+    if (c.followers_tt) platforms.push(`<span class="flex items-center gap-0.5 text-gray-500"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>${fmtF(c.followers_tt)}</span>`);
+    if (c.followers_yt) platforms.push(`<span class="flex items-center gap-0.5 text-gray-500"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>${fmtF(c.followers_yt)}</span>`);
+    return `<div class="feat-strip-card cursor-pointer" onclick="heroViewProfile(${c.user_id})">
+      <div class="w-12 h-12 rounded-full flex items-center justify-center mb-3 text-white font-bold text-lg" style="background:${colors[i%colors.length]}">${c.initials||'?'}</div>
+      <p class="font-semibold text-sm mb-0.5 truncate">${c.name||'Creator'}</p>
+      <p class="text-xs text-gray-400 mb-2 truncate">${c.niche||'Pickleball'}</p>
+      <div class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs mb-2">${platforms.join('')}</div>
+      <div class="text-xs text-gray-400">${fmtF(total)} total followers</div>
+    </div>`;
+  }).join('');
+}
+
+// --- Creator featured campaigns strip ---
+async function _loadCreatorFeatStrip() {
+  const strip = document.getElementById('creator-feat-strip');
+  if (!strip) return;
+  let campaigns = [];
+  try { campaigns = await apiGet('/api/campaigns?status=open'); } catch(e) {}
+  if (!campaigns || !campaigns.length) return;
+  const dealColors = { Sponsored:'bg-blue-100 text-blue-700', UGC:'bg-purple-100 text-purple-700', Video:'bg-green-100 text-green-700', Ambassador:'bg-orange-100 text-orange-700' };
+  strip.innerHTML = campaigns.slice(0,4).map(c => {
+    const initials = (c.brand_name||'B').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const dc = dealColors[c.deal_type] || 'bg-gray-100 text-gray-600';
+    return `<div class="feat-strip-card cursor-pointer" onclick="navigate('campaigns')">
+      <div class="w-10 h-10 rounded-xl bg-pickle-600 flex items-center justify-center mb-3 text-white font-bold text-sm">${initials}</div>
+      <p class="font-semibold text-sm mb-0.5 truncate">${c.title||'Campaign'}</p>
+      <span class="inline-block text-xs ${dc} px-2 py-0.5 rounded-full mb-2">${c.deal_type||'Sponsored'}</span>
+      <p class="text-xs text-gray-400">${c.budget_min && c.budget_max ? '$'+c.budget_min+'–$'+c.budget_max : c.budget_min ? 'From $'+c.budget_min : 'TBD'}</p>
+    </div>`;
+  }).join('');
+}
+
+// --- Scroll-fade observer ---
+let _scrollObserver = null;
+function _initScrollFade() {
+  if (_scrollObserver) _scrollObserver.disconnect();
+  _scrollObserver = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in-view'); _scrollObserver.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.scroll-fade').forEach(el => {
+    el.classList.remove('in-view');
+    _scrollObserver.observe(el);
+  });
 }
 
 // --- Init ---
@@ -4339,6 +4435,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (roleEl) roleEl.value = state.role;
   highlightRole();
   startHeroCarousel(); // show creator cards by default for logged-out visitors
+  _loadBrandFeatStrip();
+  _initScrollFade();
   handleStripeReturn();
 
   // Handle password reset link (?reset_token=...)
