@@ -763,8 +763,13 @@ async function saveAccountPassword() {
 }
 
 let _navRafId = null;
-function navigate(page, activeNavId = null) {
+function navigate(page, activeNavId = null, _restoreScrollY = null) {
   if (!getToken()) { showAuthGate(); return; }
+
+  // Save current scroll position into current history entry before leaving
+  if (history.state?.page) {
+    history.replaceState({ ...history.state, scrollY: window.scrollY }, '');
+  }
 
   // Pre-clear stale content on the incoming page while it is still hidden
   if (page === 'creators') {
@@ -788,10 +793,12 @@ function navigate(page, activeNavId = null) {
     if (_cd) _cd.innerHTML = '<div class="p-6 animate-pulse space-y-3"><div class="h-4 bg-gray-100 rounded w-1/2"></div><div class="h-3 bg-gray-100 rounded w-1/3"></div></div>';
   }
 
-  // Scroll to top while the current page is still showing
-  window.scrollTo(0, 0);
-  document.body.scrollTop = 0;
-  document.documentElement.scrollTop = 0;
+  // Only scroll to top for fresh forward navigation, not back/forward restoration
+  if (_restoreScrollY === null) {
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  }
 
   // FRAME 1: hide all pages — browser commits this as a blank-content frame
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -838,6 +845,11 @@ function navigate(page, activeNavId = null) {
     if (page === 'creator-profile') { populateCreatorForm(); renderCreatorDealHistory(); }
     else { const el = document.getElementById('creator-profile-completion'); if (el) el.innerHTML = ''; }
     if (page === 'creator-dashboard') renderCreatorDashboard();
+
+    // Restore scroll position for back/forward navigation
+    if (_restoreScrollY !== null) {
+      requestAnimationFrame(() => window.scrollTo(0, _restoreScrollY));
+    }
   });
 }
 
@@ -4075,7 +4087,8 @@ async function apiDelete(path, body, opts = {}) {
 // --- Browser back/forward button support ---
 window.addEventListener('popstate', (e) => {
   const page = e.state?.page || window.location.pathname.replace(/^\//, '') || 'landing';
-  if (getToken()) navigate(page);
+  const scrollY = e.state?.scrollY ?? null;
+  if (getToken()) navigate(page, null, scrollY);
 });
 
 // ─── Hero Creator Carousel ────────────────────────────────────────────────────
