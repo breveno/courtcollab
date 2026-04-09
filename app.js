@@ -992,7 +992,6 @@ function fitScoreBadgeHtml(creator) {
       <div>
         <div class="text-xs font-bold ${m.text}">Brand Fit Score</div>
         <div class="text-xs ${m.text} opacity-80">${m.label}</div>
-        <div class="text-[10px] text-gray-400 mt-0.5">Only visible to you</div>
       </div>
     </div>
   `;
@@ -4076,10 +4075,7 @@ function _heroCardHtml(creator, colorIdx) {
   const niche       = [creator.niche, creator.location].filter(Boolean).join(' · ') || 'Creator';
   const handles     = creator.social_handles || {};
 
-  // Compute a simple brand fit score (engagement + follower mix, capped 60–99)
-  const total = creator.total_followers || 0;
-  const eng   = parseFloat(creator.engagement_rate) || 0;
-  const fit   = Math.min(99, Math.max(60, Math.round(55 + Math.log10(total + 1) * 7 + eng * 2)));
+  const fit = calcBrandFitScore(creator);
 
   // Platform rows — only show platforms with followers > 0
   const platforms = [
@@ -4127,15 +4123,15 @@ function _heroCardHtml(creator, colorIdx) {
 }
 
 function _heroGoTo(idx) {
-  const cards = document.querySelectorAll('.hero-card');
-  const dots  = document.querySelectorAll('.hero-dot');
+  const cards = document.querySelectorAll('#hero-carousel-track .hero-card');
+  const dots  = document.querySelectorAll('.hero-dots-wrap .hero-dot');
   if (!cards.length) return;
   const next = ((idx % cards.length) + cards.length) % cards.length;
   if (next === _heroIdx && cards[_heroIdx].classList.contains('active')) return;
 
   cards[_heroIdx].classList.remove('active');
   cards[_heroIdx].classList.add('exiting');
-  setTimeout(() => cards[_heroIdx].classList.remove('exiting'), 500);
+  setTimeout(() => { if (cards[_heroIdx]) cards[_heroIdx].classList.remove('exiting'); }, 500);
 
   _heroIdx = next;
   cards[_heroIdx].classList.add('active');
@@ -4151,14 +4147,14 @@ function _heroStep() { _heroGoTo(_heroIdx + 1); }
 function heroNav(dir) {
   stopHeroCarousel();
   _heroGoTo(_heroIdx + dir);
-  const cards = document.querySelectorAll('.hero-card');
+  const cards = document.querySelectorAll('#hero-carousel-track .hero-card');
   if (cards.length > 1) _heroTimer = setInterval(_heroStep, 10000);
 }
 
 function heroGoToDot(idx) {
   stopHeroCarousel();
   _heroGoTo(idx);
-  const cards = document.querySelectorAll('.hero-card');
+  const cards = document.querySelectorAll('#hero-carousel-track .hero-card');
   if (cards.length > 1) _heroTimer = setInterval(_heroStep, 10000);
 }
 
@@ -4170,16 +4166,16 @@ function heroViewProfile(userId) {
 function _heroStart() {
   stopHeroCarousel();
   _heroIdx = 0;
-  document.querySelectorAll('.hero-card').forEach((c, i) => {
+  document.querySelectorAll('#hero-carousel-track .hero-card').forEach((c, i) => {
     c.classList.remove('active', 'exiting');
     if (i === 0) c.classList.add('active');
   });
-  document.querySelectorAll('.hero-dot').forEach((d, i) => {
+  document.querySelectorAll('.hero-dots-wrap .hero-dot').forEach((d, i) => {
     d.classList.toggle('active', i === 0);
     d.style.width = i === 0 ? '22px' : '6px';
     d.onclick = () => heroGoToDot(i);
   });
-  if (document.querySelectorAll('.hero-card').length > 1) {
+  if (document.querySelectorAll('#hero-carousel-track .hero-card').length > 1) {
     _heroTimer = setInterval(_heroStep, 10000);
   }
 }
