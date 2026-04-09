@@ -248,11 +248,13 @@ function showAuthGate() {
   const gate = document.getElementById('auth-gate');
   if (gate) gate.classList.remove('hidden');
   document.body.classList.add('no-scroll');
+  document.documentElement.classList.add('gate-open');
 }
 function hideAuthGate() {
   const gate = document.getElementById('auth-gate');
   if (gate) gate.classList.add('hidden');
   document.body.classList.remove('no-scroll');
+  document.documentElement.classList.remove('gate-open');
 }
 
 function togglePassword(inputId, btn) {
