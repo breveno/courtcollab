@@ -255,6 +255,10 @@ function hideAuthGate() {
   if (gate) gate.classList.add('hidden');
   document.body.classList.remove('no-scroll');
   document.documentElement.classList.remove('gate-open');
+  // Snap any residual horizontal scroll back to 0
+  window.scrollTo(0, window.scrollY);
+  document.documentElement.scrollLeft = 0;
+  document.body.scrollLeft = 0;
 }
 
 function togglePassword(inputId, btn) {
@@ -796,6 +800,10 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
     if (_cs) _cs.innerHTML = '<div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-24"></div><div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-24"></div><div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-24"></div>';
     if (_cd) _cd.innerHTML = '<div class="p-6 animate-pulse space-y-3"><div class="h-4 bg-gray-100 rounded w-1/2"></div><div class="h-3 bg-gray-100 rounded w-1/3"></div></div>';
   }
+
+  // Always reset horizontal scroll — never let pages drift sideways
+  document.documentElement.scrollLeft = 0;
+  document.body.scrollLeft = 0;
 
   // Only scroll to top for fresh forward navigation, not back/forward restoration
   if (_restoreScrollY === null) {
@@ -3893,6 +3901,10 @@ function _onboardClose(saved = false) {
   document.body.classList.remove('no-scroll');
   document.body.style.overflow = '';
   document.documentElement.style.overflow = '';
+  // Snap any residual horizontal scroll back to 0
+  window.scrollTo(0, window.scrollY);
+  document.documentElement.scrollLeft = 0;
+  document.body.scrollLeft = 0;
   _onboardSwipeInited = false; // reset so next onboard session re-attaches
   _onboardUser = null;
   if (saved) showToast('Profile saved! Welcome to CourtCollab', 'success');
