@@ -41,7 +41,7 @@
     button:active:not(:disabled) { transform: scale(0.96); }
     @keyframes onboardFadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     .onboard-step-visible { animation: onboardFadeIn 0.28s ease; }
-    #onboarding-overlay { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+    #onboarding-overlay { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); overscroll-behavior: none; touch-action: pan-y; overflow: hidden; }
     .onboard-pill-active { border-color: #C8F135 !important; background: #f5fde0 !important; color: #0B1F4A !important; font-weight: 600; }
     .message-bubble-left { background: #f3f4f6; border-radius: 0 12px 12px 12px; }
     .message-bubble-right { background: #e8fb9e; border-radius: 12px 0 12px 12px; }
@@ -2803,6 +2803,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=72"></script>
+  <script src="app.js?v=73"></script>
 </body>
 </html>

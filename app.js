@@ -3724,19 +3724,34 @@ function _initOnboardSwipe() {
   _onboardSwipeInited = true;
   const wrapper = document.getElementById('onboard-steps-wrapper');
   if (!wrapper) return;
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, isHoriz = false;
+
   wrapper.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    isHoriz = false;
   }, { passive: true });
+
+  // Non-passive so we can preventDefault on horizontal moves
+  wrapper.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    // Once we know the direction, lock it for the rest of the gesture
+    if (!isHoriz && Math.abs(dx) > 6) {
+      isHoriz = Math.abs(dx) > Math.abs(dy);
+    }
+    // Block page scroll during a horizontal swipe
+    if (isHoriz) e.preventDefault();
+  }, { passive: false });
+
   wrapper.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
-    // Only act on predominantly horizontal swipes
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       if (dx < 0) onboardNext();   // swipe left → forward
-      else onboardBack();            // swipe right → back
+      else onboardBack();           // swipe right → back
     }
+    isHoriz = false;
   }, { passive: true });
 }
 
