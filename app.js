@@ -921,6 +921,8 @@ function closeModal(id) {
     if (coverInput) coverInput.value = '';
     const coverPreview = document.getElementById('camp-cover-preview');
     if (coverPreview) coverPreview.innerHTML = `<svg class="w-6 h-6 text-white opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`;
+    const qList = document.getElementById('camp-questions-list');
+    if (qList) qList.innerHTML = '';
   }
 }
 
@@ -2067,9 +2069,10 @@ async function renderCampaigns() {
           </div>
           <div class="flex items-center justify-between pt-4 border-t border-gray-100">
             <span class="text-sm text-gray-400">${postedDate ? 'Posted ' + postedDate : ''}</span>
-            <button onclick="applyCampaign(${c.id})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">
-              ${state.role === 'creator' ? 'Apply Now' : 'View Applicants'}
-            </button>
+            ${state.role === 'creator'
+              ? `<button onclick="openApplyModal(${c.id}, ${JSON.stringify(escHtml(c.title))}, ${JSON.stringify(Array.isArray(c.questions) ? c.questions : [])})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Apply Now</button>`
+              : `<button onclick="openApplicationsModal(${c.id}, ${JSON.stringify(escHtml(c.title))})" class="bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">View Applications</button>`
+            }
           </div>
         </div>
       `;
@@ -2079,12 +2082,140 @@ async function renderCampaigns() {
   }
 }
 
-function applyCampaign(id) {
-  if (state.role === 'creator') {
-    showToast('Application sent! The brand will be in touch.');
-  } else {
-    showToast('Applicant view coming soon.');
+// --- Apply to Campaign (Creator) ---
+let _applyingCampaignId = null;
+
+function openApplyModal(campaignId, title, questions) {
+  _applyingCampaignId = campaignId;
+  const nameEl = document.getElementById('apply-modal-campaign-name');
+  if (nameEl) nameEl.textContent = title;
+  const msgEl = document.getElementById('apply-modal-message');
+  if (msgEl) msgEl.value = '';
+
+  const qWrap = document.getElementById('apply-modal-questions');
+  if (qWrap) {
+    if (!questions || questions.length === 0) {
+      qWrap.innerHTML = '';
+    } else {
+      qWrap.innerHTML = questions.map((q, i) => `
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">${escHtml(q)}</label>
+          <textarea id="apply-answer-${i}" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Your answer…"></textarea>
+        </div>
+      `).join('');
+    }
   }
+  openModal('apply-modal');
+}
+
+async function submitApplication() {
+  if (!_applyingCampaignId) return;
+  const qWrap    = document.getElementById('apply-modal-questions');
+  const qCount   = qWrap ? qWrap.querySelectorAll('textarea').length : 0;
+  const answers  = Array.from({length: qCount}, (_, i) => {
+    const el = document.getElementById('apply-answer-' + i);
+    return el ? el.value.trim() : '';
+  });
+  const message  = document.getElementById('apply-modal-message')?.value.trim() || '';
+  const btn      = document.querySelector('#apply-modal button[onclick="submitApplication()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+  try {
+    await apiPost(`/api/campaigns/${_applyingCampaignId}/apply`, { answers, message });
+    closeModal('apply-modal');
+    showToast('Application submitted! The brand will review it shortly.', 'success');
+  } catch (err) {
+    showToast(err.message || 'Could not submit application', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit Application'; }
+  }
+}
+
+// --- View Applications (Brand) ---
+async function openApplicationsModal(campaignId, title) {
+  document.getElementById('applications-modal-title').textContent = title || 'Applications';
+  document.getElementById('applications-modal-sub').textContent   = '';
+  document.getElementById('applications-list').innerHTML = '<div class="text-center py-10 text-gray-400">Loading…</div>';
+  openModal('applications-modal');
+  try {
+    const apps = await apiGet(`/api/campaigns/${campaignId}/applications`);
+    const subEl = document.getElementById('applications-modal-sub');
+    if (subEl) subEl.textContent = `${apps.length} application${apps.length !== 1 ? 's' : ''}`;
+    const listEl = document.getElementById('applications-list');
+    if (!listEl) return;
+    if (apps.length === 0) {
+      listEl.innerHTML = `<div class="text-center py-12">
+        <div class="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+          <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <p class="text-gray-500 font-medium">No applications yet</p>
+        <p class="text-gray-400 text-sm mt-1">Share your campaign to attract creators.</p>
+      </div>`;
+      return;
+    }
+    listEl.innerHTML = apps.map(a => {
+      const initials = (a.creator_initials || a.creator_name || '?').slice(0, 2).toUpperCase();
+      const totalFollowers = (a.followers_ig || 0) + (a.followers_tt || 0) + (a.followers_yt || 0);
+      const fmtF = n => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? Math.round(n/1000)+'K' : n;
+      const statusColors = { pending: 'bg-yellow-100 text-yellow-700', accepted: 'bg-green-100 text-green-700', declined: 'bg-red-100 text-red-700' };
+      const sc = statusColors[a.status] || statusColors.pending;
+      const answersHtml = Array.isArray(a.answers) && a.answers.length
+        ? a.answers.map((ans, i) => `<p class="text-xs text-gray-500 mt-1"><span class="font-medium text-gray-700">Q${i+1}:</span> ${escHtml(ans || '—')}</p>`).join('')
+        : '';
+      return `
+        <div class="border border-gray-100 rounded-xl p-4 mb-3">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm flex-shrink-0">${initials}</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap mb-1">
+                <span class="font-semibold text-sm">${escHtml(a.creator_name || 'Creator')}</span>
+                ${a.niche ? `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">${escHtml(a.niche)}</span>` : ''}
+                <span class="text-xs ${sc} px-2 py-0.5 rounded-full capitalize ml-auto">${a.status}</span>
+              </div>
+              ${totalFollowers ? `<p class="text-xs text-gray-400 mb-1">${fmtF(totalFollowers)} followers${a.engagement_rate ? ' · ' + parseFloat(a.engagement_rate).toFixed(1) + '% engagement' : ''}</p>` : ''}
+              ${a.message ? `<p class="text-sm text-gray-600 mb-2 italic">"${escHtml(a.message)}"</p>` : ''}
+              ${answersHtml}
+            </div>
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
+            <button onclick="showCreatorDetail(${a.creator_id})" class="text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">View Profile</button>
+            ${a.status === 'pending' ? `
+              <button onclick="updateApplicationStatus(${a.id}, 'accepted', this, ${campaignId}, ${JSON.stringify(escHtml(title))})" class="text-xs bg-lime-400 text-gray-900 px-3 py-1.5 rounded-lg font-medium hover:bg-lime-300 transition">Accept</button>
+              <button onclick="updateApplicationStatus(${a.id}, 'declined', this, ${campaignId}, ${JSON.stringify(escHtml(title))})" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition">Decline</button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    document.getElementById('applications-list').innerHTML = `<div class="text-center py-8 text-red-400">${err.message}</div>`;
+  }
+}
+
+async function updateApplicationStatus(appId, status, btn, campaignId, title) {
+  try {
+    await apiPatch(`/api/applications/${appId}/status`, { status });
+    showToast(status === 'accepted' ? 'Application accepted!' : 'Application declined', status === 'accepted' ? 'success' : 'info');
+    openApplicationsModal(campaignId, title); // refresh
+  } catch (err) {
+    showToast(err.message || 'Could not update application', 'error');
+  }
+}
+
+// --- Campaign Question Builder (Brand) ---
+function addCampQuestion() {
+  const list  = document.getElementById('camp-questions-list');
+  if (!list) return;
+  const idx   = list.children.length;
+  const div   = document.createElement('div');
+  div.className = 'flex items-center gap-2';
+  div.dataset.qIdx = idx;
+  div.innerHTML = `
+    <input type="text" class="camp-question-input flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="e.g. What pickleball content have you created before?" maxlength="200">
+    <button type="button" onclick="this.closest('[data-q-idx]').remove()" class="text-gray-400 hover:text-red-500 flex-shrink-0 p-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  `;
+  list.appendChild(div);
 }
 
 // --- Campaign Attachments Preview ---
@@ -2116,6 +2247,8 @@ function removeCampAttachment(index) {
 async function postCampaign(e) {
   e.preventDefault();
   const skills = Array.from(document.querySelectorAll('#camp-skills input:checked')).map(i => i.value);
+  const questions = Array.from(document.querySelectorAll('#camp-questions-list .camp-question-input'))
+    .map(i => i.value.trim()).filter(Boolean);
   const coverInput = document.getElementById('camp-cover');
   const body = {
     title:       document.getElementById('camp-title').value,
@@ -2124,6 +2257,7 @@ async function postCampaign(e) {
     budget:      parseInt(document.getElementById('camp-budget').value) || 0,
     deadline:    document.getElementById('camp-deadline').value,
     skills,
+    questions,
   };
   // Disable submit button and show saving state
   const submitBtn = document.querySelector('#campaign-modal button[type="submit"], #campaign-modal button[onclick*="postCampaign"]');

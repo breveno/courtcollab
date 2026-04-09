@@ -938,6 +938,7 @@ class CampaignIn(BaseModel):
     target_age:    Optional[str]        = None
     min_followers: Optional[int]        = Field(default=0, ge=0)
     max_rate:      Optional[int]        = Field(default=0, ge=0)
+    questions:     Optional[List[str]]  = []
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
@@ -952,10 +953,18 @@ class CampaignUpdateIn(BaseModel):
     target_age:    Optional[str]       = None
     min_followers: Optional[int]       = None
     max_rate:      Optional[int]       = None
+    questions:     Optional[List[str]] = None
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
     def coerce_ints(cls, v): return _to_int(v) if v is not None else None
+
+class ApplicationIn(BaseModel):
+    answers: Optional[List[str]] = []
+    message: Optional[str]       = None
+
+class ApplicationStatusIn(BaseModel):
+    status: str
 
 class CampaignStatusIn(BaseModel):
     status: str
@@ -1002,16 +1011,18 @@ def create_campaign(body: CampaignIn, background_tasks: BackgroundTasks, user: d
         cur = conn.execute("""
             INSERT INTO campaigns
               (brand_id, title, description, budget, niche, skills,
-               target_age, min_followers, max_rate)
-            VALUES (?,?,?,?,?,?,?,?,?)
+               target_age, min_followers, max_rate, questions)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
         """, (user["id"], body.title, body.description, body.budget,
               body.niche, json.dumps(body.skills),
-              body.target_age, body.min_followers, body.max_rate))
+              body.target_age, body.min_followers, body.max_rate,
+              json.dumps(body.questions or [])))
         conn.commit()
         cid = cur.lastrowid
     with get_conn() as conn:
         row = _row(conn, "SELECT * FROM campaigns WHERE id = ?", (cid,))
-        row["skills"] = json.loads(row.get("skills") or "[]")
+        row["skills"]    = json.loads(row.get("skills")    or "[]")
+        row["questions"] = json.loads(row.get("questions") or "[]")
     background_tasks.add_task(_notify_campaign_matches, row)
     return row
 
@@ -1032,7 +1043,8 @@ def list_campaigns(
         """)
     results = []
     for r in rows:
-        r["skills"] = json.loads(r.get("skills") or "[]")
+        r["skills"]    = json.loads(r.get("skills")    or "[]")
+        r["questions"] = json.loads(r.get("questions") or "[]")
         # Brands only see their own campaigns; creators see all
         if user["role"] == "brand" and r.get("brand_id") != user["id"]: continue
         if mine   and r.get("brand_id") != user["id"]: continue
@@ -1054,7 +1066,8 @@ def get_campaign(campaign_id: int, user: dict = Depends(current_user)):
         """, (campaign_id,))
     if not row:
         raise HTTPException(404, "Campaign not found")
-    row["skills"] = json.loads(row.get("skills") or "[]")
+    row["skills"]    = json.loads(row.get("skills")    or "[]")
+    row["questions"] = json.loads(row.get("questions") or "[]")
     return row
 
 
@@ -1077,6 +1090,7 @@ def update_campaign(campaign_id: int, body: CampaignUpdateIn, user: dict = Depen
         if body.target_age    is not None: updates["target_age"]    = body.target_age
         if body.min_followers is not None: updates["min_followers"] = body.min_followers
         if body.max_rate      is not None: updates["max_rate"]      = body.max_rate
+        if body.questions     is not None: updates["questions"]     = json.dumps(body.questions)
 
         if not updates:
             raise HTTPException(400, "No fields to update")
@@ -1088,7 +1102,8 @@ def update_campaign(campaign_id: int, body: CampaignUpdateIn, user: dict = Depen
         )
         conn.commit()
         updated = _row(conn, "SELECT * FROM campaigns WHERE id = ?", (campaign_id,))
-        updated["skills"] = json.loads(updated.get("skills") or "[]")
+        updated["skills"]    = json.loads(updated.get("skills")    or "[]")
+        updated["questions"] = json.loads(updated.get("questions") or "[]")
         return updated
 
 
@@ -1117,6 +1132,70 @@ def delete_campaign(campaign_id: int, user: dict = Depends(current_user)):
             raise HTTPException(404, "Campaign not found or not yours")
         conn.execute("DELETE FROM campaigns WHERE id = ?", (campaign_id,))
         conn.commit()
+
+# ---------------------------------------------------------------------------
+# Routes — Applications
+# ---------------------------------------------------------------------------
+
+@app.post("/api/campaigns/{campaign_id}/apply", status_code=201)
+def apply_to_campaign(campaign_id: int, body: ApplicationIn, user: dict = Depends(current_user)):
+    require_role("creator", user)
+    with get_conn() as conn:
+        campaign = _row(conn, "SELECT * FROM campaigns WHERE id = ? AND status = 'open'", (campaign_id,))
+        if not campaign:
+            raise HTTPException(404, "Campaign not found or not open")
+        existing = _row(conn, "SELECT id FROM applications WHERE campaign_id = ? AND creator_id = ?",
+                        (campaign_id, user["id"]))
+        if existing:
+            raise HTTPException(409, "You have already applied to this campaign")
+        conn.execute("""
+            INSERT INTO applications (campaign_id, creator_id, answers, message)
+            VALUES (?, ?, ?, ?)
+        """, (campaign_id, user["id"], json.dumps(body.answers or []), body.message))
+        conn.commit()
+    return {"ok": True}
+
+
+@app.get("/api/campaigns/{campaign_id}/applications")
+def get_campaign_applications(campaign_id: int, user: dict = Depends(current_user)):
+    require_role("brand", user)
+    with get_conn() as conn:
+        campaign = _row(conn, "SELECT id FROM campaigns WHERE id = ? AND brand_id = ?",
+                        (campaign_id, user["id"]))
+        if not campaign:
+            raise HTTPException(404, "Campaign not found or not yours")
+        rows = _rows(conn, """
+            SELECT a.*, u.name AS creator_name, u.initials AS creator_initials,
+                   cp.niche, cp.followers_ig, cp.followers_tt, cp.followers_yt,
+                   cp.engagement_rate
+            FROM applications a
+            JOIN users u ON u.id = a.creator_id
+            LEFT JOIN creator_profiles cp ON cp.user_id = a.creator_id
+            WHERE a.campaign_id = ?
+            ORDER BY a.created_at DESC
+        """, (campaign_id,))
+    for r in rows:
+        r["answers"] = json.loads(r.get("answers") or "[]")
+    return rows
+
+
+@app.patch("/api/applications/{application_id}/status")
+def update_application_status(application_id: int, body: ApplicationStatusIn, user: dict = Depends(current_user)):
+    require_role("brand", user)
+    if body.status not in ("accepted", "declined"):
+        raise HTTPException(400, "status must be accepted or declined")
+    with get_conn() as conn:
+        row = _row(conn, """
+            SELECT a.* FROM applications a
+            JOIN campaigns c ON c.id = a.campaign_id
+            WHERE a.id = ? AND c.brand_id = ?
+        """, (application_id, user["id"]))
+        if not row:
+            raise HTTPException(404, "Application not found or not yours")
+        conn.execute("UPDATE applications SET status = ? WHERE id = ?", (body.status, application_id))
+        conn.commit()
+    return {"ok": True}
+
 
 # ---------------------------------------------------------------------------
 # Routes — Matches
