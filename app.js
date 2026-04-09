@@ -4346,6 +4346,29 @@ function _heroShowForRole(role) {
     }
     _initScrollFade();
   }
+  // Update CTA buttons based on login state
+  const loggedIn = !!getToken();
+  const brandBtn   = document.getElementById('cta-brand-btn');
+  const creatorBtn = document.getElementById('cta-creator-btn');
+  if (brandBtn) {
+    if (loggedIn) {
+      brandBtn.textContent = '';
+      brandBtn.innerHTML = 'Browse Creators <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>';
+      brandBtn.onclick = () => navigate('creators');
+    } else {
+      brandBtn.innerHTML = 'Join as a Brand <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>';
+      brandBtn.onclick = () => { showAuthGate(); showAuthTab('signup'); };
+    }
+  }
+  if (creatorBtn) {
+    if (loggedIn) {
+      creatorBtn.innerHTML = 'Browse Brand Campaigns <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>';
+      creatorBtn.onclick = () => navigate('campaigns');
+    } else {
+      creatorBtn.innerHTML = 'Join as a Creator <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>';
+      creatorBtn.onclick = () => { showAuthGate(); showAuthTab('signup'); };
+    }
+  }
 }
 
 // --- Earnings Calculator ---
