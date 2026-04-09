@@ -4254,7 +4254,7 @@ function _campCardHtml(c, idx) {
   const skills     = Array.isArray(c.skills) ? c.skills : [];
   const dealType   = skills.find(s => ['UGC','Sponsored Post','Video','Reel','Story','Review'].includes(s)) || (niche.includes('Training') ? 'Video' : 'Sponsored');
   const desc       = (c.description || 'Exciting brand collaboration opportunity for pickleball creators.').slice(0, 120);
-  const budget     = c.budget > 0 ? `$${c.budget.toLocaleString()}` : (c.max_rate > 0 ? `Up to $${c.max_rate.toLocaleString()}` : 'Negotiable');
+  const budget     = c.budget > 0 ? `$${c.budget.toLocaleString()}` : (c.max_rate > 0 ? `Up to $${c.max_rate.toLocaleString()}` : '—');
 
   return `<div class="hero-camp-card hero-card rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
   <div class="flex items-center gap-3 mb-3">
@@ -4268,7 +4268,7 @@ function _campCardHtml(c, idx) {
   <div class="font-semibold text-white text-sm mb-2 leading-snug line-clamp-1">${c.title}</div>
   <div class="text-xs mb-3 line-clamp-2" style="color:rgba(255,255,255,0.65)">${desc}</div>
   <div class="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3" style="background:rgba(255,255,255,0.08)">
-    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Campaign Budget</span>
+    <span class="text-xs" style="color:rgba(255,255,255,0.55)">Rate</span>
     <span class="text-xs font-bold" style="color:#C8F135">${budget}</span>
   </div>
   <button onclick="navigate('campaigns')" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:rgba(255,255,255,0.13);color:white;border:1px solid rgba(255,255,255,0.22);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.13)'">Apply Now →</button>
