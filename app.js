@@ -679,8 +679,16 @@ function toggleMobileMenu() {
 }
 function closeMobileMenu() {
   const menu = document.getElementById('mobile-menu-dropdown');
-  menu.classList.remove('open');
+  if (menu) menu.classList.remove('open');
 }
+// Close hamburger when tapping anywhere outside the nav
+document.addEventListener('click', e => {
+  const menu = document.getElementById('mobile-menu-dropdown');
+  const btn  = document.getElementById('hamburger-btn');
+  if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
 
 // --- State ---
 let state = {
@@ -2405,55 +2413,103 @@ const _SEEN_ICON = `<svg class="w-3.5 h-3.5 inline-block" fill="none" stroke="cu
 const _SENT_ICON = `<svg class="w-3.5 h-3.5 inline-block opacity-40" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>`;
 let _convCache = null; // cached conversations for instant re-render
 
-function _renderConvList(convs) {
-  const list = document.getElementById('conversation-list');
-  if (!list) return;
-  const myId = state.currentUser?.id;
-  convs.forEach(conv => { _partnerNames[conv.partner.id] = conv.partner.name; });
-  list.innerHTML = convs.map(conv => {
-    const partner    = conv.partner;
-    const lastMsg    = conv.last_message;
-    const unread     = conv.unread_count || 0;
-    const rawPreview = lastMsg ? (lastMsg.body || '') : '';
-    const preview    = rawPreview.substring(0, 55) + (rawPreview.length > 55 ? '…' : '');
-    const isActive   = state.activePartner === partner.id;
-    const iMine      = lastMsg && lastMsg.sender_id === myId;
-    const wasSeen    = iMine && lastMsg.read_at;
-    const msgTime    = lastMsg ? _fmtMsgTime(lastMsg.created_at) : '';
-    const seenIcon   = iMine
-      ? (wasSeen
-          ? `<span class="text-lime-600 flex-shrink-0">${_SEEN_ICON}</span>`
-          : `<span class="text-gray-400 flex-shrink-0">${_SENT_ICON}</span>`)
-      : '';
-    return `
-      <div class="p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${isActive ? 'bg-pickle-50' : ''}" data-partner-id="${partner.id}" onclick="openConversation(${partner.id})">
-        <div class="flex items-center gap-3">
-          <div class="relative flex-shrink-0">
-            <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm">${partner.initials || partner.name.slice(0,2).toUpperCase()}</div>
-            ${unread > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-lime-400 text-gray-900 text-[10px] font-bold rounded-full flex items-center justify-center">${unread > 9 ? '9+' : unread}</span>` : ''}
+function _convItemHtml(conv, myId) {
+  const partner    = conv.partner;
+  const lastMsg    = conv.last_message;
+  const unread     = conv.unread_count || 0;
+  const rawPreview = lastMsg ? (lastMsg.body || '') : '';
+  const preview    = rawPreview.substring(0, 55) + (rawPreview.length > 55 ? '…' : '');
+  const isActive   = state.activePartner === partner.id;
+  const iMine      = lastMsg && lastMsg.sender_id === myId;
+  const wasSeen    = iMine && lastMsg.read_at;
+  const msgTime    = lastMsg ? _fmtMsgTime(lastMsg.created_at) : '';
+  const seenIcon   = iMine
+    ? (wasSeen
+        ? `<span class="text-lime-600 flex-shrink-0">${_SEEN_ICON}</span>`
+        : `<span class="text-gray-400 flex-shrink-0">${_SENT_ICON}</span>`)
+    : '';
+  return `
+    <div class="p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition ${isActive ? 'bg-pickle-50' : ''}" data-partner-id="${partner.id}" onclick="openConversation(${partner.id});closeConvPicker()">
+      <div class="flex items-center gap-3">
+        <div class="relative flex-shrink-0">
+          <div class="w-10 h-10 rounded-full bg-pickle-100 flex items-center justify-center font-bold text-pickle-700 text-sm">${partner.initials || partner.name.slice(0,2).toUpperCase()}</div>
+          ${unread > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-lime-400 text-gray-900 text-[10px] font-bold rounded-full flex items-center justify-center">${unread > 9 ? '9+' : unread}</span>` : ''}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-1 mb-0.5">
+            <span class="font-semibold text-sm truncate ${unread > 0 ? 'text-gray-900' : 'text-gray-700'}">${escHtml(partner.name)}</span>
+            <span class="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">${msgTime}</span>
           </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between gap-1 mb-0.5">
-              <span class="font-semibold text-sm truncate ${unread > 0 ? 'text-gray-900' : 'text-gray-700'}">${escHtml(partner.name)}</span>
-              <span class="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">${msgTime}</span>
-            </div>
-            <div class="flex items-center gap-1">
-              ${seenIcon}
-              <p class="text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}">${escHtml(preview) || '<span class="italic text-gray-400">No messages yet</span>'}</p>
-            </div>
+          <div class="flex items-center gap-1">
+            ${seenIcon}
+            <p class="text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-500'}">${escHtml(preview) || '<span class="italic text-gray-400">No messages yet</span>'}</p>
           </div>
         </div>
       </div>
-    `;
-  }).join('');
+    </div>
+  `;
+}
+
+function _renderConvList(convs) {
+  const myId = state.currentUser?.id;
+  convs.forEach(conv => { _partnerNames[conv.partner.id] = conv.partner.name; });
+  const html = convs.map(c => _convItemHtml(c, myId)).join('');
+  // Mobile dropdown list
+  const mobileList = document.getElementById('conversation-list');
+  if (mobileList) mobileList.innerHTML = html;
+  // Desktop sidebar list
+  const desktopList = document.getElementById('conversation-list-desktop');
+  if (desktopList) desktopList.innerHTML = html;
+  // Update mobile picker button to show active conversation
+  _updateConvPickerBtn();
 }
 
 // Update only the active highlight without re-rendering the whole list
 function _highlightActiveConv(partnerId) {
-  document.querySelectorAll('#conversation-list [data-partner-id]').forEach(el => {
-    const isActive = parseInt(el.dataset.partnerId, 10) === partnerId;
-    el.classList.toggle('bg-pickle-50', isActive);
+  ['#conversation-list [data-partner-id]', '#conversation-list-desktop [data-partner-id]'].forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      const isActive = parseInt(el.dataset.partnerId, 10) === partnerId;
+      el.classList.toggle('bg-pickle-50', isActive);
+    });
   });
+  _updateConvPickerBtn();
+}
+
+// Mobile conv picker helpers
+function _updateConvPickerBtn() {
+  const activeId = state.activePartner;
+  if (!activeId || !_convCache) return;
+  const conv = _convCache.find(c => c.partner.id === activeId);
+  if (!conv) return;
+  const p = conv.partner;
+  const initials = p.initials || p.name.slice(0, 2).toUpperCase();
+  const preview  = conv.last_message?.body?.substring(0, 45) || 'No messages yet';
+  const avatarEl = document.getElementById('conv-picker-avatar');
+  const nameEl   = document.getElementById('conv-picker-name');
+  const prevEl   = document.getElementById('conv-picker-preview');
+  if (avatarEl) avatarEl.textContent = initials;
+  if (nameEl)   nameEl.textContent   = p.name;
+  if (prevEl)   prevEl.textContent   = preview;
+}
+
+function toggleConvPicker() {
+  const dd  = document.getElementById('conv-picker-dropdown');
+  const bd  = document.getElementById('conv-picker-backdrop');
+  const chv = document.getElementById('conv-picker-chevron');
+  if (!dd) return;
+  const open = !dd.classList.contains('hidden');
+  dd.classList.toggle('hidden', open);
+  if (bd)  bd.classList.toggle('hidden', open);
+  if (chv) chv.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function closeConvPicker() {
+  const dd  = document.getElementById('conv-picker-dropdown');
+  const bd  = document.getElementById('conv-picker-backdrop');
+  const chv = document.getElementById('conv-picker-chevron');
+  if (dd)  dd.classList.add('hidden');
+  if (bd)  bd.classList.add('hidden');
+  if (chv) chv.style.transform = '';
 }
 
 async function renderConversations() {
