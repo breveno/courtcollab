@@ -2482,18 +2482,28 @@ function _highlightActiveConv(partnerId) {
 // Mobile conv picker helpers
 function _updateConvPickerBtn() {
   const activeId = state.activePartner;
-  if (!activeId || !_convCache) return;
+  const avatarEl = document.getElementById('conv-picker-avatar');
+  const nameEl   = document.getElementById('conv-picker-name');
+  const prevEl   = document.getElementById('conv-picker-preview');
+  if (!activeId || !_convCache) {
+    // No active conversation — hide avatar, reset text
+    if (avatarEl) { avatarEl.textContent = ''; avatarEl.classList.add('hidden'); avatarEl.classList.remove('flex'); }
+    if (nameEl)   nameEl.textContent = 'Select a conversation';
+    if (prevEl)   prevEl.textContent = 'Tap to choose';
+    return;
+  }
   const conv = _convCache.find(c => c.partner.id === activeId);
   if (!conv) return;
   const p = conv.partner;
   const initials = p.initials || p.name.slice(0, 2).toUpperCase();
   const preview  = conv.last_message?.body?.substring(0, 45) || 'No messages yet';
-  const avatarEl = document.getElementById('conv-picker-avatar');
-  const nameEl   = document.getElementById('conv-picker-name');
-  const prevEl   = document.getElementById('conv-picker-preview');
-  if (avatarEl) avatarEl.textContent = initials;
-  if (nameEl)   nameEl.textContent   = p.name;
-  if (prevEl)   prevEl.textContent   = preview;
+  if (avatarEl) {
+    avatarEl.textContent = initials;
+    avatarEl.classList.remove('hidden');
+    avatarEl.classList.add('flex');
+  }
+  if (nameEl) nameEl.textContent = p.name;
+  if (prevEl) prevEl.textContent = preview;
 }
 
 function toggleConvPicker() {
@@ -2563,8 +2573,23 @@ async function renderConversations() {
 function _setChatHeader(name) {
   const nameEl   = document.getElementById('chat-name');
   const avatarEl = document.getElementById('chat-avatar');
-  if (nameEl)   nameEl.textContent   = name;
-  if (avatarEl) avatarEl.textContent = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  if (nameEl) {
+    nameEl.textContent = name || 'Select a conversation';
+    nameEl.classList.toggle('text-gray-400', !name);
+    nameEl.classList.toggle('text-gray-900', !!name);
+  }
+  if (avatarEl) {
+    if (name) {
+      const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      avatarEl.textContent = initials;
+      avatarEl.classList.remove('hidden');
+      avatarEl.classList.add('flex');
+    } else {
+      avatarEl.textContent = '';
+      avatarEl.classList.add('hidden');
+      avatarEl.classList.remove('flex');
+    }
+  }
 }
 
 async function openConversation(partnerId, knownName = null) {
