@@ -3400,13 +3400,13 @@ async function loadStripeConnectStatus() {
         </div>`;
     } else {
       banner.innerHTML = `
-        <div class="flex items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-          <div class="flex items-center gap-2 text-amber-800">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-            <span class="font-medium">Connect your bank to receive your deal payouts.</span>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <div class="flex items-center gap-2 text-amber-800 mb-3">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            <span class="font-medium text-sm">Connect your bank to receive deal payouts.</span>
           </div>
           <button id="stripe-connect-btn" onclick="stripeConnectOnboard()"
-            class="shrink-0 bg-lime-400 text-gray-900 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-lime-500 transition">
+            class="w-full bg-lime-400 text-gray-900 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-lime-500 transition">
             Connect Stripe Payouts
           </button>
         </div>`;
