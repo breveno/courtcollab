@@ -245,6 +245,10 @@ function hideLoading() {
 
 // --- Auth Gate ---
 function showAuthGate() {
+  // Hard-reset horizontal scroll before the gate paints
+  document.documentElement.scrollLeft = 0;
+  document.body.scrollLeft = 0;
+  window.scrollTo(0, window.scrollY);
   const gate = document.getElementById('auth-gate');
   if (gate) gate.classList.remove('hidden');
   document.body.classList.add('no-scroll');
@@ -3768,6 +3772,11 @@ function startOnboarding(user) {
   if (dot4) dot4.style.display = isCreator ? '' : 'none';
 
   _onboardGoToStep(1);
+
+  // Hard-reset any horizontal scroll before the overlay paints
+  document.documentElement.scrollLeft = 0;
+  document.body.scrollLeft = 0;
+  window.scrollTo(0, window.scrollY);
 
   const overlay = document.getElementById('onboarding-overlay');
   if (overlay) {
