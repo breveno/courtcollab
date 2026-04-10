@@ -2570,6 +2570,25 @@ def change_password(request: Request, body: ChangePasswordIn, user: dict = Depen
     return {"ok": True}
 
 
+class DeleteAccountIn(BaseModel):
+    password: str = Field(min_length=1)
+
+@app.delete("/api/account", status_code=200)
+@limiter.limit("5/minute")
+def delete_account(request: Request, body: DeleteAccountIn, user: dict = Depends(current_user)):
+    if not _verify(body.password, user["password"]):
+        raise HTTPException(400, "Incorrect password")
+    with get_conn() as conn:
+        # Remove role-specific profile first
+        if user["role"] == "creator":
+            conn.execute("DELETE FROM creator_profiles WHERE user_id = ?", (user["id"],))
+        elif user["role"] == "brand":
+            conn.execute("DELETE FROM brand_profiles WHERE user_id = ?", (user["id"],))
+        conn.execute("DELETE FROM users WHERE id = ?", (user["id"],))
+        conn.commit()
+    return {"ok": True}
+
+
 class AccountUpdateIn(BaseModel):
     name:         Optional[str]      = None
     email:        Optional[EmailStr] = None

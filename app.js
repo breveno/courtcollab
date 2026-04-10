@@ -782,6 +782,42 @@ async function saveAccountPassword() {
   }
 }
 
+function showDeleteAccountConfirm() {
+  document.getElementById('delete-account-section').classList.add('hidden');
+  document.getElementById('delete-account-confirm').classList.remove('hidden');
+  document.getElementById('delete-account-pw').value = '';
+  document.getElementById('delete-account-error').classList.add('hidden');
+  setTimeout(() => document.getElementById('delete-account-pw')?.focus(), 50);
+}
+
+function cancelDeleteAccount() {
+  document.getElementById('delete-account-confirm').classList.add('hidden');
+  document.getElementById('delete-account-section').classList.remove('hidden');
+  document.getElementById('delete-account-pw').value = '';
+}
+
+async function confirmDeleteAccount() {
+  const pw  = document.getElementById('delete-account-pw')?.value || '';
+  const err = document.getElementById('delete-account-error');
+  if (!pw) {
+    err.textContent = 'Please enter your password.';
+    err.classList.remove('hidden');
+    return;
+  }
+  const btn = document.querySelector('#delete-account-confirm button:last-child');
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
+  try {
+    await apiDelete('/api/account', { password: pw });
+    closeModal('account-settings-modal');
+    showToast('Your account has been deleted.', 'success');
+    setTimeout(() => handleLogout(), 800);
+  } catch (e) {
+    err.textContent = e.message || 'Incorrect password. Please try again.';
+    err.classList.remove('hidden');
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete Forever'; }
+  }
+}
+
 let _navRafId = null;
 function navigate(page, activeNavId = null, _restoreScrollY = null) {
   if (!getToken()) { showAuthGate(); return; }

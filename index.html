@@ -1891,6 +1891,41 @@
         </div>
         <button onclick="saveAccountPassword()" class="w-full border border-gray-300 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition text-sm">Update Password</button>
       </div>
+
+      <!-- Divider -->
+      <div class="border-t border-gray-200 my-6"></div>
+
+      <!-- Delete Account Section -->
+      <div>
+        <h3 class="text-sm font-semibold text-red-600 uppercase tracking-wide mb-3">Danger Zone</h3>
+        <div id="delete-account-section">
+          <button onclick="showDeleteAccountConfirm()"
+            class="w-full border border-red-200 text-red-600 py-2.5 rounded-xl font-semibold hover:bg-red-50 transition text-sm">
+            Delete My Account
+          </button>
+        </div>
+        <!-- Confirm step — hidden until button above is clicked -->
+        <div id="delete-account-confirm" class="hidden space-y-3">
+          <p class="text-sm text-gray-600">This permanently deletes your account and all associated data. This cannot be undone.</p>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm your password to continue</label>
+            <input type="password" id="delete-account-pw"
+              class="w-full border border-red-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+              placeholder="Enter your password" />
+          </div>
+          <div id="delete-account-error" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+          <div class="flex gap-2">
+            <button onclick="cancelDeleteAccount()"
+              class="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition text-sm">
+              Cancel
+            </button>
+            <button onclick="confirmDeleteAccount()"
+              class="flex-1 bg-red-600 text-white py-2.5 rounded-xl font-semibold hover:bg-red-700 transition text-sm">
+              Delete Forever
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2797,6 +2832,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=79"></script>
+  <script src="app.js?v=80"></script>
 </body>
 </html>
