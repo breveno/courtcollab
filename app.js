@@ -4027,8 +4027,10 @@ function _onboardClose(saved = false) {
   document.body.classList.remove('no-scroll');
   document.body.style.overflow = '';
   document.documentElement.style.overflow = '';
-  // Snap any residual horizontal scroll back to 0
-  window.scrollTo(0, window.scrollY);
+  // Scroll to top and clear any residual horizontal scroll
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
   document.documentElement.scrollLeft = 0;
   document.body.scrollLeft = 0;
   _onboardSwipeInited = false; // reset so next onboard session re-attaches
