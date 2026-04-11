@@ -178,10 +178,10 @@
   .auth-error { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:0.5rem; padding:0.6rem 1rem; font-size:0.85rem; }
   /* Desktop two-column hero */
   @media(min-width:900px) {
-    .auth-gate-hero { padding:4rem 3rem 2.5rem; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; }
-    .auth-gate-hero .auth-gate-wrap { max-width:1000px; width:100%; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:4rem; text-align:left; }
-    .auth-hero-left { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; }
-    .auth-hero-right { flex:0 0 420px; display:flex; flex-direction:column; justify-content:center; }
+    .auth-gate-hero { padding:4rem 3rem 2.5rem; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:max(4rem, calc(50vh - 280px)); }
+    .auth-gate-hero .auth-gate-wrap { max-width:1000px; width:100%; display:flex; flex-direction:row; align-items:flex-start; justify-content:flex-start; gap:4rem; text-align:left; }
+    .auth-hero-left { flex:1; min-width:0; position:sticky; top:calc(50vh - 220px); }
+    .auth-hero-right { flex:0 0 420px; }
     .auth-hero-left .auth-gate-logo { justify-content:flex-start; }
     .auth-hero-left h1 { font-size:2.8rem; }
     .auth-hero-left p { margin-left:0; margin-right:0; }
@@ -2847,6 +2847,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=103"></script>
+  <script src="app.js?v=104"></script>
 </body>
 </html>
