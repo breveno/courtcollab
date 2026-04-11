@@ -3764,6 +3764,11 @@ let _onboardNiche        = '';
 let _onboardSkillLvl     = '';
 let _onboardSkills       = [];
 let _onboardIndustry     = '';
+// Cache step-2 creator text fields so they can be merged into the single
+// onboardFinish() API call (avoids race condition with two concurrent PUTs)
+let _onboardDisplayName  = '';
+let _onboardLocation     = '';
+let _onboardBio          = '';
 
 function _onboardPills(containerId, items, type, multi = false) {
   const el = document.getElementById(containerId);
@@ -3780,12 +3785,15 @@ function startOnboarding(user) {
   if (!user || ADMIN_EMAILS.includes(user.email)) return;
   if (localStorage.getItem(`onboarded_${user.id}`)) return;
 
-  _onboardUser       = user;
-  _onboardStep       = 1;
-  _onboardNiche      = '';
-  _onboardSkillLvl   = '';
-  _onboardSkills     = [];
-  _onboardIndustry   = '';
+  _onboardUser        = user;
+  _onboardStep        = 1;
+  _onboardNiche       = '';
+  _onboardSkillLvl    = '';
+  _onboardSkills      = [];
+  _onboardIndustry    = '';
+  _onboardDisplayName = '';
+  _onboardLocation    = '';
+  _onboardBio         = '';
 
   const isCreator      = user.role === 'creator';
   _onboardTotalSteps   = isCreator ? 4 : 2;
@@ -3991,17 +3999,29 @@ function onboardBack() {
 }
 
 async function onboardFinish() {
-  // Save step 3 (creator audience & rates) then advance to step 4 (Stripe)
+  // Combine ALL onboarding data (step 2 + step 3) into ONE API call so nothing gets overwritten
   try {
-    const ig  = parseInt(document.getElementById('onboard-ig')?.value  || '0') || 0;
-    const tt  = parseInt(document.getElementById('onboard-tt')?.value  || '0') || 0;
-    const yt  = parseInt(document.getElementById('onboard-yt')?.value  || '0') || 0;
-    const eng = parseFloat(document.getElementById('onboard-engagement')?.value || '0') || 0;
+    const ig   = parseInt(document.getElementById('onboard-ig')?.value  || '0') || 0;
+    const tt   = parseInt(document.getElementById('onboard-tt')?.value  || '0') || 0;
+    const yt   = parseInt(document.getElementById('onboard-yt')?.value  || '0') || 0;
+    const eng  = parseFloat(document.getElementById('onboard-engagement')?.value || '0') || 0;
     const rIg  = parseInt(document.getElementById('onboard-rate-ig')?.value  || '0') || 0;
     const rTt  = parseInt(document.getElementById('onboard-rate-tt')?.value  || '0') || 0;
     const rYt  = parseInt(document.getElementById('onboard-rate-yt')?.value  || '0') || 0;
     const rUgc = parseInt(document.getElementById('onboard-rate-ugc')?.value  || '0') || 0;
+    const demoAge       = document.getElementById('onboard-demo-age')?.value.trim()       || '';
+    const demoGender    = document.getElementById('onboard-demo-gender')?.value.trim()    || '';
+    const demoLocations = document.getElementById('onboard-demo-locations')?.value.trim() || '';
+
     const payload = {};
+    // ── Step 2 fields (cached when user clicked Next) ──
+    if (_onboardNiche)        payload.niche       = _onboardNiche;
+    if (_onboardSkillLvl)     payload.skill_level = _onboardSkillLvl;
+    if (_onboardSkills.length)payload.skills      = _onboardSkills;
+    if (_onboardDisplayName)  payload.name        = _onboardDisplayName;
+    if (_onboardLocation)     payload.location    = _onboardLocation;
+    if (_onboardBio)          payload.bio         = _onboardBio;
+    // ── Step 3 fields ──
     if (ig)   payload.followers_ig    = ig;
     if (tt)   payload.followers_tt    = tt;
     if (yt)   payload.followers_yt    = yt;
@@ -4010,12 +4030,10 @@ async function onboardFinish() {
     if (rTt)  payload.rate_tiktok     = rTt;
     if (rYt)  payload.rate_yt         = rYt;
     if (rUgc) payload.rate_ugc        = rUgc;
-    const demoAge       = document.getElementById('onboard-demo-age')?.value || '';
-    const demoGender    = document.getElementById('onboard-demo-gender')?.value || '';
-    const demoLocations = document.getElementById('onboard-demo-locations')?.value.trim() || '';
     if (demoAge)       payload.demo_age       = demoAge;
     if (demoGender)    payload.demo_gender    = demoGender;
     if (demoLocations) payload.demo_locations = demoLocations;
+
     if (Object.keys(payload).length) await apiPut('/api/creator/profile', payload);
   } catch (_) { /* best-effort */ }
   // Advance to Stripe connect step
@@ -4063,19 +4081,10 @@ function _onboardClose(saved = false) {
 }
 
 function _onboardSaveCreatorStep2() {
-  try {
-    const displayName = document.getElementById('onboard-display-name')?.value.trim() || '';
-    const location    = document.getElementById('onboard-location')?.value.trim() || '';
-    const bio         = document.getElementById('onboard-bio')?.value.trim() || '';
-    const payload  = {};
-    if (_onboardNiche)             payload.niche       = _onboardNiche;
-    if (_onboardSkillLvl)          payload.skill_level = _onboardSkillLvl;
-    if (_onboardSkills.length)     payload.skills      = _onboardSkills;
-    if (displayName)               payload.name        = displayName;
-    if (location)                  payload.location    = location;
-    if (bio)                       payload.bio         = bio;
-    if (Object.keys(payload).length) apiPut('/api/creator/profile', payload).catch(() => {});
-  } catch (_) { /* best-effort */ }
+  // Cache text fields — they'll be merged into the single onboardFinish() API call
+  _onboardDisplayName = document.getElementById('onboard-display-name')?.value.trim() || '';
+  _onboardLocation    = document.getElementById('onboard-location')?.value.trim() || '';
+  _onboardBio         = document.getElementById('onboard-bio')?.value.trim() || '';
 }
 
 async function _onboardSaveBrand() {
