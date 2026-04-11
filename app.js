@@ -3798,7 +3798,7 @@ function startOnboarding(user) {
   const ctaEl   = document.getElementById('onboard-cta-btn');
   const bullEl  = document.getElementById('onboard-bullets');
 
-  if (emojiEl) emojiEl.innerHTML = '<img src="logo.svg" alt="CourtCollab" class="w-16 h-16 mx-auto">';
+  if (emojiEl) emojiEl.innerHTML = '<img src="logo-dark.png" alt="CourtCollab" class="mx-auto" style="height:56px;width:auto;">';
   if (titleEl) titleEl.textContent = `Welcome, ${firstName}!`;
   if (subEl)   subEl.textContent   = isCreator
     ? "Let's get your creator profile ready — it only takes 2 minutes."
@@ -4006,6 +4006,12 @@ async function onboardFinish() {
     if (rTt)  payload.rate_tiktok     = rTt;
     if (rYt)  payload.rate_yt         = rYt;
     if (rUgc) payload.rate_ugc        = rUgc;
+    const demoAge       = document.getElementById('onboard-demo-age')?.value || '';
+    const demoGender    = document.getElementById('onboard-demo-gender')?.value || '';
+    const demoLocations = document.getElementById('onboard-demo-locations')?.value.trim() || '';
+    if (demoAge)       payload.demo_age       = demoAge;
+    if (demoGender)    payload.demo_gender    = demoGender;
+    if (demoLocations) payload.demo_locations = demoLocations;
     if (Object.keys(payload).length) await apiPut('/api/creator/profile', payload);
   } catch (_) { /* best-effort */ }
   // Advance to Stripe connect step
@@ -4054,12 +4060,14 @@ function _onboardClose(saved = false) {
 
 function _onboardSaveCreatorStep2() {
   try {
-    const location = document.getElementById('onboard-location')?.value.trim() || '';
-    const bio      = document.getElementById('onboard-bio')?.value.trim() || '';
+    const displayName = document.getElementById('onboard-display-name')?.value.trim() || '';
+    const location    = document.getElementById('onboard-location')?.value.trim() || '';
+    const bio         = document.getElementById('onboard-bio')?.value.trim() || '';
     const payload  = {};
     if (_onboardNiche)             payload.niche       = _onboardNiche;
     if (_onboardSkillLvl)          payload.skill_level = _onboardSkillLvl;
     if (_onboardSkills.length)     payload.skills      = _onboardSkills;
+    if (displayName)               payload.name        = displayName;
     if (location)                  payload.location    = location;
     if (bio)                       payload.bio         = bio;
     if (Object.keys(payload).length) apiPut('/api/creator/profile', payload).catch(() => {});
@@ -4068,16 +4076,18 @@ function _onboardSaveCreatorStep2() {
 
 async function _onboardSaveBrand() {
   try {
+    const companyName = document.getElementById('onboard-company-name')?.value.trim() || '';
     const website    = document.getElementById('onboard-website')?.value.trim() || '';
     const budgetMin  = parseInt(document.getElementById('onboard-budget-min')?.value || '0') || 0;
     const budgetMax  = parseInt(document.getElementById('onboard-budget-max')?.value || '0') || 0;
     const desc       = document.getElementById('onboard-brand-desc')?.value.trim() || '';
     const payload = {};
-    if (_onboardIndustry) payload.industry    = _onboardIndustry;
-    if (website)          payload.website     = website;
-    if (budgetMin)        payload.budget_min  = budgetMin;
-    if (budgetMax)        payload.budget_max  = budgetMax;
-    if (desc)             payload.description = desc;
+    if (companyName)      payload.company_name = companyName;
+    if (_onboardIndustry) payload.industry     = _onboardIndustry;
+    if (website)          payload.website      = website;
+    if (budgetMin)        payload.budget_min   = budgetMin;
+    if (budgetMax)        payload.budget_max   = budgetMax;
+    if (desc)             payload.description  = desc;
     if (Object.keys(payload).length) await apiPut('/api/brand/profile', payload);
   } catch (_) { /* best-effort */ }
 }

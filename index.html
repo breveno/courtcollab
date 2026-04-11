@@ -2593,6 +2593,11 @@
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
+                <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Display Name</label>
+                <input type="text" id="onboard-display-name" placeholder="Your creator name"
+                  class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+              </div>
+              <div>
                 <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Location</label>
                 <input type="text" id="onboard-location" placeholder="City, State"
                   class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
@@ -2608,8 +2613,28 @@
           <!-- Brand fields -->
           <div id="onboard-brand-fields" class="hidden space-y-5">
             <div>
+              <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Company Name</label>
+              <input type="text" id="onboard-company-name" placeholder="Your brand or company name"
+                class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+            </div>
+            <div>
               <p class="text-sm font-semibold text-gray-700 mb-2">Industry</p>
               <div class="flex flex-wrap gap-2" id="onboard-industry-pills"></div>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-700 mb-2">Campaign Budget Range <span class="font-normal text-gray-400 text-xs">(per campaign)</span></p>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-gray-500 mb-1 block">Min ($)</label>
+                  <input type="number" id="onboard-budget-min" placeholder="e.g. 500"
+                    class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 mb-1 block">Max ($)</label>
+                  <input type="number" id="onboard-budget-max" placeholder="e.g. 5000"
+                    class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                </div>
+              </div>
             </div>
             <div>
               <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Website <span class="font-normal text-gray-400">(optional)</span></label>
@@ -2684,6 +2709,38 @@
                   <input type="number" id="onboard-rate-ugc" placeholder="$"
                     class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
                 </div>
+              </div>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-700 mb-2">Audience Demographics <span class="font-normal text-gray-400 text-xs">(optional)</span></p>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-gray-500 mb-1 block">Primary Age Group</label>
+                  <select id="onboard-demo-age" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                    <option value="">Select age group</option>
+                    <option>18-24</option>
+                    <option>25-34</option>
+                    <option>35-44</option>
+                    <option>45-54</option>
+                    <option>55+</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 mb-1 block">Gender Split</label>
+                  <select id="onboard-demo-gender" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                    <option value="">Select split</option>
+                    <option>Mostly Male (70%+)</option>
+                    <option>Male Leaning (55-70%)</option>
+                    <option>Even Split</option>
+                    <option>Female Leaning (55-70%)</option>
+                    <option>Mostly Female (70%+)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mt-3">
+                <label class="text-xs text-gray-500 mb-1 block">Top Locations</label>
+                <input type="text" id="onboard-demo-locations" placeholder="e.g. US, Florida, Texas"
+                  class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
               </div>
             </div>
           </div>
@@ -2847,6 +2904,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=108"></script>
+  <script src="app.js?v=109"></script>
 </body>
 </html>
