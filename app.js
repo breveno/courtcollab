@@ -253,6 +253,20 @@ function showAuthGate() {
   if (gate) gate.classList.remove('hidden');
   document.body.classList.add('no-scroll');
   document.documentElement.classList.add('gate-open');
+  // Scroll auth gate to top
+  if (gate) gate.scrollTop = 0;
+  // Init scroll-pop animations
+  _initAuthScrollPop();
+}
+function _initAuthScrollPop() {
+  const gate = document.getElementById('auth-gate');
+  if (!gate) return;
+  const els = gate.querySelectorAll('.auth-pop');
+  if (!els.length) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('auth-pop-in'); });
+  }, { root: gate, threshold: 0.12 });
+  els.forEach(el => { el.classList.remove('auth-pop-in'); obs.observe(el); });
 }
 function hideAuthGate() {
   const gate = document.getElementById('auth-gate');

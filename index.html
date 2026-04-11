@@ -145,11 +145,24 @@
   html { overflow-x: clip; max-width: 100vw; overscroll-behavior-x: none; }
   html.gate-open { overflow: hidden; background: #0B1F4A; }
   body { max-width: 100vw; overflow-x: clip; overscroll-behavior-x: none; }
-  #auth-gate { position:fixed; inset:0; z-index:9999; display:flex; background:#0B1F4A; overscroll-behavior:none; touch-action:pan-y; }
+  #auth-gate { position:fixed; inset:0; z-index:9999; background:#0B1F4A; overflow-y:auto; overflow-x:hidden; overscroll-behavior:none; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
   #auth-gate.hidden { display:none; }
-  .auth-left { width:55%; background:linear-gradient(145deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%); display:flex; flex-direction:column; justify-content:space-between; padding:3.5rem 4rem 2.5rem; position:relative; overflow-y:auto; overflow-x:hidden; overscroll-behavior:none; -webkit-overflow-scrolling:touch; }
-  .auth-left::after { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231E6EA6' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); pointer-events:none; }
-  .auth-right { width:45%; background:white; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:3rem 2.5rem; overflow-y:auto; overflow-x:hidden; }
+  .auth-gate-hero { background:linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%); padding:4rem 1.5rem 5rem; text-align:center; position:relative; overflow:hidden; }
+  .auth-gate-hero::before { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231E6EA6' fill-opacity='0.12'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/G%3E%3C/svg%3E"); pointer-events:none; }
+  .auth-gate-wrap { max-width:480px; margin:0 auto; width:100%; }
+  .auth-form-card { background:white; border-radius:1.25rem; padding:2rem 2rem; box-shadow:0 20px 60px rgba(0,0,0,0.25); text-align:left; }
+  .auth-gate-section { padding:5rem 1.5rem; }
+  .auth-gate-section:nth-child(even) { background:rgba(255,255,255,0.03); }
+  .auth-gate-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1.25rem; margin-top:3rem; }
+  .auth-gate-card { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:1rem; padding:1.75rem; transition:background 0.2s,transform 0.2s; }
+  .auth-gate-card:hover { background:rgba(255,255,255,0.11); transform:translateY(-2px); }
+  .auth-gate-footer-bar { background:rgba(0,0,0,0.25); border-top:1px solid rgba(255,255,255,0.08); padding:1.5rem; display:flex; flex-wrap:wrap; gap:0.75rem 1.5rem; align-items:center; justify-content:space-between; }
+  /* Scroll pop-in animations */
+  .auth-pop { opacity:0; transform:translateY(48px) scale(0.96); transition:opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1); }
+  .auth-pop.auth-pop-in { opacity:1; transform:translateY(0) scale(1); }
+  .auth-pop-d1 { transition-delay:0.08s; }
+  .auth-pop-d2 { transition-delay:0.18s; }
+  .auth-pop-d3 { transition-delay:0.28s; }
   .auth-tab { flex:1; padding:0.45rem 1rem; font-weight:600; font-size:0.85rem; border-radius:0.45rem; cursor:pointer; transition:all 0.2s; text-align:center; }
   .auth-tab.active { background:#0B1F4A; color:#C8F135; }
   .auth-tab:not(.active) { color:#6b7280; }
@@ -159,13 +172,10 @@
   .auth-btn:hover { background:#acd120; }
   .auth-error { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:0.5rem; padding:0.6rem 1rem; font-size:0.85rem; }
   @media(max-width:768px) {
-    #auth-gate { flex-direction:column; overflow-y:auto; overscroll-behavior:none; }
-    .auth-left { width:100%; padding:1.5rem 1.5rem 2rem; flex:0 0 auto; min-height:unset; order:1; justify-content:flex-start; align-items:center; text-align:center; }
-    .auth-right { width:100%; flex:0 0 auto; padding:2rem 1.5rem; order:2; }
-    .auth-left-stats { display:none !important; }
-    .auth-left-features { margin-top:2rem !important; margin-bottom:1.5rem !important; align-items:center; }
-    .auth-left-features > div { width:100%; max-width:320px; }
-    .auth-left-signin-hint { display:flex !important; }
+    .auth-gate-hero { padding:2.5rem 1rem 3.5rem; }
+    .auth-gate-section { padding:3rem 1rem; }
+    .auth-gate-cards { grid-template-columns:1fr; }
+    .auth-form-card { padding:1.5rem 1.25rem; }
   }
   /* Mobile hamburger menu */
   #mobile-menu-dropdown { display:none; }
@@ -177,8 +187,7 @@
   @keyframes onboardSlideFromLeft  { from { opacity:0; transform:translateX(-40px); } to { opacity:1; transform:translateX(0); } }
   .onboard-slide-forward { animation: onboardSlideFromRight 0.28s cubic-bezier(0.4,0,0.2,1); }
   .onboard-slide-back    { animation: onboardSlideFromLeft  0.28s cubic-bezier(0.4,0,0.2,1); }
-  /* Why CourtCollab on auth page — always visible */
-  .auth-mobile-why { display:block; }
+  /* auth-mobile-why no longer used — Why CourtCollab is in the vertical scroll sections */
   /* Skeleton loaders */
   @keyframes shimmer {
     0%   { background-position: -600px 0; }
@@ -217,6 +226,7 @@
   }
   #app-splash.fade-out { animation: splashFade 0.4s ease forwards; }
   @keyframes splashFade { to { opacity: 0; pointer-events: none; } }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)} }
   #app-splash svg.splash-logo { filter: drop-shadow(0 0 24px rgba(200,241,53,0.4)); }
   </style>
 </head>
@@ -277,12 +287,14 @@
 
   <!-- Auth Gate -->
   <div id="auth-gate">
-    <!-- Left: Company Overview -->
-    <div class="auth-left">
-      <div class="relative z-10">
+
+    <!-- ═══ HERO: Logo + Form ═══ -->
+    <section class="auth-gate-hero">
+      <div class="auth-gate-wrap">
+
         <!-- Logo -->
-        <div class="flex items-center gap-3 mb-10">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="48" height="48">
+        <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-bottom:2rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="44" height="44">
             <defs>
               <g id="ag-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#1E6EA6"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#1E6EA6"/></g>
               <g id="ag-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#C8F135"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#C8F135"/></g>
@@ -291,233 +303,248 @@
             <circle cx="60" cy="60" r="52" fill="none" stroke="#1E6EA6" stroke-width="1.5"/>
             <g transform="translate(60,60) scale(0.4)"><use href="#ag-pb" transform="rotate(38)"/><use href="#ag-pf" transform="rotate(-38)"/><circle cx="0" cy="0" r="7" fill="#0B1F4A" stroke="#C8F135" stroke-width="2"/></g>
           </svg>
-          <span style="font-size:1.8rem;font-weight:900;letter-spacing:-0.03em;"><span style="color:#C8F135;">Court</span><span style="color:#fff;">Collab</span></span>
+          <span style="font-size:1.9rem;font-weight:900;letter-spacing:-0.03em;"><span style="color:#C8F135;">Court</span><span style="color:#fff;">Collab</span></span>
         </div>
 
-        <h1 style="color:white;font-size:2.2rem;font-weight:800;line-height:1.2;margin-bottom:1rem;">The Pickleball Creator &amp; Brand Marketplace</h1>
-        <p class="auth-left-tagline" style="color:rgba(255,255,255,0.7);font-size:1.05rem;line-height:1.7;margin-bottom:2.5rem;">CourtCollab connects pickleball content creators with brands looking to reach the sport's passionate and fast-growing audience — all in one streamlined platform.</p>
-        <div class="auth-left-signin-hint" style="display:none;margin-top:1rem;gap:0.75rem;">
-          <button onclick="showAuthTab('login');document.querySelector('.auth-right').scrollIntoView({behavior:'smooth'})" style="flex:1;background:#C8F135;color:#0B1F4A;padding:0.65rem 1rem;border-radius:0.5rem;font-weight:600;font-size:0.9rem;cursor:pointer;border:none;">Sign In</button>
-          <button onclick="showAuthTab('signup');document.querySelector('.auth-right').scrollIntoView({behavior:'smooth'})" style="flex:1;background:transparent;color:#C8F135;padding:0.65rem 1rem;border-radius:0.5rem;font-weight:600;font-size:0.9rem;cursor:pointer;border:2px solid #C8F135;">Create Account</button>
+        <!-- Headline -->
+        <div style="margin-bottom:0.75rem;display:inline-block;background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);border-radius:9999px;padding:0.3rem 1rem;font-size:0.78rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#C8F135;">The #1 Pickleball Creator Marketplace</div>
+        <h1 style="color:white;font-size:2.4rem;font-weight:900;line-height:1.15;margin:0.75rem 0 1rem;letter-spacing:-0.02em;">Connect Creators<br>with Top Brands</h1>
+        <p style="color:rgba(255,255,255,0.65);font-size:1rem;line-height:1.7;margin:0 auto 2.5rem;max-width:400px;">The marketplace where pickleball creators monetize their audience and brands find their perfect partners.</p>
+
+        <!-- Form Card -->
+        <div class="auth-form-card">
+          <h2 style="font-size:1.4rem;font-weight:800;color:#111;margin:0 0 0.3rem;">Welcome to CourtCollab</h2>
+          <p style="color:#6b7280;margin:0 0 1.5rem;font-size:0.9rem;">Sign in or create your account to get started.</p>
+
+          <!-- Tabs -->
+          <div style="display:flex;gap:0.5rem;background:#f3f4f6;border-radius:0.65rem;padding:0.3rem;margin-bottom:1.5rem;">
+            <button class="auth-tab active" id="tab-login" onclick="showAuthTab('login')">Sign In</button>
+            <button class="auth-tab" id="tab-signup" onclick="showAuthTab('signup')">Create Account</button>
+          </div>
+
+          <!-- Error -->
+          <div id="auth-error" class="auth-error hidden" style="margin-bottom:1rem;"></div>
+
+          <!-- Login Form -->
+          <form id="login-form" onsubmit="handleLogin(event)">
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email</label>
+                <input id="login-email" type="email" class="auth-input" placeholder="you@example.com" required />
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+                  <label style="font-size:0.85rem;font-weight:600;color:#374151;">Password</label>
+                  <button type="button" onclick="showForgotPassword()" style="font-size:0.8rem;color:#0B1F4A;font-weight:500;background:none;border:none;cursor:pointer;">Forgot password?</button>
+                </div>
+                <div style="position:relative;">
+                  <input id="login-password" type="password" class="auth-input" placeholder="••••••••" required style="padding-right:2.75rem;" />
+                  <button type="button" onclick="togglePassword('login-password', this)" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;" tabindex="-1">
+                    <svg id="login-password-eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <input type="checkbox" id="remember-me" style="width:1rem;height:1rem;accent-color:#C8F135;cursor:pointer;" checked />
+                <label for="remember-me" style="font-size:0.85rem;color:#374151;cursor:pointer;">Remember me</label>
+              </div>
+              <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Sign In</button>
+            </div>
+            <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Don't have an account? <button type="button" onclick="showAuthTab('signup')" style="color:#0B1F4A;font-weight:600;background:none;border:none;cursor:pointer;">Create one</button></p>
+          </form>
+
+          <!-- Forgot Password Form -->
+          <div id="forgot-password-form" style="display:none;">
+            <button type="button" onclick="showAuthTab('login')" style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:#6b7280;background:none;border:none;cursor:pointer;margin-bottom:1.25rem;padding:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+              Back to sign in
+            </button>
+            <h3 style="font-size:1.2rem;font-weight:700;color:#111;margin:0 0 0.4rem;">Reset your password</h3>
+            <p style="font-size:0.88rem;color:#6b7280;margin:0 0 1.25rem;">Enter your email and we'll send you a reset link.</p>
+            <div id="forgot-success" style="display:none;background:#f5fde0;border:1px solid #C8F135;border-radius:0.65rem;padding:0.85rem 1rem;font-size:0.88rem;color:#0B1F4A;margin-bottom:1rem;">
+              ✓ Check your email for a reset link. It expires in 1 hour.
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.85rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email address</label>
+                <input id="forgot-email" type="email" class="auth-input" placeholder="you@example.com" required />
+              </div>
+              <button type="button" onclick="handleForgotPassword()" class="auth-btn">Send Reset Link</button>
+            </div>
+          </div>
+
+          <!-- Reset Password Form -->
+          <div id="reset-password-form" style="display:none;">
+            <h3 style="font-size:1.2rem;font-weight:700;color:#111;margin:0 0 0.4rem;">Set a new password</h3>
+            <p style="font-size:0.88rem;color:#6b7280;margin:0 0 1.25rem;">Choose a new password for your account.</p>
+            <div id="reset-error" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:0.65rem;padding:0.85rem 1rem;font-size:0.88rem;color:#991b1b;margin-bottom:1rem;"></div>
+            <div style="display:flex;flex-direction:column;gap:0.85rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">New Password</label>
+                <div style="position:relative;">
+                  <input id="reset-password" type="password" class="auth-input" placeholder="Min. 6 characters" minlength="6" required style="padding-right:2.75rem;" />
+                  <button type="button" onclick="togglePassword('reset-password', this)" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;" tabindex="-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <button type="button" onclick="handleResetPassword()" class="auth-btn">Update Password</button>
+            </div>
+          </div>
+
+          <!-- Signup Form -->
+          <form id="signup-form" onsubmit="handleSignup(event)" style="display:none;">
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Full Name <span style="color:#ef4444;">*</span></label>
+                <input id="signup-name" type="text" class="auth-input" placeholder="Jane Smith" required />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email <span style="color:#ef4444;">*</span></label>
+                <input id="signup-email" type="email" class="auth-input" placeholder="you@example.com" required />
+              </div>
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Password <span style="color:#ef4444;">*</span></label>
+                <div style="position:relative;">
+                  <input id="signup-password" type="password" class="auth-input" placeholder="Min. 6 characters" required minlength="6" style="padding-right:2.75rem;" />
+                  <button type="button" onclick="togglePassword('signup-password', this)" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;" tabindex="-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.5rem;">I am a…</label>
+                <div style="display:flex;gap:0.75rem;">
+                  <label style="flex:1;min-width:0;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem 0.5rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-brand-label">
+                    <input type="radio" name="signup-role" value="brand" id="role-brand" style="display:none;" onchange="highlightRole()" checked />
+                    <span style="font-size:1.4rem;display:block;margin-bottom:0.2rem;">🏢</span>
+                    <span style="font-weight:600;font-size:0.9rem;color:#374151;">Brand</span>
+                  </label>
+                  <label style="flex:1;min-width:0;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem 0.5rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-creator-label">
+                    <input type="radio" name="signup-role" value="creator" id="role-creator" style="display:none;" onchange="highlightRole()" />
+                    <span style="font-size:1.4rem;display:block;margin-bottom:0.2rem;">🎥</span>
+                    <span style="font-weight:600;font-size:0.9rem;color:#374151;">Creator</span>
+                  </label>
+                </div>
+              </div>
+              <div id="brand-signup-fields" style="display:flex;flex-direction:column;gap:1rem;">
+                <div>
+                  <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Company Name <span style="color:#ef4444;">*</span></label>
+                  <input id="signup-company" type="text" class="auth-input" placeholder="Company name" />
+                </div>
+              </div>
+              <div id="creator-social-fields" style="display:none;flex-direction:column;gap:1rem;">
+                <div>
+                  <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Date of Birth <span style="color:#ef4444;">*</span></label>
+                  <input id="signup-birthday" type="date" class="auth-input" max="" />
+                </div>
+                <div style="background:#f5fde0;border-radius:0.5rem;padding:0.6rem 0.75rem;">
+                  <p style="font-size:0.8rem;color:#0B1F4A;font-weight:600;margin:0;">At least one social handle is required</p>
+                  <p style="font-size:0.75rem;color:#6b7280;margin:0.2rem 0 0;">This makes you discoverable to brands.</p>
+                </div>
+                <div>
+                  <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Instagram Handle</label>
+                  <div style="position:relative;">
+                    <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.95rem;">@</span>
+                    <input id="signup-instagram" type="text" class="auth-input" placeholder="yourhandle" style="padding-left:1.75rem;" />
+                  </div>
+                </div>
+                <div>
+                  <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">TikTok Handle</label>
+                  <div style="position:relative;">
+                    <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.95rem;">@</span>
+                    <input id="signup-tiktok" type="text" class="auth-input" placeholder="yourhandle" style="padding-left:1.75rem;" />
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Create Account</button>
+            </div>
+            <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Already have an account? <button type="button" onclick="showAuthTab('login')" style="color:#0B1F4A;font-weight:600;background:none;border:none;cursor:pointer;">Sign in</button></p>
+          </form>
+
+          <p style="text-align:center;margin-top:1.5rem;font-size:0.78rem;color:#9ca3af;">By continuing, you agree to CourtCollab's Terms of Service and Privacy Policy.</p>
+        </div><!-- /auth-form-card -->
+
+        <!-- Scroll hint -->
+        <div style="margin-top:2rem;display:flex;flex-direction:column;align-items:center;gap:0.4rem;color:rgba(255,255,255,0.4);">
+          <span style="font-size:0.75rem;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;">Scroll to learn more</span>
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="animation:bounce 1.8s infinite;"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
         </div>
 
-        <div class="auth-left-features" style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:3rem;">
-          <div style="display:flex;align-items:flex-start;gap:1rem;">
-            <div style="width:2.5rem;height:2.5rem;background:rgba(200,241,53,0.15);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg width="18" height="18" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-            </div>
-            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Creator Profiles &amp; Media Kits</p><p style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin:0;">Showcase your stats, niche, skills, and rates to attract the right brand partners.</p></div>
+      </div>
+    </section>
+
+    <!-- ═══ HOW IT WORKS ═══ -->
+    <section class="auth-gate-section">
+      <div class="auth-gate-wrap" style="max-width:900px;">
+        <div class="auth-pop" style="text-align:center;margin-bottom:0.5rem;">
+          <span style="display:inline-block;background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);border-radius:9999px;padding:0.3rem 1rem;font-size:0.75rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#C8F135;margin-bottom:1rem;">How It Works</span>
+          <h2 style="color:white;font-size:2rem;font-weight:800;margin:0 0 0.75rem;letter-spacing:-0.02em;">Get Started in 3 Steps</h2>
+          <p style="color:rgba(255,255,255,0.55);font-size:1rem;max-width:440px;margin:0 auto;">Whether you're a creator or a brand, CourtCollab makes it simple.</p>
+        </div>
+        <div class="auth-gate-cards">
+          <div class="auth-gate-card auth-pop auth-pop-d1">
+            <div style="width:2.75rem;height:2.75rem;background:#C8F135;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#0B1F4A;margin-bottom:1.25rem;">1</div>
+            <h3 style="color:white;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Build Your Profile</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:0.875rem;line-height:1.6;margin:0;">Creators set up a media kit with stats, rates, and niche. Brands post their campaign briefs in minutes.</p>
           </div>
-          <div style="display:flex;align-items:flex-start;gap:1rem;">
-            <div style="width:2.5rem;height:2.5rem;background:rgba(200,241,53,0.15);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg width="18" height="18" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            </div>
-            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Smart Brand Discovery</p><p style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin:0;">Brands find perfectly matched creators using filters, niches, and our AI scoring engine.</p></div>
+          <div class="auth-gate-card auth-pop auth-pop-d2">
+            <div style="width:2.75rem;height:2.75rem;background:#C8F135;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#0B1F4A;margin-bottom:1.25rem;">2</div>
+            <h3 style="color:white;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Connect &amp; Collaborate</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:0.875rem;line-height:1.6;margin:0;">Browse creators or campaigns, send messages, and negotiate terms — all inside the platform.</p>
           </div>
-          <div style="display:flex;align-items:flex-start;gap:1rem;">
-            <div style="width:2.5rem;height:2.5rem;background:rgba(200,241,53,0.15);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <div class="auth-gate-card auth-pop auth-pop-d3">
+            <div style="width:2.75rem;height:2.75rem;background:#C8F135;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#0B1F4A;margin-bottom:1.25rem;">3</div>
+            <h3 style="color:white;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Sign, Deliver &amp; Get Paid</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:0.875rem;line-height:1.6;margin:0;">Execute contracts, deliver content, and release escrow payments — all tracked in one place.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ WHY COURTCOLLAB ═══ -->
+    <section class="auth-gate-section">
+      <div class="auth-gate-wrap" style="max-width:900px;">
+        <div class="auth-pop" style="text-align:center;margin-bottom:0.5rem;">
+          <h2 style="color:white;font-size:2rem;font-weight:800;margin:0 0 0.75rem;letter-spacing:-0.02em;">Why CourtCollab?</h2>
+          <p style="color:rgba(255,255,255,0.55);font-size:1rem;max-width:440px;margin:0 auto;">Built specifically for the pickleball market — not a generic influencer tool.</p>
+        </div>
+        <div class="auth-gate-cards">
+          <div class="auth-gate-card auth-pop auth-pop-d1">
+            <div style="width:2.5rem;height:2.5rem;background:rgba(200,241,53,0.15);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;">
+              <svg width="18" height="18" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            </div>
+            <h3 style="color:white;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Verified Creator Stats</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:0.875rem;line-height:1.6;margin:0;">No fake numbers. Every creator's follower counts, engagement rates, and handles are verified.</p>
+          </div>
+          <div class="auth-gate-card auth-pop auth-pop-d2">
+            <div style="width:2.5rem;height:2.5rem;background:rgba(200,241,53,0.15);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;">
+              <svg width="18" height="18" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <h3 style="color:white;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Contract Protected Deals</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:0.875rem;line-height:1.6;margin:0;">All campaigns run through signed agreements. Protect your brand or lock in your creator rate.</p>
+          </div>
+          <div class="auth-gate-card auth-pop auth-pop-d3">
+            <div style="width:2.5rem;height:2.5rem;background:rgba(200,241,53,0.15);border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;">
               <svg width="18" height="18" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
-            <div><p style="color:white;font-weight:600;margin:0 0 2px;">Secure Deal &amp; Payment Flow</p><p style="color:rgba(255,255,255,0.6);font-size:0.9rem;margin:0;">Message, negotiate, and pay through the platform — with automatic platform fee splits.</p></div>
+            <h3 style="color:white;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Pay Only on Results</h3>
+            <p style="color:rgba(255,255,255,0.55);font-size:0.875rem;line-height:1.6;margin:0;">Funds held in escrow and released only when deliverables are confirmed and approved.</p>
           </div>
-        </div>
-
-        <!-- Why CourtCollab — mobile only (desktop sees it on the landing page) -->
-        <div class="auth-mobile-why relative z-10" style="margin-top:1.75rem;width:100%;max-width:340px;">
-          <p style="color:rgba(255,255,255,0.45);font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem;text-align:left;">Why CourtCollab?</p>
-          <div style="display:flex;flex-direction:column;gap:0.75rem;">
-            <div style="display:flex;align-items:flex-start;gap:0.85rem;background:rgba(255,255,255,0.07);border-radius:0.75rem;padding:0.75rem 0.9rem;">
-              <div style="width:2rem;height:2rem;background:rgba(200,241,53,0.15);border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <svg width="14" height="14" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-              </div>
-              <div><p style="color:white;font-weight:600;font-size:0.82rem;margin:0 0 1px;">Verified Creator Stats</p><p style="color:rgba(255,255,255,0.5);font-size:0.75rem;margin:0;line-height:1.4;">No fake numbers — all follower counts and engagement rates are verified.</p></div>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:0.85rem;background:rgba(255,255,255,0.07);border-radius:0.75rem;padding:0.75rem 0.9rem;">
-              <div style="width:2rem;height:2rem;background:rgba(200,241,53,0.15);border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <svg width="14" height="14" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-              </div>
-              <div><p style="color:white;font-weight:600;font-size:0.82rem;margin:0 0 1px;">Contract Protected Deals</p><p style="color:rgba(255,255,255,0.5);font-size:0.75rem;margin:0;line-height:1.4;">All campaigns run through signed agreements with built-in contract management.</p></div>
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:0.85rem;background:rgba(255,255,255,0.07);border-radius:0.75rem;padding:0.75rem 0.9rem;">
-              <div style="width:2rem;height:2rem;background:rgba(200,241,53,0.15);border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <svg width="14" height="14" fill="none" stroke="#C8F135" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              </div>
-              <div><p style="color:white;font-weight:600;font-size:0.82rem;margin:0 0 1px;">Pay Only on Results</p><p style="color:rgba(255,255,255,0.5);font-size:0.75rem;margin:0;line-height:1.4;">Funds held in escrow — released only when deliverables are approved.</p></div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Footer inside auth-left -->
-      <div class="relative z-10" style="border-top:1px solid rgba(255,255,255,0.1);padding-top:1.25rem;display:flex;flex-wrap:wrap;gap:0.75rem 1.5rem;align-items:center;justify-content:space-between;">
-        <p style="color:rgba(255,255,255,0.35);font-size:0.75rem;margin:0;">&copy; 2025 CourtCollab. All rights reserved.</p>
-        <div style="display:flex;gap:1.25rem;">
-          <button onclick="navigate('contact')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;transition:color 0.2s;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Privacy Policy</button>
-          <button onclick="navigate('contact')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;transition:color 0.2s;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Terms of Service</button>
-          <button onclick="navigate('contact')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;transition:color 0.2s;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Contact Us</button>
         </div>
       </div>
+    </section>
 
-    </div>
-
-    <!-- Right: Login / Signup Forms -->
-    <div class="auth-right">
-      <div style="width:100%;max-width:380px;">
-        <h2 style="font-size:1.6rem;font-weight:800;color:#111;margin:0 0 0.4rem;">Welcome back</h2>
-        <p style="color:#6b7280;margin:0 0 1.75rem;font-size:0.95rem;">Sign in or create your account to get started.</p>
-
-        <!-- Tabs -->
-        <div style="display:flex;gap:0.5rem;background:#f3f4f6;border-radius:0.65rem;padding:0.3rem;margin-bottom:1.75rem;">
-          <button class="auth-tab active" id="tab-login" onclick="showAuthTab('login')">Sign In</button>
-          <button class="auth-tab" id="tab-signup" onclick="showAuthTab('signup')">Create Account</button>
-        </div>
-
-        <!-- Error -->
-        <div id="auth-error" class="auth-error hidden" style="margin-bottom:1rem;"></div>
-
-        <!-- Login Form -->
-        <form id="login-form" onsubmit="handleLogin(event)">
-          <div style="display:flex;flex-direction:column;gap:1rem;">
-            <div>
-              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email</label>
-              <input id="login-email" type="email" class="auth-input" placeholder="you@example.com" required />
-            </div>
-            <div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
-                <label style="font-size:0.85rem;font-weight:600;color:#374151;">Password</label>
-                <button type="button" onclick="showForgotPassword()" style="font-size:0.8rem;color:#0B1F4A;font-weight:500;background:none;border:none;cursor:pointer;">Forgot password?</button>
-              </div>
-              <div style="position:relative;">
-                <input id="login-password" type="password" class="auth-input" placeholder="••••••••" required style="padding-right:2.75rem;" />
-                <button type="button" onclick="togglePassword('login-password', this)" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;" tabindex="-1">
-                  <svg id="login-password-eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                </button>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:0.5rem;">
-              <input type="checkbox" id="remember-me" style="width:1rem;height:1rem;accent-color:#C8F135;cursor:pointer;" checked />
-              <label for="remember-me" style="font-size:0.85rem;color:#374151;cursor:pointer;">Remember me</label>
-            </div>
-            <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Sign In</button>
-          </div>
-          <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Don't have an account? <button type="button" onclick="showAuthTab('signup')" style="color:#0B1F4A;font-weight:600;background:none;border:none;cursor:pointer;">Create one</button></p>
-        </form>
-
-        <!-- Forgot Password Form -->
-        <div id="forgot-password-form" style="display:none;">
-          <button type="button" onclick="showAuthTab('login')" style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:#6b7280;background:none;border:none;cursor:pointer;margin-bottom:1.25rem;padding:0;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            Back to sign in
-          </button>
-          <h3 style="font-size:1.2rem;font-weight:700;color:#111;margin:0 0 0.4rem;">Reset your password</h3>
-          <p style="font-size:0.88rem;color:#6b7280;margin:0 0 1.25rem;">Enter your email and we'll send you a reset link.</p>
-          <div id="forgot-success" style="display:none;background:#f5fde0;border:1px solid #C8F135;border-radius:0.65rem;padding:0.85rem 1rem;font-size:0.88rem;color:#0B1F4A;margin-bottom:1rem;">
-            ✓ Check your email for a reset link. It expires in 1 hour.
-          </div>
-          <div style="display:flex;flex-direction:column;gap:0.85rem;">
-            <div>
-              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email address</label>
-              <input id="forgot-email" type="email" class="auth-input" placeholder="you@example.com" required />
-            </div>
-            <button type="button" onclick="handleForgotPassword()" class="auth-btn">Send Reset Link</button>
-          </div>
-        </div>
-
-        <!-- Reset Password Form (shown when ?reset_token= is in URL) -->
-        <div id="reset-password-form" style="display:none;">
-          <h3 style="font-size:1.2rem;font-weight:700;color:#111;margin:0 0 0.4rem;">Set a new password</h3>
-          <p style="font-size:0.88rem;color:#6b7280;margin:0 0 1.25rem;">Choose a new password for your account.</p>
-          <div id="reset-error" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:0.65rem;padding:0.85rem 1rem;font-size:0.88rem;color:#991b1b;margin-bottom:1rem;"></div>
-          <div style="display:flex;flex-direction:column;gap:0.85rem;">
-            <div>
-              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">New Password</label>
-              <div style="position:relative;">
-                <input id="reset-password" type="password" class="auth-input" placeholder="Min. 6 characters" minlength="6" required style="padding-right:2.75rem;" />
-                <button type="button" onclick="togglePassword('reset-password', this)" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;" tabindex="-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                </button>
-              </div>
-            </div>
-            <button type="button" onclick="handleResetPassword()" class="auth-btn">Update Password</button>
-          </div>
-        </div>
-
-        <!-- Signup Form -->
-        <form id="signup-form" onsubmit="handleSignup(event)" style="display:none;">
-          <div style="display:flex;flex-direction:column;gap:1rem;">
-            <div>
-              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Full Name <span style="color:#ef4444;">*</span></label>
-              <input id="signup-name" type="text" class="auth-input" placeholder="Jane Smith" required />
-            </div>
-            <div>
-              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email <span style="color:#ef4444;">*</span></label>
-              <input id="signup-email" type="email" class="auth-input" placeholder="you@example.com" required />
-            </div>
-            <div>
-              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Password <span style="color:#ef4444;">*</span></label>
-              <div style="position:relative;">
-                <input id="signup-password" type="password" class="auth-input" placeholder="Min. 6 characters" required minlength="6" style="padding-right:2.75rem;" />
-                <button type="button" onclick="togglePassword('signup-password', this)" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;" tabindex="-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                </button>
-              </div>
-            </div>
-            <div>
-              <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.5rem;">I am a…</label>
-              <div style="display:flex;gap:0.75rem;">
-                <label style="flex:1;min-width:0;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem 0.5rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-brand-label">
-                  <input type="radio" name="signup-role" value="brand" id="role-brand" style="display:none;" onchange="highlightRole()" checked />
-                  <span style="font-size:1.4rem;display:block;margin-bottom:0.2rem;">🏢</span>
-                  <span style="font-weight:600;font-size:0.9rem;color:#374151;">Brand</span>
-                </label>
-                <label style="flex:1;min-width:0;border:2px solid #e5e7eb;border-radius:0.65rem;padding:0.75rem 0.5rem;cursor:pointer;text-align:center;transition:all 0.2s;" id="role-creator-label">
-                  <input type="radio" name="signup-role" value="creator" id="role-creator" style="display:none;" onchange="highlightRole()" />
-                  <span style="font-size:1.4rem;display:block;margin-bottom:0.2rem;">🎥</span>
-                  <span style="font-weight:600;font-size:0.9rem;color:#374151;">Creator</span>
-                </label>
-              </div>
-            </div>
-            <!-- Brand-only fields (shown when Brand is selected) -->
-            <div id="brand-signup-fields" style="display:flex;flex-direction:column;gap:1rem;">
-              <div>
-                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Company Name <span style="color:#ef4444;">*</span></label>
-                <input id="signup-company" type="text" class="auth-input" placeholder="Company name" />
-              </div>
-            </div>
-            <!-- Creator-only social handles (shown when Creator is selected) -->
-            <div id="creator-social-fields" style="display:none;flex-direction:column;gap:1rem;">
-              <div>
-                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Date of Birth <span style="color:#ef4444;">*</span></label>
-                <input id="signup-birthday" type="date" class="auth-input" max="" />
-              </div>
-              <div style="background:#f5fde0;border-radius:0.5rem;padding:0.6rem 0.75rem;">
-                <p style="font-size:0.8rem;color:#0B1F4A;font-weight:600;margin:0;">At least one social handle is required</p>
-                <p style="font-size:0.75rem;color:#6b7280;margin:0.2rem 0 0;">This makes you discoverable to brands.</p>
-              </div>
-              <div>
-                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Instagram Handle</label>
-                <div style="position:relative;">
-                  <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.95rem;">@</span>
-                  <input id="signup-instagram" type="text" class="auth-input" placeholder="yourhandle" style="padding-left:1.75rem;" />
-                </div>
-              </div>
-              <div>
-                <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">TikTok Handle</label>
-                <div style="position:relative;">
-                  <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.95rem;">@</span>
-                  <input id="signup-tiktok" type="text" class="auth-input" placeholder="yourhandle" style="padding-left:1.75rem;" />
-                </div>
-              </div>
-            </div>
-            <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Create Account</button>
-          </div>
-          <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Already have an account? <button type="button" onclick="showAuthTab('login')" style="color:#0B1F4A;font-weight:600;background:none;border:none;cursor:pointer;">Sign in</button></p>
-        </form>
-
-        <p style="text-align:center;margin-top:2rem;font-size:0.78rem;color:#9ca3af;">By continuing, you agree to CourtCollab's Terms of Service and Privacy Policy.</p>
+    <!-- ═══ FOOTER ═══ -->
+    <div class="auth-gate-footer-bar">
+      <p style="color:rgba(255,255,255,0.35);font-size:0.75rem;margin:0;">&copy; 2025 CourtCollab. All rights reserved.</p>
+      <div style="display:flex;gap:1.25rem;">
+        <button onclick="navigate('contact')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Privacy Policy</button>
+        <button onclick="navigate('contact')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Terms of Service</button>
+        <button onclick="navigate('contact')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Contact Us</button>
       </div>
     </div>
+
   </div>
 
   <!-- Nav -->
@@ -2868,6 +2895,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=86"></script>
+  <script src="app.js?v=87"></script>
 </body>
 </html>
