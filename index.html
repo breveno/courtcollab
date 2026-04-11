@@ -157,10 +157,10 @@
   .auth-gate-section-white { background:#ffffff; }
   .auth-gate-card-white { background:#f9fafb; border:1px solid #e5e7eb; border-radius:1rem; padding:1.75rem; transition:box-shadow 0.2s,transform 0.2s; }
   .auth-gate-card-white:hover { box-shadow:0 8px 24px rgba(11,31,74,0.1); transform:translateY(-3px); }
-  /* Why CourtCollab — lime section */
-  .auth-gate-section-lime { background:#C8F135; }
-  .auth-gate-card-lime { background:#0B1F4A; border-radius:1rem; padding:1.75rem; transition:background 0.2s,transform 0.2s; }
-  .auth-gate-card-lime:hover { background:#163a70; transform:translateY(-3px); }
+  /* Why CourtCollab — dark section with lime accents */
+  .auth-gate-section-lime { background:#0f172a; border-top:3px solid #C8F135; }
+  .auth-gate-card-lime { background:rgba(255,255,255,0.05); border:1px solid rgba(200,241,53,0.15); border-radius:1rem; padding:1.75rem; transition:background 0.2s,transform 0.2s; }
+  .auth-gate-card-lime:hover { background:rgba(200,241,53,0.07); transform:translateY(-3px); }
   .auth-gate-footer-bar { background:#0B1F4A; border-top:2px solid rgba(200,241,53,0.2); padding:1.5rem; display:flex; flex-wrap:wrap; gap:0.75rem 1.5rem; align-items:center; justify-content:space-between; }
   /* Scroll pop-in animations */
   .auth-pop { opacity:0; transform:translateY(48px) scale(0.96); transition:opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1); }
@@ -512,8 +512,8 @@
     <section class="auth-gate-section auth-gate-section-lime">
       <div class="auth-gate-wrap" style="max-width:900px;">
         <div class="auth-pop" style="text-align:center;margin-bottom:0.5rem;">
-          <h2 style="color:#0B1F4A;font-size:2rem;font-weight:800;margin:0 0 0.75rem;letter-spacing:-0.02em;">Why CourtCollab?</h2>
-          <p style="color:rgba(11,31,74,0.6);font-size:1rem;max-width:440px;margin:0 auto;">Built specifically for the pickleball market — not a generic influencer tool.</p>
+          <h2 style="color:white;font-size:2rem;font-weight:800;margin:0 0 0.75rem;letter-spacing:-0.02em;">Why CourtCollab?</h2>
+          <p style="color:rgba(255,255,255,0.5);font-size:1rem;max-width:440px;margin:0 auto;">Built specifically for the pickleball market — not a generic influencer tool.</p>
         </div>
         <div class="auth-gate-cards">
           <div class="auth-gate-card-lime auth-pop auth-pop-d1">
@@ -2901,6 +2901,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=88"></script>
+  <script src="app.js?v=89"></script>
 </body>
 </html>
