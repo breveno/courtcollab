@@ -3939,6 +3939,10 @@ function _onboardGoToStep(n) {
       dot.style.background = '#e5e7eb';
     }
   }
+
+  // Always scroll steps wrapper back to top on step change
+  const wrapper = document.getElementById('onboard-steps-wrapper');
+  if (wrapper) wrapper.scrollTop = 0;
 }
 
 function onboardSelectPill(btn, type, value) {
