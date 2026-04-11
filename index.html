@@ -251,7 +251,7 @@
   #app-splash svg.splash-logo { filter: drop-shadow(0 0 24px rgba(200,241,53,0.4)); }
   </style>
 </head>
-<body class="font-sans bg-gray-50 text-gray-900 min-h-screen">
+<body class="font-sans text-gray-900 min-h-screen" style="background:#0B1F4A">
 
   <!-- Initial app splash screen -->
   <div id="app-splash">
@@ -1090,14 +1090,14 @@
   </div><!-- /page-landing -->
 
   <!-- Creator Dashboard Page -->
-  <div id="page-creator-dashboard" class="page bg-gray-50 min-h-screen">
+  <div id="page-creator-dashboard" class="page min-h-screen" style="background:#0B1F4A">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900" id="creator-dash-greeting">Your Dashboard</h1>
-          <p class="text-gray-500 mt-0.5 text-sm">Your earnings, deals, and activity at a glance</p>
+          <h1 class="text-2xl font-bold text-white" id="creator-dash-greeting">Your Dashboard</h1>
+          <p class="mt-0.5 text-sm" style="color:rgba(255,255,255,0.6)">Your earnings, deals, and activity at a glance</p>
         </div>
         <button onclick="navigate('creator-profile')" class="flex items-center gap-2 border border-gray-300 bg-white text-gray-700 px-4 py-2 rounded-xl font-medium hover:bg-gray-50 transition text-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -1134,8 +1134,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 class="text-3xl font-bold">Browse Creators</h1>
-          <p class="text-gray-500 mt-1">Find the perfect pickleball creator for your campaign</p>
+          <h1 class="text-3xl font-bold text-white">Browse Creators</h1>
+          <p class="mt-1" style="color:rgba(255,255,255,0.6)">Find the perfect pickleball creator for your campaign</p>
         </div>
         <button onclick="switchRole('creator');navigate('creator-profile')" class="bg-lime-400 text-gray-900 px-5 py-2.5 rounded-xl font-medium hover:bg-lime-500 transition whitespace-nowrap creator-only">+ Create Your Profile</button>
       </div>
@@ -1206,7 +1206,7 @@
 
       <!-- Results count -->
       <div id="creator-results-bar" class="flex items-center justify-between mb-4 hidden">
-        <p id="creator-results-count" class="text-sm text-gray-500"></p>
+        <p id="creator-results-count" class="text-sm" style="color:rgba(255,255,255,0.6)"></p>
       </div>
 
       <!-- Creator Grid -->
@@ -1219,8 +1219,8 @@
   <!-- Creator Profile / Edit Page -->
   <div id="page-creator-profile" class="page">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 class="text-3xl font-bold mb-2">Your Creator Profile</h1>
-      <p class="text-gray-500 mb-4">Set up your profile so brands can find and connect with you</p>
+      <h1 class="text-3xl font-bold text-white mb-2">Your Creator Profile</h1>
+      <p class="mb-4" style="color:rgba(255,255,255,0.6)">Set up your profile so brands can find and connect with you</p>
 
       <!-- Account Settings -->
       <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
@@ -1462,8 +1462,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 class="text-3xl font-bold">Campaigns</h1>
-          <p class="text-gray-500 mt-1" id="campaigns-subtitle">Browse active campaigns from top brands</p>
+          <h1 class="text-3xl font-bold text-white">Campaigns</h1>
+          <p class="mt-1" id="campaigns-subtitle" style="color:rgba(255,255,255,0.6)">Browse active campaigns from top brands</p>
         </div>
         <div id="post-campaign-btn-wrap"></div>
       </div>
@@ -1478,8 +1478,8 @@
   <div id="page-matching" class="page">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="mb-8">
-        <h1 class="text-3xl font-bold">Smart Discovery</h1>
-        <p class="text-gray-500 mt-1">AI-powered matching between creators and campaigns</p>
+        <h1 class="text-3xl font-bold text-white">Smart Discovery</h1>
+        <p class="mt-1" style="color:rgba(255,255,255,0.6)">AI-powered matching between creators and campaigns</p>
       </div>
 
       <!-- Match Criteria -->
@@ -2089,8 +2089,8 @@
       <!-- Brand View -->
       <div class="brand-only">
         <div class="mb-8">
-          <h1 class="text-3xl font-bold">Payments</h1>
-          <p class="text-gray-500 mt-1">Pay for active deals and track your transaction history</p>
+          <h1 class="text-3xl font-bold text-white">Payments</h1>
+          <p class="mt-1" style="color:rgba(255,255,255,0.6)">Pay for active deals and track your transaction history</p>
         </div>
 
         <!-- Pay for a Deal -->
@@ -2126,8 +2126,8 @@
       <!-- Creator View -->
       <div class="creator-only">
         <div class="mb-8">
-          <h1 class="text-3xl font-bold">Earnings</h1>
-          <p class="text-gray-500 mt-1">Track your payouts and manage your payout method</p>
+          <h1 class="text-3xl font-bold text-white">Earnings</h1>
+          <p class="mt-1" style="color:rgba(255,255,255,0.6)">Track your payouts and manage your payout method</p>
         </div>
 
         <!-- Stripe Connect Payout Setup -->
@@ -2243,13 +2243,13 @@
   </div>
 
   <!-- Brand Portal -->
-  <div id="page-brand-portal" class="page bg-gray-50 min-h-screen">
+  <div id="page-brand-portal" class="page min-h-screen" style="background:#0B1F4A">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Header -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900" id="brand-portal-greeting">Welcome back</h1>
-          <p class="text-gray-500 mt-0.5 text-sm">Here's what's happening with your campaigns</p>
+          <h1 class="text-2xl font-bold text-white" id="brand-portal-greeting">Welcome back</h1>
+          <p class="mt-0.5 text-sm" style="color:rgba(255,255,255,0.6)">Here's what's happening with your campaigns</p>
         </div>
         <div class="flex gap-3">
           <button onclick="openModal('campaign-modal')" class="bg-pickle-700 text-white px-4 py-2 rounded-xl font-medium hover:bg-pickle-800 transition flex items-center gap-2 text-sm">
@@ -2290,8 +2290,8 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div class="flex items-center justify-between mb-8">
         <div>
-          <h1 class="text-3xl font-extrabold text-gray-900">Admin Dashboard</h1>
-          <p class="text-gray-500 mt-1">Manage all platform users</p>
+          <h1 class="text-3xl font-extrabold text-white">Admin Dashboard</h1>
+          <p class="mt-1" style="color:rgba(255,255,255,0.6)">Manage all platform users</p>
         </div>
         <button id="admin-delete-btn" onclick="deleteSelectedUsers()"
           class="hidden bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-xl transition flex items-center gap-2">
@@ -2409,22 +2409,22 @@
       <div class="w-20 h-20 bg-pickle-100 rounded-3xl flex items-center justify-center mb-6">
         <svg class="w-10 h-10 text-pickle-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       </div>
-      <h1 class="text-7xl font-black text-gray-900 mb-3">404</h1>
-      <p class="text-xl font-semibold text-gray-700 mb-2">Page not found</p>
-      <p class="text-gray-400 mb-8 max-w-sm text-sm">Looks like this page doesn't exist. It may have been moved or the link might be broken.</p>
+      <h1 class="text-7xl font-black text-white mb-3">404</h1>
+      <p class="text-xl font-semibold text-white mb-2">Page not found</p>
+      <p class="mb-8 max-w-sm text-sm" style="color:rgba(255,255,255,0.6)">Looks like this page doesn't exist. It may have been moved or the link might be broken.</p>
       <button onclick="navigate('landing')" class="bg-pickle-700 text-white px-8 py-3 rounded-xl font-semibold hover:bg-pickle-800 transition">Back to Home</button>
     </div>
   </div>
 
   <!-- FAQ for Creators Page -->
-  <div id="page-faq-creators" class="page bg-gray-50 min-h-screen">
+  <div id="page-faq-creators" class="page min-h-screen" style="background:#0B1F4A">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <button onclick="navigateBack()" class="text-sm text-pickle-600 hover:underline mb-6 flex items-center gap-1">
+      <button onclick="navigateBack()" class="text-sm hover:underline mb-6 flex items-center gap-1" style="color:rgba(255,255,255,0.6)">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back
       </button>
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">FAQ for Creators</h1>
-      <p class="text-gray-500 mb-10">Everything you need to know about using CourtCollab as a creator.</p>
+      <h1 class="text-3xl font-bold text-white mb-2">FAQ for Creators</h1>
+      <p class="mb-10" style="color:rgba(255,255,255,0.6)">Everything you need to know about using CourtCollab as a creator.</p>
       <div class="space-y-4" id="faq-creators-list">
         <!-- Q1 -->
         <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -2481,14 +2481,14 @@
   </div>
 
   <!-- FAQ for Brands Page -->
-  <div id="page-faq-brands" class="page bg-gray-50 min-h-screen">
+  <div id="page-faq-brands" class="page min-h-screen" style="background:#0B1F4A">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <button onclick="navigateBack()" class="text-sm text-pickle-600 hover:underline mb-6 flex items-center gap-1">
+      <button onclick="navigateBack()" class="text-sm hover:underline mb-6 flex items-center gap-1" style="color:rgba(255,255,255,0.6)">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back
       </button>
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">FAQ for Brands</h1>
-      <p class="text-gray-500 mb-10">Everything you need to know about using CourtCollab as a brand.</p>
+      <h1 class="text-3xl font-bold text-white mb-2">FAQ for Brands</h1>
+      <p class="mb-10" style="color:rgba(255,255,255,0.6)">Everything you need to know about using CourtCollab as a brand.</p>
       <div class="space-y-4" id="faq-brands-list">
         <!-- Q1 -->
         <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -2847,6 +2847,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=104"></script>
+  <script src="app.js?v=105"></script>
 </body>
 </html>
