@@ -300,14 +300,17 @@
 
         <!-- Logo -->
         <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-bottom:2rem;">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="44" height="44">
-            <defs>
-              <g id="ag-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#1E6EA6"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#1E6EA6"/></g>
-              <g id="ag-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#C8F135"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#C8F135"/></g>
-            </defs>
-            <circle cx="60" cy="60" r="56" fill="#0B1F4A"/>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="#1E6EA6" stroke-width="1.5"/>
-            <g transform="translate(60,60) scale(0.4)"><use href="#ag-pb" transform="rotate(38)"/><use href="#ag-pf" transform="rotate(-38)"/><circle cx="0" cy="0" r="7" fill="#0B1F4A" stroke="#C8F135" stroke-width="2"/></g>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 60" width="52" height="52" fill="none">
+            <!-- Blue paddle (left, behind) -->
+            <g transform="translate(23,29) rotate(-32)">
+              <rect x="-12" y="-34" width="24" height="34" rx="10" fill="#3D7FC2"/>
+              <rect x="-4.5" y="1" width="9" height="23" rx="3.5" fill="#1a3a6e"/>
+            </g>
+            <!-- Green paddle (right, front) -->
+            <g transform="translate(47,29) rotate(32)">
+              <rect x="-12" y="-34" width="24" height="34" rx="10" fill="#7DC433"/>
+              <rect x="-4.5" y="1" width="9" height="23" rx="3.5" fill="#2d5c0a"/>
+            </g>
           </svg>
           <span style="font-size:1.9rem;font-weight:900;letter-spacing:-0.03em;"><span style="color:#C8F135;">Court</span><span style="color:#fff;">Collab</span></span>
         </div>
@@ -558,19 +561,18 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16 pr-4 sm:pr-0">
         <div class="flex items-center cursor-pointer" onclick="navigate('landing')">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" height="36" style="max-width:180px;width:auto;" aria-label="CourtCollab">
-            <defs>
-              <g id="nav-pb"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#1E6EA6"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#1E6EA6"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#0B1F4A" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#0B1F4A" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#0B1F4A" stroke-width="1.5" stroke-linecap="round"/></g>
-              <g id="nav-pf"><rect x="-16" y="-46" width="32" height="46" rx="13" fill="#C8F135"/><rect x="-6" y="0" width="12" height="38" rx="4" fill="#C8F135"/><line x1="-5" y1="24" x2="5" y2="24" stroke="#acd120" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="30" x2="5" y2="30" stroke="#acd120" stroke-width="1.5" stroke-linecap="round"/><line x1="-5" y1="36" x2="5" y2="36" stroke="#acd120" stroke-width="1.5" stroke-linecap="round"/></g>
-            </defs>
-            <g transform="translate(60,60) scale(0.4)">
-              <circle cx="0" cy="0" r="96" fill="#0B1F4A"/>
-              <circle cx="0" cy="0" r="90" fill="none" stroke="#1E6EA6" stroke-width="1.5"/>
-              <use href="#nav-pb" transform="rotate(38)"/>
-              <use href="#nav-pf" transform="rotate(-38)"/>
-              <circle cx="0" cy="0" r="7" fill="#0B1F4A" stroke="#C8F135" stroke-width="2"/>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 68" height="36" style="max-width:185px;width:auto;" aria-label="CourtCollab" fill="none">
+            <!-- Blue paddle (left, behind) -->
+            <g transform="translate(26,32) rotate(-32)">
+              <rect x="-11" y="-30" width="22" height="30" rx="9" fill="#3D7FC2"/>
+              <rect x="-4" y="1" width="8" height="19" rx="3" fill="#1a3a6e"/>
             </g>
-            <text x="118" y="68" font-family="'Inter',system-ui,sans-serif" font-weight="800" font-size="46" dominant-baseline="middle" text-anchor="start"><tspan fill="#C8F135">Court</tspan><tspan fill="#ffffff">Collab</tspan></text>
+            <!-- Green paddle (right, front) -->
+            <g transform="translate(44,32) rotate(32)">
+              <rect x="-11" y="-30" width="22" height="30" rx="9" fill="#7DC433"/>
+              <rect x="-4" y="1" width="8" height="19" rx="3" fill="#2d5c0a"/>
+            </g>
+            <text x="72" y="34" font-family="'Inter',system-ui,sans-serif" font-weight="800" font-size="40" dominant-baseline="middle" text-anchor="start"><tspan fill="#C8F135">Court</tspan><tspan fill="#ffffff">Collab</tspan></text>
           </svg>
         </div>
         <div class="hidden md:flex items-center gap-1" id="main-nav">
@@ -2901,6 +2903,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=90"></script>
+  <script src="app.js?v=91"></script>
 </body>
 </html>
