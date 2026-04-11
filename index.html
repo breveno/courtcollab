@@ -2548,6 +2548,11 @@
   <div id="onboarding-overlay" class="fixed inset-0 hidden items-center justify-center p-4" style="background:rgba(10,25,10,0.82);z-index:9998;display:none;">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" style="max-height:90vh;">
 
+      <!-- Navy logo header -->
+      <div style="background:linear-gradient(135deg,#0B1F4A 0%,#163a70 60%,#0d2a60 100%);padding:1.25rem 2rem;display:flex;align-items:center;justify-content:center;">
+        <img src="logo-transparent.png" alt="CourtCollab" style="height:44px;width:auto;">
+      </div>
+
       <!-- Top progress bar -->
       <div class="h-1.5 bg-gray-100">
         <div id="onboard-progress" class="h-full bg-pickle-600 transition-all duration-500 ease-out" style="width:33%"></div>
@@ -2558,7 +2563,7 @@
 
         <!-- Step 1: Welcome -->
         <div id="onboard-step-1" class="onboard-step p-8 text-center">
-          <div class="mb-4" id="onboard-emoji"><img src="logo-dark.png" alt="CourtCollab" class="mx-auto" style="height:56px;width:auto;"></div>
+          <div class="mb-4 hidden" id="onboard-emoji"></div>
           <h1 class="text-2xl font-black text-gray-900 mb-2" id="onboard-title">Welcome to CourtCollab!</h1>
           <p class="text-gray-500 text-sm mb-6" id="onboard-sub">Let's set up your profile in just a couple of steps.</p>
           <div class="text-left bg-pickle-50 rounded-2xl p-5 mb-7 space-y-3.5" id="onboard-bullets"></div>
@@ -2904,6 +2909,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=109"></script>
+  <script src="app.js?v=110"></script>
 </body>
 </html>
