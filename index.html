@@ -176,7 +176,20 @@
   .auth-btn { width:100%; background:#C8F135; color:#0B1F4A; padding:0.8rem; border-radius:0.6rem; font-weight:700; font-size:1rem; cursor:pointer; transition:background 0.2s; }
   .auth-btn:hover { background:#acd120; }
   .auth-error { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:0.5rem; padding:0.6rem 1rem; font-size:0.85rem; }
-  @media(max-width:768px) {
+  /* Desktop two-column hero */
+  @media(min-width:900px) {
+    .auth-gate-hero { padding:5rem 3rem; min-height:100vh; display:flex; align-items:center; }
+    .auth-gate-wrap { max-width:1100px; display:flex; flex-direction:row; align-items:center; gap:5rem; text-align:left; }
+    .auth-hero-left { flex:1; min-width:0; }
+    .auth-hero-right { flex:0 0 440px; }
+    .auth-hero-left .auth-gate-logo { justify-content:flex-start; }
+    .auth-hero-left h1 { font-size:3rem; }
+    .auth-hero-left p { margin-left:0; }
+    .auth-scroll-hint { display:none; }
+  }
+  @media(max-width:899px) {
+    .auth-hero-left { width:100%; }
+    .auth-hero-right { width:100%; }
     .auth-gate-hero { padding:2.5rem 1rem 3.5rem; }
     .auth-gate-section { padding:3rem 1rem; }
     .auth-gate-cards { grid-template-columns:1fr; }
@@ -285,16 +298,18 @@
     <section class="auth-gate-hero">
       <div class="auth-gate-wrap">
 
-        <!-- Logo -->
-        <div style="display:flex;align-items:center;justify-content:center;margin-bottom:2rem;">
-          <img src="logo-transparent.png" alt="CourtCollab" style="height:96px;width:auto;">
+        <!-- LEFT: branding + copy -->
+        <div class="auth-hero-left">
+          <div class="auth-gate-logo" style="display:flex;align-items:center;justify-content:center;margin-bottom:2rem;">
+            <img src="logo-transparent.png" alt="CourtCollab" style="height:96px;width:auto;">
+          </div>
+          <div style="margin-bottom:0.75rem;display:inline-block;background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);border-radius:9999px;padding:0.3rem 1rem;font-size:0.78rem;font-weight:700;letter-spacing:0.06em;color:#C8F135;">The 1st Pickleball Creator Marketplace</div>
+          <h1 style="color:white;font-size:2.4rem;font-weight:900;line-height:1.15;margin:0.75rem 0 1rem;letter-spacing:-0.02em;">Connect Creators<br>with Top Brands</h1>
+          <p style="color:rgba(255,255,255,0.65);font-size:1rem;line-height:1.7;margin:0 auto 2.5rem;max-width:400px;">The marketplace where pickleball creators monetize their audience and brands find their perfect partners.</p>
         </div>
 
-        <!-- Headline -->
-        <div style="margin-bottom:0.75rem;display:inline-block;background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);border-radius:9999px;padding:0.3rem 1rem;font-size:0.78rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#C8F135;">The #1 Pickleball Creator Marketplace</div>
-        <h1 style="color:white;font-size:2.4rem;font-weight:900;line-height:1.15;margin:0.75rem 0 1rem;letter-spacing:-0.02em;">Connect Creators<br>with Top Brands</h1>
-        <p style="color:rgba(255,255,255,0.65);font-size:1rem;line-height:1.7;margin:0 auto 2.5rem;max-width:400px;">The marketplace where pickleball creators monetize their audience and brands find their perfect partners.</p>
-
+        <!-- RIGHT: form -->
+        <div class="auth-hero-right">
         <!-- Form Card -->
         <div class="auth-form-card">
           <h2 style="font-size:1.4rem;font-weight:800;color:#111;margin:0 0 0.3rem;">Welcome to CourtCollab</h2>
@@ -448,14 +463,16 @@
 
           <p style="text-align:center;margin-top:1.5rem;font-size:0.78rem;color:#9ca3af;">By continuing, you agree to CourtCollab's Terms of Service and Privacy Policy.</p>
         </div><!-- /auth-form-card -->
+        </div><!-- /auth-hero-right -->
 
-        <!-- Scroll hint -->
-        <div style="margin-top:2rem;display:flex;flex-direction:column;align-items:center;gap:0.4rem;color:rgba(255,255,255,0.4);">
-          <span style="font-size:0.75rem;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;">Scroll to learn more</span>
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="animation:bounce 1.8s infinite;"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </div>
+      </div><!-- /auth-gate-wrap -->
 
+      <!-- Scroll hint (mobile only) -->
+      <div class="auth-scroll-hint" style="margin-top:2rem;display:flex;flex-direction:column;align-items:center;gap:0.4rem;color:rgba(255,255,255,0.4);">
+        <span style="font-size:0.75rem;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;">Scroll to learn more</span>
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="animation:bounce 1.8s infinite;"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
       </div>
+
     </section>
 
     <!-- ═══ HOW IT WORKS ═══ -->
@@ -2817,6 +2834,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=97"></script>
+  <script src="app.js?v=98"></script>
 </body>
 </html>
