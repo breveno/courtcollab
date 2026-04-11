@@ -143,19 +143,19 @@
   .ldr-paddle-b { animation: ldr-b 3s ease-in-out infinite; transform-origin: 0px 0px; }
   /* Auth gate */
   html { overflow-x: clip; max-width: 100vw; overscroll-behavior-x: none; }
-  html.gate-open { overflow: hidden; background: #0B1F4A; }
+  html.gate-open { overflow: hidden; background: #f9fafb; }
   body { max-width: 100vw; overflow-x: clip; overscroll-behavior-x: none; }
-  #auth-gate { position:fixed; inset:0; z-index:9999; background:#0B1F4A; overflow-y:auto; overflow-x:hidden; overscroll-behavior:none; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
+  #auth-gate { position:fixed; inset:0; z-index:9999; background:#f9fafb; overflow-y:auto; overflow-x:hidden; overscroll-behavior:none; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
   #auth-gate.hidden { display:none; }
-  .auth-gate-hero { background:linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%); padding:4rem 1.5rem 5rem; text-align:center; position:relative; overflow:hidden; }
-  .auth-gate-hero::before { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231E6EA6' fill-opacity='0.12'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/G%3E%3C/svg%3E"); pointer-events:none; }
+  .auth-gate-hero { background:#ffffff; border-bottom:1px solid #e5e7eb; padding:4rem 1.5rem 5rem; text-align:center; position:relative; overflow:hidden; }
+  .auth-gate-hero::before { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230B1F4A' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); pointer-events:none; }
   .auth-gate-wrap { max-width:480px; margin:0 auto; width:100%; }
-  .auth-form-card { background:white; border-radius:1.25rem; padding:2rem 2rem; box-shadow:0 20px 60px rgba(0,0,0,0.25); text-align:left; }
+  .auth-form-card { background:white; border-radius:1.25rem; padding:2rem 2rem; box-shadow:0 4px 24px rgba(11,31,74,0.10); border:1px solid #e5e7eb; text-align:left; }
   .auth-gate-section { padding:5rem 1.5rem; }
   .auth-gate-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1.25rem; margin-top:3rem; }
-  /* How It Works — white section */
-  .auth-gate-section-white { background:#ffffff; }
-  .auth-gate-card-white { background:#f9fafb; border:1px solid #e5e7eb; border-radius:1rem; padding:1.75rem; transition:box-shadow 0.2s,transform 0.2s; }
+  /* How It Works — light gray section */
+  .auth-gate-section-white { background:#f9fafb; border-bottom:1px solid #e5e7eb; }
+  .auth-gate-card-white { background:#ffffff; border:1px solid #e5e7eb; border-radius:1rem; padding:1.75rem; transition:box-shadow 0.2s,transform 0.2s; }
   .auth-gate-card-white:hover { box-shadow:0 8px 24px rgba(11,31,74,0.1); transform:translateY(-3px); }
   /* Why CourtCollab — navy section, white cards */
   .auth-gate-section-lime { background:#0B1F4A; border-top:3px solid #C8F135; }
@@ -291,9 +291,9 @@
         </div>
 
         <!-- Headline -->
-        <div style="margin-bottom:0.75rem;display:inline-block;background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);border-radius:9999px;padding:0.3rem 1rem;font-size:0.78rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#C8F135;">The #1 Pickleball Creator Marketplace</div>
-        <h1 style="color:white;font-size:2.4rem;font-weight:900;line-height:1.15;margin:0.75rem 0 1rem;letter-spacing:-0.02em;">Connect Creators<br>with Top Brands</h1>
-        <p style="color:rgba(255,255,255,0.65);font-size:1rem;line-height:1.7;margin:0 auto 2.5rem;max-width:400px;">The marketplace where pickleball creators monetize their audience and brands find their perfect partners.</p>
+        <div style="margin-bottom:0.75rem;display:inline-block;background:#0B1F4A;border-radius:9999px;padding:0.3rem 1rem;font-size:0.78rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#C8F135;">The #1 Pickleball Creator Marketplace</div>
+        <h1 style="color:#0B1F4A;font-size:2.4rem;font-weight:900;line-height:1.15;margin:0.75rem 0 1rem;letter-spacing:-0.02em;">Connect Creators<br>with Top Brands</h1>
+        <p style="color:#6b7280;font-size:1rem;line-height:1.7;margin:0 auto 2.5rem;max-width:400px;">The marketplace where pickleball creators monetize their audience and brands find their perfect partners.</p>
 
         <!-- Form Card -->
         <div class="auth-form-card">
@@ -450,7 +450,7 @@
         </div><!-- /auth-form-card -->
 
         <!-- Scroll hint -->
-        <div style="margin-top:2rem;display:flex;flex-direction:column;align-items:center;gap:0.4rem;color:rgba(255,255,255,0.4);">
+        <div style="margin-top:2rem;display:flex;flex-direction:column;align-items:center;gap:0.4rem;color:rgba(11,31,74,0.35);">
           <span style="font-size:0.75rem;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;">Scroll to learn more</span>
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="animation:bounce 1.8s infinite;"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
         </div>
@@ -1056,63 +1056,6 @@
       </div>
 
     </div><!-- /landing-creator-sections -->
-
-    <!-- ===================== FOOTER ===================== -->
-    <footer style="background:#0B1F4A;" class="text-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
-
-          <!-- Brand -->
-          <div class="col-span-2 md:col-span-1">
-            <div class="flex items-center gap-2 mb-4">
-              <div class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm" style="background:#C8F135;color:#0B1F4A;">CC</div>
-              <span class="font-bold text-lg tracking-tight">CourtCollab</span>
-            </div>
-            <p style="color:rgba(255,255,255,0.5);" class="text-sm leading-relaxed">The #1 marketplace connecting pickleball creators with top brands.</p>
-          </div>
-
-          <!-- Platform -->
-          <div>
-            <h4 class="font-semibold text-sm mb-4 uppercase tracking-wide" style="color:rgba(255,255,255,0.4);">Platform</h4>
-            <ul class="space-y-3 text-sm" style="color:rgba(255,255,255,0.7);">
-              <li><button onclick="navigate('creators')" class="hover:text-white transition text-left">Browse Creators</button></li>
-              <li><button onclick="navigate('campaigns')" class="hover:text-white transition text-left">View Campaigns</button></li>
-              <li><button onclick="showAuthGate();showAuthTab('signup')" class="hover:text-white transition text-left">Join as a Brand</button></li>
-              <li><button onclick="showAuthGate();showAuthTab('signup')" class="hover:text-white transition text-left">Join as a Creator</button></li>
-            </ul>
-          </div>
-
-          <!-- Resources -->
-          <div>
-            <h4 class="font-semibold text-sm mb-4 uppercase tracking-wide" style="color:rgba(255,255,255,0.4);">Resources</h4>
-            <ul class="space-y-3 text-sm" style="color:rgba(255,255,255,0.7);">
-              <li><button onclick="navigate('faq-creators')" class="hover:text-white transition text-left">Creator FAQ</button></li>
-              <li><button onclick="navigate('faq-brands')" class="hover:text-white transition text-left">Brand FAQ</button></li>
-              <li><button onclick="navigate('contact')" class="hover:text-white transition text-left">Contact Us</button></li>
-            </ul>
-          </div>
-
-          <!-- Connect -->
-          <div>
-            <h4 class="font-semibold text-sm mb-4 uppercase tracking-wide" style="color:rgba(255,255,255,0.4);">Connect</h4>
-            <ul class="space-y-3 text-sm" style="color:rgba(255,255,255,0.7);">
-              <li><a href="https://instagram.com/courtcollab" target="_blank" rel="noopener" class="hover:text-white transition">Instagram</a></li>
-              <li><a href="https://tiktok.com/@courtcollab" target="_blank" rel="noopener" class="hover:text-white transition">TikTok</a></li>
-            </ul>
-          </div>
-
-        </div>
-
-        <!-- Bottom bar -->
-        <div class="border-t pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm" style="border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);">
-          <p>&copy; 2026 CourtCollab. All rights reserved.</p>
-          <div class="flex items-center gap-6">
-            <button onclick="navigate('contact')" class="hover:text-white transition">Privacy Policy</button>
-            <button onclick="navigate('contact')" class="hover:text-white transition">Terms of Service</button>
-          </div>
-        </div>
-      </div>
-    </footer>
 
   </div><!-- /page-landing -->
 
@@ -2779,48 +2722,65 @@
   </div><!-- /overlay -->
 
   <!-- Footer -->
-  <footer class="bg-pickle-600 text-white/60 mt-auto">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div class="flex flex-col md:flex-row md:items-start justify-between gap-10">
-        <!-- Logo + tagline -->
-        <div class="flex flex-col gap-2">
-          <span class="text-white font-bold text-lg tracking-tight"><span class="text-lime-400">Court</span>Collab</span>
-          <p class="text-sm text-white/40">The Pickleball Creator &amp; Brand Marketplace</p>
-        </div>
-        <!-- Support -->
-        <div class="flex flex-col gap-3">
-          <p class="text-xs font-semibold uppercase tracking-widest text-white/40">Support</p>
-          <a href="#" onclick="navigate('contact');return false;" class="text-sm text-white/60 hover:text-lime-400 transition">Contact Us</a>
-          <a href="#" onclick="navigate('faq-creators');return false;" class="text-sm text-white/60 hover:text-lime-400 transition">FAQ for Creators</a>
-          <a href="#" onclick="navigate('faq-brands');return false;" class="text-sm text-white/60 hover:text-lime-400 transition">FAQ for Brands</a>
-        </div>
-        <!-- Social icons -->
-        <div class="flex flex-col gap-3">
-          <p class="text-xs font-semibold uppercase tracking-widest text-white/40">Follow Us</p>
-          <div class="flex items-center gap-4">
-          <!-- Instagram -->
-          <a href="https://www.instagram.com/courtcollab" target="_blank" rel="noopener" aria-label="Instagram"
-             class="w-9 h-9 rounded-full bg-pickle-500 hover:bg-lime-400 flex items-center justify-center transition">
-            <svg class="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.516 2.497 5.783 2.225 7.15 2.163 8.416 2.105 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.333.013 7.053.072 5.197.157 3.355.673 2.014 2.014.673 3.355.157 5.197.072 7.053.013 8.333 0 8.741 0 12c0 3.259.013 3.668.072 4.948.085 1.856.601 3.698 1.942 5.038 1.341 1.341 3.183 1.857 5.038 1.942C8.333 23.987 8.741 24 12 24s3.667-.013 4.947-.072c1.856-.085 3.698-.601 5.038-1.942 1.341-1.34 1.857-3.182 1.942-5.038C23.987 15.667 24 15.259 24 12s-.013-3.667-.072-4.947c-.085-1.856-.601-3.698-1.942-5.038C20.645.673 18.803.157 16.947.072 15.667.013 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zm0 10.162a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-            </svg>
-          </a>
-          <!-- TikTok -->
-          <a href="https://www.tiktok.com/@courtcollab" target="_blank" rel="noopener" aria-label="TikTok"
-             class="w-9 h-9 rounded-full bg-pickle-500 hover:bg-lime-400 flex items-center justify-center transition">
-            <svg class="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
-            </svg>
-          </a>
+  <footer style="background:#0B1F4A;" class="text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
+
+        <!-- Brand -->
+        <div class="col-span-2 md:col-span-1">
+          <img src="logo-transparent.png" alt="CourtCollab" style="height:40px;width:auto;margin-bottom:1rem;">
+          <p style="color:rgba(255,255,255,0.5);" class="text-sm leading-relaxed">The #1 marketplace connecting pickleball creators with top brands.</p>
+          <!-- Social icons -->
+          <div class="flex items-center gap-3 mt-5">
+            <a href="https://www.instagram.com/courtcollab" target="_blank" rel="noopener" aria-label="Instagram"
+               class="w-9 h-9 rounded-full flex items-center justify-center transition" style="background:rgba(255,255,255,0.1);" onmouseover="this.style.background='#C8F135'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.516 2.497 5.783 2.225 7.15 2.163 8.416 2.105 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.333.013 7.053.072 5.197.157 3.355.673 2.014 2.014.673 3.355.157 5.197.072 7.053.013 8.333 0 8.741 0 12c0 3.259.013 3.668.072 4.948.085 1.856.601 3.698 1.942 5.038 1.341 1.341 3.183 1.857 5.038 1.942C8.333 23.987 8.741 24 12 24s3.667-.013 4.947-.072c1.856-.085 3.698-.601 5.038-1.942 1.341-1.34 1.857-3.182 1.942-5.038C23.987 15.667 24 15.259 24 12s-.013-3.667-.072-4.947c-.085-1.856-.601-3.698-1.942-5.038C20.645.673 18.803.157 16.947.072 15.667.013 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zm0 10.162a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </a>
+            <a href="https://www.tiktok.com/@courtcollab" target="_blank" rel="noopener" aria-label="TikTok"
+               class="w-9 h-9 rounded-full flex items-center justify-center transition" style="background:rgba(255,255,255,0.1);" onmouseover="this.style.background='#C8F135'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/></svg>
+            </a>
           </div>
         </div>
+
+        <!-- Platform -->
+        <div>
+          <h4 class="font-semibold text-sm mb-4 uppercase tracking-wide" style="color:rgba(255,255,255,0.4);">Platform</h4>
+          <ul class="space-y-3 text-sm" style="color:rgba(255,255,255,0.7);">
+            <li><button onclick="navigate('creators')" class="hover:text-white transition text-left">Browse Creators</button></li>
+            <li><button onclick="navigate('campaigns')" class="hover:text-white transition text-left">View Campaigns</button></li>
+            <li><button onclick="showAuthGate();showAuthTab('signup')" class="hover:text-white transition text-left">Join as a Brand</button></li>
+            <li><button onclick="showAuthGate();showAuthTab('signup')" class="hover:text-white transition text-left">Join as a Creator</button></li>
+          </ul>
+        </div>
+
+        <!-- Resources -->
+        <div>
+          <h4 class="font-semibold text-sm mb-4 uppercase tracking-wide" style="color:rgba(255,255,255,0.4);">Resources</h4>
+          <ul class="space-y-3 text-sm" style="color:rgba(255,255,255,0.7);">
+            <li><button onclick="navigate('faq-creators')" class="hover:text-white transition text-left">Creator FAQ</button></li>
+            <li><button onclick="navigate('faq-brands')" class="hover:text-white transition text-left">Brand FAQ</button></li>
+            <li><button onclick="navigate('contact')" class="hover:text-white transition text-left">Contact Us</button></li>
+          </ul>
+        </div>
+
+        <!-- Connect -->
+        <div>
+          <h4 class="font-semibold text-sm mb-4 uppercase tracking-wide" style="color:rgba(255,255,255,0.4);">Connect</h4>
+          <ul class="space-y-3 text-sm" style="color:rgba(255,255,255,0.7);">
+            <li><a href="https://instagram.com/courtcollab" target="_blank" rel="noopener" class="hover:text-white transition">Instagram</a></li>
+            <li><a href="https://tiktok.com/@courtcollab" target="_blank" rel="noopener" class="hover:text-white transition">TikTok</a></li>
+          </ul>
+        </div>
+
       </div>
-      <!-- Divider -->
-      <div class="border-t border-pickle-500 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
-        <span>© 2026 CourtCollab. All rights reserved.</span>
-        <div class="flex items-center gap-5">
-          <a href="#" onclick="navigate('privacy');return false;" class="hover:text-lime-400 transition">Privacy Policy</a>
-          <a href="#" onclick="navigate('terms');return false;" class="hover:text-lime-400 transition">Terms of Service</a>
+
+      <!-- Bottom bar -->
+      <div class="border-t pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm" style="border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);">
+        <p>&copy; 2026 CourtCollab. All rights reserved.</p>
+        <div class="flex items-center gap-6">
+          <button onclick="navigate('contact')" class="hover:text-white transition">Privacy Policy</button>
+          <button onclick="navigate('contact')" class="hover:text-white transition">Terms of Service</button>
         </div>
       </div>
     </div>
@@ -2866,6 +2826,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=93"></script>
+  <script src="app.js?v=94"></script>
 </body>
 </html>
