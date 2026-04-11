@@ -259,13 +259,15 @@
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="80" height="80">
       <circle r="45" fill="#163a70"/>
       <circle r="41" fill="none" stroke="#1E6EA6" stroke-width="1.2"/>
+      <!-- Lime paddle: right side, background (rendered first = behind) -->
       <g class="ldr-paddle-a">
-        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#1E6EA6"/>
-        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#1E6EA6"/>
-      </g>
-      <g class="ldr-paddle-b">
         <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#C8F135"/>
         <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#C8F135"/>
+      </g>
+      <!-- Blue paddle: left side, foreground (rendered last = in front) -->
+      <g class="ldr-paddle-b">
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#1E6EA6"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#1E6EA6"/>
       </g>
       <circle r="2.8" fill="#163a70" stroke="#C8F135" stroke-width="0.8"/>
     </svg>
@@ -277,16 +279,15 @@
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="100" height="100">
       <circle r="45" fill="#163a70"/>
       <circle r="41" fill="none" stroke="#1E6EA6" stroke-width="1.2"/>
-      <!-- Paddle A: blade above 0,0 (y=-18.4 to 0), handle below (y=0 to 15.2) -->
-      <!-- Rotates around 0,0 = center of circle -->
+      <!-- Lime paddle: right side, background (rendered first = behind) -->
       <g class="ldr-paddle-a">
-        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#1E6EA6"/>
-        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#1E6EA6"/>
-      </g>
-      <!-- Paddle B: lime paddle -->
-      <g class="ldr-paddle-b">
         <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#C8F135"/>
         <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#C8F135"/>
+      </g>
+      <!-- Blue paddle: left side, foreground (rendered last = in front) -->
+      <g class="ldr-paddle-b">
+        <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#1E6EA6"/>
+        <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#1E6EA6"/>
       </g>
       <circle r="2.8" fill="#163a70" stroke="#C8F135" stroke-width="0.8"/>
     </svg>
@@ -2909,6 +2910,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=112"></script>
+  <script src="app.js?v=113"></script>
 </body>
 </html>
