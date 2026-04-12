@@ -389,6 +389,19 @@ def _init_pg():
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_brand ON saved_creators(brand_id)")
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS deal_confirmations (
+                id           SERIAL PRIMARY KEY,
+                deal_id      INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role         TEXT    NOT NULL CHECK(role IN ('brand','creator')),
+                confirmed_at TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                ip_address   TEXT,
+                UNIQUE(deal_id, user_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_deal_confirmations_deal ON deal_confirmations(deal_id)")
+
         # Migrations — add columns to existing tables if they don't exist yet
         # users
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token         TEXT")
@@ -442,6 +455,8 @@ def _init_pg():
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_completed_url TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_sent_at      TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS signed_contract_url  TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_terms_confirmed    INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_terms_confirmed  INTEGER DEFAULT 0")
 
         conn.commit()
 
@@ -675,6 +690,18 @@ def _init_sqlite():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_brand ON saved_creators(brand_id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS deal_confirmations (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                deal_id      INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role         TEXT    NOT NULL CHECK(role IN ('brand','creator')),
+                confirmed_at TEXT    NOT NULL DEFAULT (datetime('now')),
+                ip_address   TEXT,
+                UNIQUE(deal_id, user_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_deal_confirmations_deal ON deal_confirmations(deal_id)")
         conn.commit()
 
     _migrate_deal_statuses()
@@ -702,6 +729,8 @@ def _init_sqlite():
     _add_column_if_missing("deals",            "contract_completed_url",  "TEXT")
     _add_column_if_missing("deals",            "contract_sent_at",        "TEXT")
     _add_column_if_missing("deals",            "signed_contract_url",     "TEXT")
+    _add_column_if_missing("deals", "brand_terms_confirmed",   "INTEGER DEFAULT 0")
+    _add_column_if_missing("deals", "creator_terms_confirmed", "INTEGER DEFAULT 0")
 
 
 def _migrate_deal_statuses():

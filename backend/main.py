@@ -1829,6 +1829,86 @@ def get_deal(deal_id: int, user: dict = Depends(current_user)):
     return deal
 
 
+async def _trigger_contract_for_deal(deal_id: int) -> None:
+    """
+    Full contract creation pipeline — called once both parties have confirmed terms.
+    Builds PDF, creates SignWell document, updates deal to contract_sent.
+    """
+    import base64 as _base64
+    try:
+        with get_conn() as conn:
+            full_deal     = _row(conn, """
+                SELECT d.*,
+                       c.title        AS campaign_title,
+                       c.niche        AS campaign_niche,
+                       c.description  AS campaign_description,
+                       ub.name        AS brand_name,
+                       ub.email       AS brand_email,
+                       uc.name        AS creator_name,
+                       uc.email       AS creator_email
+                FROM deals d
+                JOIN campaigns c ON c.id  = d.campaign_id
+                JOIN users ub    ON ub.id = d.brand_id
+                JOIN users uc    ON uc.id = d.creator_id
+                WHERE d.id = ?
+            """, (deal_id,))
+            campaign_row    = _row(conn, "SELECT * FROM campaigns        WHERE id = ?",      (full_deal["campaign_id"],))
+            brand_profile   = _row(conn, "SELECT * FROM brand_profiles   WHERE user_id = ?", (full_deal["brand_id"],))
+            creator_profile = _row(conn, "SELECT * FROM creator_profiles WHERE user_id = ?", (full_deal["creator_id"],))
+
+        # Store plain-text copy in contracts table
+        contract_text = _generate_contract(
+            full_deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
+        )
+        with get_conn() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO contracts (deal_id, content) VALUES (?,?)",
+                (deal_id, contract_text),
+            )
+            conn.commit()
+
+        # Build PDF and send via SignWell
+        pdf_bytes = _build_contract_pdf(
+            full_deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
+        )
+        pdf_b64   = _base64.b64encode(pdf_bytes).decode("ascii")
+        signers   = _get_contract_signers(full_deal, brand_profile or {})
+        brand_company = (brand_profile or {}).get("company_name") or full_deal.get("brand_name", "Brand")
+        creator_name  = full_deal.get("creator_name", "Creator")
+        doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
+
+        sw_doc = await sw.create_document(
+            name    = doc_name,
+            subject = f"Please sign: {doc_name}",
+            message = (
+                f"Hi,\n\nPlease review and sign the brand deal agreement for "
+                f"\"{full_deal.get('campaign_title', 'your campaign')}\" on CourtCollab.\n\n"
+                f"Deal amount: ${full_deal.get('amount', 0):,}\n\n"
+                f"— The CourtCollab Team"
+            ),
+            signers       = signers,
+            file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
+            send_in_order = True,
+        )
+        sw_doc_id = sw_doc.get("id", "")
+        if sw_doc_id:
+            with get_conn() as conn:
+                conn.execute(
+                    """UPDATE deals
+                       SET contract_document_id = ?,
+                           contract_status      = 'contract_sent',
+                           contract_sent_at     = datetime('now'),
+                           updated_at           = datetime('now')
+                       WHERE id = ?""",
+                    (sw_doc_id, deal_id),
+                )
+                conn.commit()
+            logging.info("Contract triggered for deal #%s — doc %s", deal_id, sw_doc_id)
+
+    except Exception as exc:
+        logging.warning("_trigger_contract_for_deal failed for deal #%s: %s", deal_id, exc)
+
+
 @app.patch("/api/deals/{deal_id}/status")
 async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depends(current_user)):
     """
@@ -1865,85 +1945,8 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
 
     label = _STATUS_LABELS.get(body.status, body.status)
 
-    # Auto-generate contract and send via SignWell when deal goes active (creator accepted)
-    if body.status == "active":
-        import asyncio
-
-        async def _auto_send_contract():
-            try:
-                with get_conn() as conn:
-                    full_deal     = _row(conn, """
-                        SELECT d.*,
-                               c.title        AS campaign_title,
-                               c.niche        AS campaign_niche,
-                               c.description  AS campaign_description,
-                               ub.name        AS brand_name,
-                               ub.email       AS brand_email,
-                               uc.name        AS creator_name,
-                               uc.email       AS creator_email
-                        FROM deals d
-                        JOIN campaigns c ON c.id  = d.campaign_id
-                        JOIN users ub    ON ub.id = d.brand_id
-                        JOIN users uc    ON uc.id = d.creator_id
-                        WHERE d.id = ?
-                    """, (deal_id,))
-                    campaign_row    = _row(conn, "SELECT * FROM campaigns        WHERE id = ?",      (deal["campaign_id"],))
-                    brand_profile   = _row(conn, "SELECT * FROM brand_profiles   WHERE user_id = ?", (deal["brand_id"],))
-                    creator_profile = _row(conn, "SELECT * FROM creator_profiles WHERE user_id = ?", (deal["creator_id"],))
-
-                # Also store plain-text copy in contracts table (existing feature)
-                contract_text = _generate_contract(
-                    full_deal or deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
-                )
-                with get_conn() as conn:
-                    conn.execute(
-                        "INSERT OR IGNORE INTO contracts (deal_id, content) VALUES (?,?)",
-                        (deal_id, contract_text),
-                    )
-                    conn.commit()
-
-                # Build PDF and send via SignWell
-                pdf_bytes = _build_contract_pdf(
-                    full_deal or deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
-                )
-                pdf_b64   = base64.b64encode(pdf_bytes).decode("ascii")
-                signers   = _get_contract_signers(full_deal or deal, brand_profile or {})
-                brand_company = (brand_profile or {}).get("company_name") or deal.get("brand_name", "Brand")
-                creator_name  = deal.get("creator_name", "Creator")
-                doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
-
-                sw_doc = await sw.create_document(
-                    name    = doc_name,
-                    subject = f"Please sign: {doc_name}",
-                    message = (
-                        f"Hi,\n\nPlease review and sign the brand deal agreement for "
-                        f"\"{deal.get('campaign_title', 'your campaign')}\" on CourtCollab.\n\n"
-                        f"Deal amount: ${deal.get('amount', 0):,}\n\n"
-                        f"— The CourtCollab Team"
-                    ),
-                    signers       = signers,
-                    file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
-                    send_in_order = True,
-                )
-                sw_doc_id = sw_doc.get("id", "")
-                if sw_doc_id:
-                    with get_conn() as conn:
-                        conn.execute(
-                            """UPDATE deals
-                               SET contract_document_id = ?,
-                                   contract_status      = 'contract_sent',
-                                   contract_sent_at     = datetime('now'),
-                                   updated_at           = datetime('now')
-                               WHERE id = ?""",
-                            (sw_doc_id, deal_id),
-                        )
-                        conn.commit()
-
-            except Exception as exc:
-                logging.warning("Auto contract send failed for deal %s: %s", deal_id, exc)
-                # Non-fatal — deal status already committed
-
-        asyncio.create_task(_auto_send_contract())
+    # Contract will be triggered after both parties confirm deal terms
+    # (see POST /api/deals/{deal_id}/confirm-terms)
 
     # Notify the other party
     if body.status == "active":
@@ -1953,7 +1956,7 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
             notif_type = "deal_active",
             title      = f"{deal['creator_name']} accepted your deal",
             body       = (f"Your ${deal['amount']:,} deal for \"{deal['campaign_title']}\" "
-                          f"is now active. A contract has been generated — both parties should sign it."),
+                          f"is now active. Please review and confirm the deal terms to generate your contract."),
             data       = {"deal_id": deal_id, "campaign_id": deal["campaign_id"]},
             email      = deal["brand_email"],
         )
@@ -3619,6 +3622,170 @@ async def delete_signwell_webhook(webhook_id: str, user: dict = Depends(require_
         return await sw.delete_webhook(webhook_id)
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
+
+@app.get("/api/deals/{deal_id}/summary")
+async def get_deal_summary(deal_id: int, request: Request, user: dict = Depends(current_user)):
+    """
+    Return enriched deal data for the terms confirmation screen.
+    Includes both parties' names, all deal terms, and confirmation status.
+    """
+    with get_conn() as conn:
+        deal = _row(conn, """
+            SELECT d.*,
+                   c.title       AS campaign_title,
+                   c.niche       AS campaign_niche,
+                   ub.name       AS brand_name,
+                   ub.email      AS brand_email,
+                   uc.name       AS creator_name,
+                   uc.email      AS creator_email,
+                   bp.company_name   AS brand_company,
+                   bp.contact_name   AS brand_contact,
+                   cp.social_handles AS creator_social_handles
+            FROM deals d
+            JOIN campaigns c    ON c.id  = d.campaign_id
+            JOIN users ub       ON ub.id = d.brand_id
+            JOIN users uc       ON uc.id = d.creator_id
+            LEFT JOIN brand_profiles   bp ON bp.user_id = d.brand_id
+            LEFT JOIN creator_profiles cp ON cp.user_id = d.creator_id
+            WHERE d.id = ?
+        """, (deal_id,))
+
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+        raise HTTPException(403, "Not your deal")
+
+    # Parse social handles for platform list
+    social_handles_raw = deal.get("creator_social_handles") or "{}"
+    try:
+        social_handles = json.loads(social_handles_raw) if isinstance(social_handles_raw, str) else (social_handles_raw or {})
+    except Exception:
+        social_handles = {}
+
+    # Build platform string from which handles are filled in
+    platforms = [p.capitalize() for p, h in social_handles.items() if h and str(h).strip()]
+    if not platforms:
+        platforms = [deal.get("campaign_niche") or "Social Media"]
+
+    amount = int(deal.get("amount") or 0)
+    creator_payout = round(amount * 0.85)
+    platform_fee   = amount - creator_payout
+
+    role = "brand" if user["id"] == deal["brand_id"] else "creator"
+
+    return {
+        "deal_id":           deal_id,
+        "campaign_title":    deal.get("campaign_title") or f"Deal #{deal_id}",
+        "creator_name":      deal.get("creator_name") or "",
+        "creator_handles":   social_handles,
+        "brand_company":     deal.get("brand_company") or deal.get("brand_name") or "",
+        "brand_contact":     deal.get("brand_contact") or deal.get("brand_name") or "",
+        "deliverables":      deal.get("terms") or "As mutually agreed upon by both parties",
+        "num_posts":         deal.get("num_posts") or 1,
+        "deadline":          deal.get("deadline") or "",
+        "platforms":         platforms,
+        "usage_rights":      deal.get("usage_rights_duration") or "1 year",
+        "exclusivity":       deal.get("exclusivity_terms") or "None",
+        "amount":            amount,
+        "creator_payout":    creator_payout,
+        "platform_fee":      platform_fee,
+        "my_role":           role,
+        "brand_confirmed":   bool(deal.get("brand_terms_confirmed")),
+        "creator_confirmed": bool(deal.get("creator_terms_confirmed")),
+        "my_confirmed":      bool(deal.get("brand_terms_confirmed") if role == "brand" else deal.get("creator_terms_confirmed")),
+    }
+
+
+@app.post("/api/deals/{deal_id}/confirm-terms", status_code=200)
+async def confirm_deal_terms(deal_id: int, request: Request, user: dict = Depends(current_user)):
+    """
+    Log that the current user has reviewed and confirmed the deal terms.
+    When both parties have confirmed, automatically triggers contract generation.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+
+    with get_conn() as conn:
+        deal = _row(conn,
+            """SELECT d.*, ub.name AS brand_name, ub.email AS brand_email,
+                      uc.name AS creator_name, uc.email AS creator_email
+               FROM deals d
+               JOIN users ub ON ub.id = d.brand_id
+               JOIN users uc ON uc.id = d.creator_id
+               WHERE d.id = ?""",
+            (deal_id,))
+
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+        raise HTTPException(403, "Not your deal")
+    if deal["status"] != "active":
+        raise HTTPException(409, "Deal must be active to confirm terms")
+    if deal.get("contract_status") not in (None, "", "none"):
+        raise HTTPException(409, "Contract has already been generated for this deal")
+
+    role = "brand" if user["id"] == deal["brand_id"] else "creator"
+
+    # Check if already confirmed
+    already_confirmed = bool(
+        deal.get("brand_terms_confirmed") if role == "brand"
+        else deal.get("creator_terms_confirmed")
+    )
+    if already_confirmed:
+        # Idempotent — return current state
+        return {
+            "ok": True,
+            "my_role": role,
+            "brand_confirmed": bool(deal.get("brand_terms_confirmed")),
+            "creator_confirmed": bool(deal.get("creator_terms_confirmed")),
+            "both_confirmed": bool(deal.get("brand_terms_confirmed")) and bool(deal.get("creator_terms_confirmed")),
+        }
+
+    # Insert confirmation record (ignore duplicate)
+    now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO deal_confirmations (deal_id, user_id, role, confirmed_at, ip_address)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT (deal_id, user_id) DO NOTHING""",
+            (deal_id, user["id"], role, now_ts, client_ip),
+        )
+        # Update convenience column on deals
+        col = "brand_terms_confirmed" if role == "brand" else "creator_terms_confirmed"
+        conn.execute(
+            f"UPDATE deals SET {col} = 1, updated_at = datetime('now') WHERE id = ?",
+            (deal_id,),
+        )
+        conn.commit()
+
+    # Re-fetch to get updated confirmation state
+    with get_conn() as conn:
+        updated = _row(conn,
+            "SELECT brand_terms_confirmed, creator_terms_confirmed FROM deals WHERE id = ?",
+            (deal_id,))
+
+    brand_confirmed   = bool(updated.get("brand_terms_confirmed"))
+    creator_confirmed = bool(updated.get("creator_terms_confirmed"))
+    both_confirmed    = brand_confirmed and creator_confirmed
+
+    logging.info(
+        "Deal #%s terms confirmed by %s (%s) from %s — both_confirmed=%s",
+        deal_id, user["id"], role, client_ip, both_confirmed,
+    )
+
+    # If both parties have confirmed, trigger contract generation
+    if both_confirmed:
+        import asyncio as _asyncio
+        _asyncio.create_task(_trigger_contract_for_deal(deal_id))
+        logging.info("Deal #%s — both confirmed, contract generation triggered", deal_id)
+
+    return {
+        "ok": True,
+        "my_role": role,
+        "brand_confirmed": brand_confirmed,
+        "creator_confirmed": creator_confirmed,
+        "both_confirmed": both_confirmed,
+    }
 
 
 @app.get("/api/deals/{deal_id}/contract-status")

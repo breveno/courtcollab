@@ -1430,9 +1430,21 @@ async function renderBrandPortal() {
 
     // Contracts section — fetch payments so the progress bar can show step 3
     const payments = await apiGet('/api/payments').catch(() => []);
+
+    // Terms confirmation banner — active deals awaiting term confirmations
+    const awaitingConfirmationBrand = (deals || []).filter(d =>
+      d.status === 'active' &&
+      (!d.contract_status || d.contract_status === 'none' || d.contract_status === '') &&
+      !d.brand_terms_confirmed
+    );
+    _renderTermsConfirmationBanner('brand-portal-contracts', awaitingConfirmationBrand, 'brand');
+
+    // Contracts section — deals with an active or completed contract
     const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
     const contractDeals    = (deals || []).filter(d => contractStatuses.has(d.contract_status));
-    _renderContractSection('brand-portal-contracts', contractDeals, payments);
+    if (contractDeals.length > 0) {
+      _renderContractSection('brand-portal-contracts', contractDeals, payments);
+    }
 
     const pendingPoll = contractDeals
       .filter(d => d.contract_status !== 'contract_complete')
@@ -1529,10 +1541,20 @@ async function renderCreatorDashboard() {
         </div>`;
     }).join('');
 
+    // Terms confirmation banner — active deals awaiting term confirmations
+    const awaitingConfirmation = deals.filter(d =>
+      d.status === 'active' &&
+      (!d.contract_status || d.contract_status === 'none' || d.contract_status === '') &&
+      !d.creator_terms_confirmed
+    );
+    _renderTermsConfirmationBanner('creator-dash-contracts', awaitingConfirmation, 'creator');
+
     // Contracts section — deals with an active or completed contract
     const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
     const contractDeals    = deals.filter(d => contractStatuses.has(d.contract_status));
-    _renderContractSection('creator-dash-contracts', contractDeals, payments);
+    if (contractDeals.length > 0) {
+      _renderContractSection('creator-dash-contracts', contractDeals, payments);
+    }
 
     // Start 30-second poller for any deals still awaiting signatures
     const pendingPoll = contractDeals
@@ -1637,6 +1659,242 @@ async function renderSignedContractsTab() {
   }
 }
 
+
+function _renderTermsConfirmationBanner(containerId, deals, role) {
+  if (!deals || deals.length === 0) return;
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  const cards = deals.map(d => {
+    const amount = d.amount ? `$${Number(d.amount).toLocaleString()}` : '';
+    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_name || 'Brand');
+    const otherConfirmed = role === 'brand'
+      ? d.creator_terms_confirmed
+      : d.brand_terms_confirmed;
+    const waitingMsg = otherConfirmed
+      ? `<span class="text-xs text-green-600 font-medium">✓ ${role === 'brand' ? 'Creator' : 'Brand'} already confirmed — waiting for you</span>`
+      : `<span class="text-xs text-gray-400">Both parties must confirm before contract is generated</span>`;
+
+    return `
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span class="font-semibold text-sm text-gray-900">${d.campaign_title || `Deal #${d.id}`}</span>
+            ${amount ? `<span class="text-xs text-gray-500">${amount}</span>` : ''}
+          </div>
+          <p class="text-xs text-gray-500">With ${otherParty} &nbsp;·&nbsp; Review and confirm deal terms to generate contract</p>
+          <div class="mt-1">${waitingMsg}</div>
+        </div>
+        <button onclick="openDealSummaryModal(${d.id})"
+          class="shrink-0 bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm px-4 py-2 rounded-xl transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          Review Terms
+        </button>
+      </div>`;
+  }).join('');
+
+  const existing = el.innerHTML;
+  el.innerHTML = `
+    <div class="bg-white rounded-2xl border border-amber-100 p-5 mb-4">
+      <div class="flex items-center gap-2 mb-4">
+        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <h2 class="font-bold text-gray-900">Action Required — Review Deal Terms</h2>
+      </div>
+      <div class="space-y-3">${cards}</div>
+    </div>
+  ` + existing;
+}
+
+// ---------------------------------------------------------------------------
+// Deal Summary Confirmation Modal
+// ---------------------------------------------------------------------------
+
+let _dealSummaryCurrentDealId = null;
+
+function openDealSummaryModal(dealId) {
+  _dealSummaryCurrentDealId = dealId;
+  const modal = document.getElementById('deal-summary-modal');
+  const body  = document.getElementById('deal-summary-body');
+  if (!modal || !body) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  body.innerHTML = '<div class="text-center py-8 text-gray-400">Loading deal summary…</div>';
+  _loadDealSummary(dealId);
+}
+
+function closeDealSummaryModal() {
+  const modal = document.getElementById('deal-summary-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+  _dealSummaryCurrentDealId = null;
+}
+
+async function _loadDealSummary(dealId) {
+  const body = document.getElementById('deal-summary-body');
+  try {
+    const res  = await apiFetch(`/api/deals/${dealId}/summary`);
+    const data = await res.json();
+
+    const fmt  = n => `$${Number(n).toLocaleString()}`;
+    const fmtDate = s => s ? new Date(s).toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'}) : '—';
+    const handles = Object.entries(data.creator_handles || {})
+      .filter(([,h]) => h && String(h).trim())
+      .map(([p, h]) => `@${h} on ${p.charAt(0).toUpperCase()+p.slice(1)}`)
+      .join(' · ') || '—';
+
+    const exclusivityText = (!data.exclusivity || data.exclusivity === 'None')
+      ? 'None — creator may work with other brands'
+      : data.exclusivity;
+
+    const brandConfirmedBadge = data.brand_confirmed
+      ? `<span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Confirmed
+         </span>`
+      : `<span class="text-xs text-gray-400">Awaiting</span>`;
+    const creatorConfirmedBadge = data.creator_confirmed
+      ? `<span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Confirmed
+         </span>`
+      : `<span class="text-xs text-gray-400">Awaiting</span>`;
+
+    body.innerHTML = `
+      <!-- Campaign + Parties -->
+      <div class="bg-gray-50 rounded-xl p-4 mb-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Campaign</p>
+        <p class="font-semibold text-gray-900">${data.campaign_title}</p>
+        <div class="flex gap-6 mt-3 flex-wrap">
+          <div>
+            <p class="text-xs text-gray-400">Brand</p>
+            <p class="text-sm font-medium text-gray-800">${data.brand_company}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Creator</p>
+            <p class="text-sm font-medium text-gray-800">${data.creator_name}</p>
+            <p class="text-xs text-gray-500">${handles}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Terms grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+        <div class="bg-white border border-gray-100 rounded-xl p-4">
+          <p class="text-xs text-gray-400 mb-1">Content Deliverables</p>
+          <p class="text-sm text-gray-800">${data.deliverables}</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-xl p-4">
+          <p class="text-xs text-gray-400 mb-1">Posting Platforms</p>
+          <p class="text-sm font-medium text-gray-800">${(data.platforms || []).join(', ')}</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-xl p-4">
+          <p class="text-xs text-gray-400 mb-1">Number of Posts Required</p>
+          <p class="text-sm font-semibold text-gray-800">${data.num_posts}</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-xl p-4">
+          <p class="text-xs text-gray-400 mb-1">Posting Deadline</p>
+          <p class="text-sm font-semibold text-gray-800">${fmtDate(data.deadline)}</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-xl p-4">
+          <p class="text-xs text-gray-400 mb-1">Usage Rights Duration</p>
+          <p class="text-sm font-medium text-gray-800">${data.usage_rights}</p>
+        </div>
+        <div class="bg-white border border-gray-100 rounded-xl p-4">
+          <p class="text-xs text-gray-400 mb-1">Exclusivity Terms</p>
+          <p class="text-sm text-gray-800">${exclusivityText}</p>
+        </div>
+      </div>
+
+      <!-- Compensation -->
+      <div class="border border-lime-200 bg-lime-50 rounded-xl p-4 mb-5">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Compensation Breakdown</p>
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-700">Total Deal Amount</span>
+            <span class="font-bold text-gray-900 text-base">${fmt(data.amount)}</span>
+          </div>
+          <div class="flex justify-between items-center border-t border-lime-200 pt-2">
+            <span class="text-sm text-gray-700">Creator Payout <span class="text-xs text-gray-400">(85%)</span></span>
+            <span class="font-semibold text-green-700">${fmt(data.creator_payout)}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-700">CourtCollab Fee <span class="text-xs text-gray-400">(15%)</span></span>
+            <span class="font-semibold text-gray-500">${fmt(data.platform_fee)}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FTC Disclosure -->
+      <div class="border border-amber-200 bg-amber-50 rounded-xl p-4 mb-5">
+        <div class="flex items-start gap-2">
+          <svg class="w-4 h-4 text-amber-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <div>
+            <p class="text-xs font-bold text-amber-800 mb-1">FTC Disclosure Requirement</p>
+            <p class="text-xs text-amber-700">Creator must clearly disclose this as a paid partnership using <strong>#ad</strong>, <strong>#sponsored</strong>, or the platform's native "Paid Partnership" label on all content created under this agreement, in compliance with FTC Endorsement Guidelines (16 C.F.R. Part 255).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirmation status -->
+      <div class="border border-gray-100 rounded-xl p-4 mb-1">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Confirmation Status</p>
+        <div class="flex gap-8">
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-600">Brand</span>
+            ${brandConfirmedBadge}
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-600">Creator</span>
+            ${creatorConfirmedBadge}
+          </div>
+        </div>
+        ${data.my_confirmed ? `<p class="text-xs text-green-600 mt-2">✓ You have already confirmed these terms.</p>` : ''}
+      </div>
+    `;
+
+    // Disable confirm button if already confirmed
+    const btn = document.getElementById('deal-summary-confirm-btn');
+    if (btn && data.my_confirmed) {
+      btn.disabled = true;
+      btn.textContent = 'Already Confirmed';
+      btn.className = btn.className.replace('bg-lime-400 hover:bg-lime-500', 'bg-gray-200 cursor-not-allowed');
+    }
+
+  } catch (err) {
+    body.innerHTML = `<div class="text-center py-8 text-red-400 text-sm">Failed to load deal summary: ${err.message}</div>`;
+  }
+}
+
+async function confirmDealTerms() {
+  const dealId = _dealSummaryCurrentDealId;
+  if (!dealId) return;
+
+  const btn = document.getElementById('deal-summary-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Confirming…'; }
+
+  try {
+    const res  = await apiFetch(`/api/deals/${dealId}/confirm-terms`, { method: 'POST' });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.detail || 'Failed to confirm terms');
+
+    closeDealSummaryModal();
+
+    if (data.both_confirmed) {
+      showToast('Both parties confirmed! Contract is being generated and will be sent via email shortly.', 'success');
+    } else {
+      const waitingFor = data.my_role === 'brand' ? 'the creator' : 'the brand';
+      showToast(`Terms confirmed! Waiting for ${waitingFor} to confirm before the contract is generated.`, 'success');
+    }
+
+    // Refresh dashboard
+    if (state.role === 'creator') renderCreatorDashboard();
+    else renderBrandPortal();
+
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm and Proceed to Contract'; }
+    showToast(err.message, 'error');
+  }
+}
 
 function renderBrandPortalGrid(campaigns) {
   const grid = document.getElementById('brand-portal-campaign-grid');

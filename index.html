@@ -3258,6 +3258,41 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     <span id="toast-text"></span>
   </div>
 
+  <!-- Deal Summary Confirmation Modal -->
+  <div id="deal-summary-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onclick="closeDealSummaryModal()"></div>
+    <!-- Panel -->
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <!-- Header -->
+      <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Deal Summary — Review Before Signing</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Please review all terms carefully. You must confirm before a contract can be generated.</p>
+        </div>
+        <button onclick="closeDealSummaryModal()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <!-- Body -->
+      <div id="deal-summary-body" class="px-6 py-5">
+        <div class="text-center py-8 text-gray-400">Loading deal summary…</div>
+      </div>
+      <!-- Footer buttons -->
+      <div class="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 rounded-b-2xl flex gap-3 justify-end z-10">
+        <button onclick="closeDealSummaryModal()"
+          class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium text-sm hover:bg-gray-50 transition">
+          Go Back
+        </button>
+        <button id="deal-summary-confirm-btn" onclick="confirmDealTerms()"
+          class="px-5 py-2.5 rounded-xl bg-lime-400 hover:bg-lime-500 text-gray-900 font-semibold text-sm transition flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          Confirm and Proceed to Contract
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js?v=138"></script>
 </body>
 </html>
