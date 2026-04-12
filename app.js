@@ -250,7 +250,7 @@ function showAuthGate() {
   document.body.scrollLeft = 0;
   window.scrollTo(0, window.scrollY);
   const gate = document.getElementById('auth-gate');
-  if (gate) gate.classList.remove('hidden');
+  if (gate) { gate.style.display = ''; gate.classList.remove('hidden'); }
   document.body.classList.add('no-scroll');
   document.documentElement.classList.add('gate-open');
   // Scroll auth gate to top
@@ -832,9 +832,17 @@ async function confirmDeleteAccount() {
   }
 }
 
+// Pages accessible without a login token
+const _PUBLIC_PAGES = new Set(['privacy', 'terms']);
+
 let _navRafId = null;
 function navigate(page, activeNavId = null, _restoreScrollY = null) {
-  if (!getToken()) { showAuthGate(); return; }
+  if (!getToken() && !_PUBLIC_PAGES.has(page)) { showAuthGate(); return; }
+  // For public pages, hide the auth gate so the page is visible
+  if (_PUBLIC_PAGES.has(page)) {
+    const ag = document.getElementById('auth-gate');
+    if (ag) ag.style.display = 'none';
+  }
 
   // Save current scroll position into current history entry before leaving
   if (history.state?.page) {
