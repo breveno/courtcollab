@@ -4975,4 +4975,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     showAuthGate();
   }
   dismissSplash();
+  initWhyCarousels();
 });
+
+// --- Why CourtCollab Carousels ---
+const _whyCarousel = {};
+
+function initWhyCarousels() {
+  ['creators', 'brands'].forEach(id => {
+    const track = document.getElementById(`carousel-${id}-track`);
+    if (!track) return;
+    const slides = track.querySelectorAll('.why-carousel-slide');
+    _whyCarousel[id] = { index: 0, total: slides.length };
+    const dotsEl = document.getElementById(`carousel-${id}-dots`);
+    if (dotsEl) {
+      dotsEl.innerHTML = Array.from({length: slides.length}, (_, i) =>
+        `<div class="why-carousel-dot${id === 'brands' ? ' why-carousel-dot-brand' : ''}${i === 0 ? ' active' : ''}" onclick="whyCarouselGoto('${id}',${i})"></div>`
+      ).join('');
+    }
+    _whyCarouselRender(id);
+  });
+}
+
+function _whyCarouselRender(id) {
+  const track = document.getElementById(`carousel-${id}-track`);
+  if (!track) return;
+  const { index } = _whyCarousel[id];
+  track.style.transform = `translateX(-${index * 100}%)`;
+  const dotsEl = document.getElementById(`carousel-${id}-dots`);
+  if (dotsEl) {
+    dotsEl.querySelectorAll('.why-carousel-dot').forEach((d, i) => d.classList.toggle('active', i === index));
+  }
+}
+
+function whyCarouselNext(id) {
+  const c = _whyCarousel[id];
+  if (!c) return;
+  c.index = (c.index + 1) % c.total;
+  _whyCarouselRender(id);
+}
+
+function whyCarouselPrev(id) {
+  const c = _whyCarousel[id];
+  if (!c) return;
+  c.index = (c.index - 1 + c.total) % c.total;
+  _whyCarouselRender(id);
+}
+
+function whyCarouselGoto(id, i) {
+  if (!_whyCarousel[id]) return;
+  _whyCarousel[id].index = i;
+  _whyCarouselRender(id);
+}

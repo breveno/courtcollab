@@ -187,8 +187,21 @@
     .auth-hero-left p { margin-left:0; margin-right:0; }
     .auth-scroll-hint { display:flex; margin-top:2.5rem; }
   }
+  /* Why CourtCollab carousel */
+  .why-carousel-slide { min-width:100%;box-sizing:border-box; }
+  .why-carousel-btn { width:2.2rem;height:2.2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity 0.2s; }
+  .why-carousel-btn:hover { opacity:0.75; }
+  .why-carousel-dot { width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);cursor:pointer;transition:background 0.2s,transform 0.2s; }
+  .why-carousel-dot.active { background:#C8F135;transform:scale(1.25); }
+  .why-carousel-dot-brand.active { background:#7EC8E3; }
+
   @media(max-width:899px) {
     .why-split-grid { grid-template-columns:1fr !important; }
+    /* On mobile: show all cards stacked, hide carousel controls */
+    .why-carousel-track { flex-direction:column !important;transform:none !important;transition:none !important; }
+    .why-carousel-slide { min-width:100% !important;margin-bottom:1rem; }
+    .why-carousel-slide:last-child { margin-bottom:0; }
+    .why-carousel-btn, #carousel-creators-dots, #carousel-brands-dots { display:none !important; }
     .auth-hero-left { width:100%; }
     .auth-hero-right { width:100%; }
     .auth-gate-hero { padding:2.5rem 1rem 3.5rem; text-align:center; }
@@ -546,7 +559,7 @@
         <!-- Two-column split -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;" class="why-split-grid">
 
-          <!-- ── CREATORS SIDE ── -->
+          <!-- ── CREATORS CAROUSEL ── -->
           <div class="auth-pop auth-pop-d1">
             <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
               <div style="width:2.5rem;height:2.5rem;background:#C8F135;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -557,44 +570,59 @@
                 <h3 style="color:white;font-size:1.2rem;font-weight:800;margin:0;">Monetize Your Game</h3>
               </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:1rem;">
-              <div class="auth-gate-card-lime">
-                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
-                  <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <!-- Carousel -->
+            <div style="position:relative;">
+              <div id="carousel-creators" style="overflow:hidden;border-radius:1rem;">
+                <div class="why-carousel-track" id="carousel-creators-track" style="display:flex;transition:transform 0.35s ease;">
+                  <div class="auth-gate-card-lime why-carousel-slide">
+                    <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                      <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                      </div>
+                      <div>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Get Discovered by Brands</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Get discovered by the brands you love. Join for free and start collaborating today.</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Get Discovered by Brands</h4>
-                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Get discovered by the brands you love. Join for free and start collaborating today.</p>
+                  <div class="auth-gate-card-lime why-carousel-slide">
+                    <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                      <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      </div>
+                      <div>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Set Your Rates, Keep Control</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Get paid to create content for top brands.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="auth-gate-card-lime why-carousel-slide">
+                    <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                      <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      </div>
+                      <div>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Secure Escrow Payments</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Payments are processed securely through Stripe once your content is delivered.</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="auth-gate-card-lime">
-                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
-                  <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  </div>
-                  <div>
-                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Set Your Rates, Keep Control</h4>
-                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Get paid to create content for top brands.</p>
-                  </div>
-                </div>
-              </div>
-              <div class="auth-gate-card-lime">
-                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
-                  <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  </div>
-                  <div>
-                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Secure Escrow Payments</h4>
-                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Payments are processed securely through Stripe once your content is delivered.</p>
-                  </div>
-                </div>
+              <!-- Controls -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;">
+                <button onclick="whyCarouselPrev('creators')" class="why-carousel-btn" style="background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);color:#C8F135;">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div id="carousel-creators-dots" style="display:flex;gap:0.4rem;"></div>
+                <button onclick="whyCarouselNext('creators')" class="why-carousel-btn" style="background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);color:#C8F135;">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
               </div>
             </div>
           </div>
 
-          <!-- ── BRANDS SIDE ── -->
+          <!-- ── BRANDS CAROUSEL ── -->
           <div class="auth-pop auth-pop-d2">
             <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
               <div style="width:2.5rem;height:2.5rem;background:#1E6EA6;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -605,39 +633,54 @@
                 <h3 style="color:white;font-size:1.2rem;font-weight:800;margin:0;">Grow Your Reach</h3>
               </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:1rem;">
-              <div class="auth-gate-card-lime">
-                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
-                  <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <!-- Carousel -->
+            <div style="position:relative;">
+              <div id="carousel-brands" style="overflow:hidden;border-radius:1rem;">
+                <div class="why-carousel-track" id="carousel-brands-track" style="display:flex;transition:transform 0.35s ease;">
+                  <div class="auth-gate-card-lime why-carousel-slide">
+                    <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                      <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                      </div>
+                      <div>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Find the Right Creator</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Search verified pickleball creators by niche, audience size, location, and skill level.</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Find the Right Creator</h4>
-                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Search verified pickleball creators by niche, audience size, location, and skill level.</p>
+                  <div class="auth-gate-card-lime why-carousel-slide">
+                    <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                      <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                      </div>
+                      <div>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Post Campaigns &amp; Sign Contracts</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Browse creator profiles and negotiate terms that work for both of you.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="auth-gate-card-lime why-carousel-slide">
+                    <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                      <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                      </div>
+                      <div>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Pay Only on Results</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Funds held in escrow and released only after content is delivered and approved by you.</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="auth-gate-card-lime">
-                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
-                  <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                  </div>
-                  <div>
-                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Post Campaigns &amp; Sign Contracts</h4>
-                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Browse creator profiles and negotiate terms that work for both of you.</p>
-                  </div>
-                </div>
-              </div>
-              <div class="auth-gate-card-lime">
-                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
-                  <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                  </div>
-                  <div>
-                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Pay Only on Results</h4>
-                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Funds held in escrow and released only after content is delivered and approved by you.</p>
-                  </div>
-                </div>
+              <!-- Controls -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;">
+                <button onclick="whyCarouselPrev('brands')" class="why-carousel-btn" style="background:rgba(30,110,166,0.2);border:1px solid rgba(126,200,227,0.3);color:#7EC8E3;">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div id="carousel-brands-dots" style="display:flex;gap:0.4rem;"></div>
+                <button onclick="whyCarouselNext('brands')" class="why-carousel-btn" style="background:rgba(30,110,166,0.2);border:1px solid rgba(126,200,227,0.3);color:#7EC8E3;">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -3231,6 +3274,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=133"></script>
+  <script src="app.js?v=134"></script>
 </body>
 </html>
