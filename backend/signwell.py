@@ -32,30 +32,45 @@ async def create_document(
     name: str,
     subject: str,
     message: str,
-    signers: list[dict],          # [{"name": "...", "email": "..."}]
-    file_urls: list[str] = None,  # list of public PDF URLs
+    signers: list[dict],           # [{"name": "...", "email": "...", "signing_order"?: int}]
+    file_urls: list[str] = None,   # list of public PDF URLs
+    file_base64: list[dict] = None,# [{"data": "<base64>", "name": "contract.pdf"}]
     redirect_url: str = None,
+    send_in_order: bool = False,   # enforce sequential signing when True
 ) -> dict:
     """
     Create a new signature request document.
 
     Returns the SignWell document object including `id` and per-signer
     `embedded_signing_url` values.
+
+    signers may include an optional `signing_order` key (int, 1-based) to
+    enforce a sequential signing sequence. Set send_in_order=True alongside it.
+    file_base64 entries have keys: `data` (base64 string), `name` (filename).
     """
+    recipients = []
+    for i, s in enumerate(signers):
+        r = {"id": str(i + 1), "name": s["name"], "email": s["email"]}
+        if "signing_order" in s:
+            r["signing_order"] = s["signing_order"]
+        recipients.append(r)
+
+    files = []
+    for i, url in enumerate(file_urls or []):
+        files.append({"file_url": url, "file_name": f"contract_{i+1}.pdf"})
+    for entry in (file_base64 or []):
+        files.append({"file_base64": entry["data"], "file_name": entry["name"]})
+
     payload = {
         "test_mode": SIGNWELL_TEST_MODE,
         "name": name,
         "subject": subject,
         "message": message,
-        "recipients": [
-            {"id": str(i + 1), "name": s["name"], "email": s["email"]}
-            for i, s in enumerate(signers)
-        ],
-        "files": [
-            {"file_url": url, "file_name": f"contract_{i+1}.pdf"}
-            for i, url in enumerate(file_urls or [])
-        ],
+        "recipients": recipients,
+        "files": files,
     }
+    if send_in_order:
+        payload["send_in_order"] = True
     if redirect_url:
         payload["redirect_url"] = redirect_url
 

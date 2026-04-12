@@ -6,6 +6,11 @@
  *
  * Usage:
  *   import * as ContractService from './contractService.js';
+ *
+ *   // Triggered automatically when deal status → "agreed" / "active":
+ *   const result = await ContractService.createDealContract(dealId);
+ *
+ *   // Manual / low-level helpers:
  *   const doc = await ContractService.sendContract({ dealId, ... });
  */
 
@@ -37,6 +42,28 @@ async function _req(method, path, body = null) {
     throw new Error(msg);
   }
   return resp.status === 204 ? null : resp.json();
+}
+
+// ---------------------------------------------------------------------------
+// createDealContract — the primary entry point
+//
+// Triggers the full 8-step contract pipeline on the backend:
+//   1. Pull deal terms from the database
+//   2. Populate the contract template
+//   3. Generate a PDF
+//   4. Create a SignWell document
+//   5. Add brand signer (order 1) and creator signer (order 2)
+//   6. send_in_order=true — brand must sign before creator receives request
+//   7. SignWell emails both parties automatically
+//   8. Stores the SignWell document ID and sets deal status to 'contract_sent'
+//
+// Call this whenever a deal status changes to "agreed" / "active".
+//
+// Returns: { document_id, contract_status, signers, document }
+// ---------------------------------------------------------------------------
+
+export async function createDealContract(dealId) {
+  return _req("POST", `/contracts/deals/${dealId}/create`);
 }
 
 // ---------------------------------------------------------------------------

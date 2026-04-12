@@ -10,3 +10,4 @@ stripe==15.0.0
 psycopg2-binary==2.9.9
 slowapi==0.1.9
 httpx==0.27.2
+fpdf2==2.8.1

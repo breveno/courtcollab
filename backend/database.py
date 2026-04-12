@@ -428,9 +428,13 @@ def _init_pg():
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_followers INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS max_rate      INTEGER DEFAULT 0")
 
-        # deals — SignWell contract tracking
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_document_id TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_status      TEXT DEFAULT 'none'")
+        # deals — SignWell contract tracking + contract terms
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_document_id  TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_status       TEXT DEFAULT 'none'")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS num_posts             INTEGER DEFAULT 1")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS deadline              TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS usage_rights_duration TEXT DEFAULT '1 year'")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS exclusivity_terms     TEXT DEFAULT 'None'")
 
         conn.commit()
 
@@ -678,8 +682,12 @@ def _init_sqlite():
     _add_column_if_missing("payments",         "stripe_transfer_id",   "TEXT")
     _add_column_if_missing("users",            "reset_token",          "TEXT")
     _add_column_if_missing("users",            "reset_token_expires",  "TEXT")
-    _add_column_if_missing("deals",            "contract_document_id", "TEXT")
-    _add_column_if_missing("deals",            "contract_status",      "TEXT DEFAULT 'none'")
+    _add_column_if_missing("deals",            "contract_document_id",    "TEXT")
+    _add_column_if_missing("deals",            "contract_status",         "TEXT DEFAULT 'none'")
+    _add_column_if_missing("deals",            "num_posts",               "INTEGER DEFAULT 1")
+    _add_column_if_missing("deals",            "deadline",                "TEXT")
+    _add_column_if_missing("deals",            "usage_rights_duration",   "TEXT DEFAULT '1 year'")
+    _add_column_if_missing("deals",            "exclusivity_terms",       "TEXT DEFAULT 'None'")
 
 
 def _migrate_deal_statuses():

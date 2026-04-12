@@ -68,6 +68,7 @@ Stripe Connect
   POST   /api/stripe/webhook                 — Stripe webhook (no auth)
 """
 
+import base64
 import httpx
 import json
 import logging
@@ -1555,6 +1556,78 @@ Deal Reference: #{deal['id']} | Generated: {today}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
 
 
+def _build_contract_pdf(
+    deal: dict, campaign: dict, brand_profile: dict, creator_profile: dict
+) -> bytes:
+    """
+    Render the contract as a PDF using fpdf2 and return raw PDF bytes.
+    Falls back gracefully if fpdf2 is not installed.
+    """
+    try:
+        from fpdf import FPDF
+    except ImportError:
+        # fpdf2 not available — return plain-text bytes (SignWell still accepts .txt)
+        text = _generate_contract(deal, campaign, brand_profile, creator_profile)
+        return text.encode("utf-8")
+
+    contract_text = _generate_contract(deal, campaign, brand_profile, creator_profile)
+
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.set_margins(left=20, top=20, right=20)
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+
+    # Header — CourtCollab branding
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.set_fill_color(26, 26, 46)   # #1a1a2e navy
+    pdf.set_text_color(200, 241, 53) # #C8F135 lime
+    pdf.cell(0, 10, "CourtCollab", ln=True, fill=True, align="C")
+
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.ln(4)
+
+    # Body — contract text line by line
+    for line in contract_text.split("\n"):
+        # Section headers in bold
+        stripped = line.strip()
+        is_header = (
+            stripped.isupper() and len(stripped) > 3
+            or stripped.startswith("════")
+            or stripped.startswith("───")
+            or stripped.startswith("━━━")
+        )
+        if is_header:
+            pdf.set_font("Helvetica", "B", 9)
+        else:
+            pdf.set_font("Helvetica", "", 9)
+        pdf.multi_cell(0, 4.5, line if line else " ")
+
+    return bytes(pdf.output())
+
+
+def _get_contract_signers(deal: dict, brand_profile: dict) -> list[dict]:
+    """
+    Return the two signers in signing order: brand first, creator second.
+    Pulls names and emails from the enriched deal dict.
+    """
+    brand_display = (
+        brand_profile.get("company_name") or deal.get("brand_name") or "Brand"
+    ).strip()
+    return [
+        {
+            "name":          brand_display,
+            "email":         deal["brand_email"],
+            "signing_order": 1,
+        },
+        {
+            "name":          (deal.get("creator_name") or "Creator").strip(),
+            "email":         deal["creator_email"],
+            "signing_order": 2,
+        },
+    ]
+
+
 def _deal_detail(conn, deal_id: int) -> Optional[dict]:
     return _row(conn, """
         SELECT d.*,
@@ -1702,25 +1775,84 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
 
     label = _STATUS_LABELS.get(body.status, body.status)
 
-    # Auto-generate contract when deal goes active (creator accepted)
+    # Auto-generate contract and send via SignWell when deal goes active (creator accepted)
     if body.status == "active":
-        try:
-            with get_conn() as conn:
-                campaign_row    = _row(conn, "SELECT * FROM campaigns WHERE id = ?",     (deal["campaign_id"],))
-                brand_profile   = _row(conn, "SELECT * FROM brand_profiles WHERE user_id = ?",   (deal["brand_id"],))
-                creator_profile = _row(conn, "SELECT * FROM creator_profiles WHERE user_id = ?", (deal["creator_id"],))
-            contract_text = _generate_contract(
-                deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
-            )
-            with get_conn() as conn:
-                # INSERT OR IGNORE so a re-accept doesn't overwrite an existing contract
-                conn.execute(
-                    "INSERT INTO contracts (deal_id, content) VALUES (?,?)",
-                    (deal_id, contract_text),
+        import asyncio
+
+        async def _auto_send_contract():
+            try:
+                with get_conn() as conn:
+                    full_deal     = _row(conn, """
+                        SELECT d.*,
+                               c.title        AS campaign_title,
+                               c.niche        AS campaign_niche,
+                               c.description  AS campaign_description,
+                               ub.name        AS brand_name,
+                               ub.email       AS brand_email,
+                               uc.name        AS creator_name,
+                               uc.email       AS creator_email
+                        FROM deals d
+                        JOIN campaigns c ON c.id  = d.campaign_id
+                        JOIN users ub    ON ub.id = d.brand_id
+                        JOIN users uc    ON uc.id = d.creator_id
+                        WHERE d.id = ?
+                    """, (deal_id,))
+                    campaign_row    = _row(conn, "SELECT * FROM campaigns        WHERE id = ?",      (deal["campaign_id"],))
+                    brand_profile   = _row(conn, "SELECT * FROM brand_profiles   WHERE user_id = ?", (deal["brand_id"],))
+                    creator_profile = _row(conn, "SELECT * FROM creator_profiles WHERE user_id = ?", (deal["creator_id"],))
+
+                # Also store plain-text copy in contracts table (existing feature)
+                contract_text = _generate_contract(
+                    full_deal or deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
                 )
-                conn.commit()
-        except Exception:
-            pass  # contract generation is best-effort; deal status already committed
+                with get_conn() as conn:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO contracts (deal_id, content) VALUES (?,?)",
+                        (deal_id, contract_text),
+                    )
+                    conn.commit()
+
+                # Build PDF and send via SignWell
+                pdf_bytes = _build_contract_pdf(
+                    full_deal or deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
+                )
+                pdf_b64   = base64.b64encode(pdf_bytes).decode("ascii")
+                signers   = _get_contract_signers(full_deal or deal, brand_profile or {})
+                brand_company = (brand_profile or {}).get("company_name") or deal.get("brand_name", "Brand")
+                creator_name  = deal.get("creator_name", "Creator")
+                doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
+
+                sw_doc = await sw.create_document(
+                    name    = doc_name,
+                    subject = f"Please sign: {doc_name}",
+                    message = (
+                        f"Hi,\n\nPlease review and sign the brand deal agreement for "
+                        f"\"{deal.get('campaign_title', 'your campaign')}\" on CourtCollab.\n\n"
+                        f"Deal amount: ${deal.get('amount', 0):,}\n\n"
+                        f"— The CourtCollab Team"
+                    ),
+                    signers       = signers,
+                    file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
+                    send_in_order = True,
+                )
+                sw_doc_id = sw_doc.get("id", "")
+                if sw_doc_id:
+                    with get_conn() as conn:
+                        conn.execute(
+                            """UPDATE deals
+                               SET contract_document_id = ?,
+                                   contract_status      = 'contract_sent',
+                                   updated_at           = datetime('now')
+                               WHERE id = ?""",
+                            (sw_doc_id, deal_id),
+                        )
+                        conn.commit()
+
+            except Exception as exc:
+                logging.warning("Auto contract send failed for deal %s: %s", deal_id, exc)
+                # Non-fatal — deal status already committed
+
+        asyncio.create_task(_auto_send_contract())
 
     # Notify the other party
     if body.status == "active":
@@ -3107,6 +3239,103 @@ async def list_contract_templates(user: dict = Depends(current_user)):
         return await sw.list_templates()
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
+
+@app.post("/api/contracts/deals/{deal_id}/create", status_code=201)
+async def create_deal_contract(deal_id: int, user: dict = Depends(current_user)):
+    """
+    Full contract creation pipeline for a deal:
+
+    1. Fetch all deal terms from the database (deal + campaign + profiles).
+    2. Populate the contract template with those terms.
+    3. Generate a PDF of the contract.
+    4. Create a SignWell document with the PDF attached.
+    5. Add two signers — brand contact (signing_order=1) then creator (signing_order=2).
+    6. send_in_order=True so brand must sign before creator receives the request.
+    7. SignWell emails both parties automatically.
+    8. Update deal: contract_status = 'contract_sent', contract_document_id = doc['id'].
+    """
+    # ── 1. Fetch deal + related rows ───────────────────────────────────────
+    with get_conn() as conn:
+        deal = _row(conn, """
+            SELECT d.*,
+                   c.title        AS campaign_title,
+                   c.niche        AS campaign_niche,
+                   c.description  AS campaign_description,
+                   ub.name        AS brand_name,
+                   ub.email       AS brand_email,
+                   uc.name        AS creator_name,
+                   uc.email       AS creator_email
+            FROM deals d
+            JOIN campaigns c ON c.id  = d.campaign_id
+            JOIN users ub    ON ub.id = d.brand_id
+            JOIN users uc    ON uc.id = d.creator_id
+            WHERE d.id = ?
+        """, (deal_id,))
+
+        if not deal:
+            raise HTTPException(404, "Deal not found")
+
+        # Only brand or creator on this deal may trigger contract creation
+        if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+            raise HTTPException(403, "Not your deal")
+
+        campaign    = _row(conn, "SELECT * FROM campaigns    WHERE id = ?",      (deal["campaign_id"],))
+        brand_prof  = _row(conn, "SELECT * FROM brand_profiles   WHERE user_id = ?", (deal["brand_id"],))
+        creator_prof= _row(conn, "SELECT * FROM creator_profiles WHERE user_id = ?", (deal["creator_id"],))
+
+    campaign     = campaign     or {}
+    brand_prof   = brand_prof   or {}
+    creator_prof = creator_prof or {}
+
+    # ── 2 & 3. Populate template → generate PDF ─────────────────────────
+    pdf_bytes  = _build_contract_pdf(deal, campaign, brand_prof, creator_prof)
+    pdf_b64    = base64.b64encode(pdf_bytes).decode("ascii")
+    doc_name   = f"CourtCollab Deal #{deal_id} — {brand_prof.get('company_name') or deal['brand_name']} × {deal['creator_name']}"
+
+    # ── 4 & 5. Signers: brand first (order=1), creator second (order=2) ──
+    signers = _get_contract_signers(deal, brand_prof)
+
+    # ── 6 & 7. Create SignWell document; send_in_order enforces sequence ─
+    try:
+        sw_doc = await sw.create_document(
+            name    = doc_name,
+            subject = f"Please sign: {doc_name}",
+            message = (
+                f"Hi,\n\nPlease review and sign the brand deal agreement for "
+                f"\"{deal.get('campaign_title', 'your campaign')}\" on CourtCollab.\n\n"
+                f"Deal amount: ${deal.get('amount', 0):,}\n\n"
+                f"— The CourtCollab Team"
+            ),
+            signers      = signers,
+            file_base64  = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
+            send_in_order= True,
+        )
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code,
+                            detail=f"SignWell error: {e.response.text}")
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    # ── 8. Persist document ID and update contract status ────────────────
+    sw_doc_id = sw_doc.get("id", "")
+    with get_conn() as conn:
+        conn.execute(
+            """UPDATE deals
+               SET contract_document_id = ?,
+                   contract_status      = 'contract_sent',
+                   updated_at           = datetime('now')
+               WHERE id = ?""",
+            (sw_doc_id, deal_id),
+        )
+        conn.commit()
+
+    return {
+        "document_id":     sw_doc_id,
+        "contract_status": "contract_sent",
+        "signers":         signers,
+        "document":        sw_doc,
+    }
 
 
 # ---------------------------------------------------------------------------
