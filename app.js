@@ -2155,7 +2155,9 @@ async function renderCampaigns() {
       return;
     }
 
+    _campaignMap = {};
     list.innerHTML = campaigns.map(c => {
+      _campaignMap[c.id] = c;
       const skills     = Array.isArray(c.skills) ? c.skills : [];
       const brandLabel = c.company_name || c.brand_name || 'Brand';
       const budget     = c.budget ? `$${Number(c.budget).toLocaleString()}` : (c.budget_min && c.budget_max ? `$${c.budget_min.toLocaleString()} – $${c.budget_max.toLocaleString()}` : '—');
@@ -2196,7 +2198,7 @@ async function renderCampaigns() {
           <div class="flex items-center justify-between pt-4 border-t border-gray-100">
             <span class="text-sm text-gray-400">${postedDate ? 'Posted ' + postedDate : ''}</span>
             ${state.role === 'creator'
-              ? `<button onclick="openApplyModal(${c.id}, ${JSON.stringify(escHtml(c.title))}, ${JSON.stringify(Array.isArray(c.questions) ? c.questions : [])})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Apply Now</button>`
+              ? `<button onclick="openApplyModal(${c.id})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Apply Now</button>`
               : `<button onclick="openApplicationsModal(${c.id}, ${JSON.stringify(escHtml(c.title))})" class="bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">View Applications</button>`
             }
           </div>
@@ -2210,9 +2212,13 @@ async function renderCampaigns() {
 
 // --- Apply to Campaign (Creator) ---
 let _applyingCampaignId = null;
+let _campaignMap = {};
 
-function openApplyModal(campaignId, title, questions) {
+function openApplyModal(campaignId) {
   _applyingCampaignId = campaignId;
+  const c = _campaignMap[campaignId] || {};
+  const title = c.title || '';
+  const questions = Array.isArray(c.questions) ? c.questions : [];
   const nameEl = document.getElementById('apply-modal-campaign-name');
   if (nameEl) nameEl.textContent = title;
   const msgEl = document.getElementById('apply-modal-message');
