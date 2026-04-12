@@ -716,23 +716,20 @@
   <nav id="main-navbar" class="bg-pickle-600 border-b border-pickle-500 sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16 pr-4 sm:pr-0">
-        <div class="flex items-center cursor-pointer" onclick="navigate('landing')">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 52" height="44" aria-label="CourtCollab" style="display:block;flex-shrink:0;">
-            <!-- Blue paddle (behind) -->
-            <g transform="translate(24,27) rotate(-33)">
-              <rect x="-10" y="-28" width="20" height="28" rx="8" fill="#3D7FC2"/>
-              <rect x="-3.5" y="0" width="7" height="17" rx="3" fill="#163a70"/>
+        <div class="flex items-center gap-2 cursor-pointer" onclick="navigate('landing')">
+          <!-- Paddles icon only — no text in SVG to avoid counter bleed -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 60" height="38" style="display:block;flex-shrink:0;" aria-hidden="true">
+            <g transform="translate(23,29) rotate(-32)">
+              <rect x="-12" y="-34" width="24" height="34" rx="10" fill="#3D7FC2"/>
+              <rect x="-4.5" y="1" width="9" height="23" rx="3.5" fill="#1a3a6e"/>
             </g>
-            <!-- Lime paddle (front) -->
-            <g transform="translate(40,27) rotate(33)">
-              <rect x="-10" y="-28" width="20" height="28" rx="8" fill="#7DC433"/>
-              <rect x="-3.5" y="0" width="7" height="17" rx="3" fill="#2a5a08"/>
+            <g transform="translate(47,29) rotate(32)">
+              <rect x="-12" y="-34" width="24" height="34" rx="10" fill="#7DC433"/>
+              <rect x="-4.5" y="1" width="9" height="23" rx="3.5" fill="#2d5c0a"/>
             </g>
-            <!-- Wordmark -->
-            <text x="62" y="34" font-family="Inter,system-ui,sans-serif" font-weight="800" font-size="24" dominant-baseline="auto" letter-spacing="-0.3">
-              <tspan fill="#C8F135">Court</tspan><tspan fill="#ffffff">Collab</tspan>
-            </text>
           </svg>
+          <!-- Native HTML text — no anti-aliasing bleed -->
+          <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:1.375rem;letter-spacing:-0.02em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
         </div>
         <div class="hidden md:flex items-center gap-1" id="main-nav">
           <!-- Home -->
