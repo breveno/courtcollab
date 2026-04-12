@@ -900,6 +900,9 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
     const _bs = document.getElementById('brand-portal-stats');
     if (_bg) _bg.innerHTML = '';
     if (_bs) _bs.innerHTML = '<div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-20"></div><div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-20"></div><div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-20"></div>';
+  } else {
+    // Stop polling when leaving either dashboard
+    _stopContractPoller();
   }
   if (page === 'creator-dashboard') {
     const _cs = document.getElementById('creator-dash-stats');
@@ -1065,6 +1068,204 @@ function fmtDateUTC(dateStr) {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
+// ---------------------------------------------------------------------------
+// Contract UI — banner rendering, signing, polling
+// ---------------------------------------------------------------------------
+
+/** Format a contract timestamp concisely */
+function _fmtContractDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d)) return ts.slice(0, 10);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/**
+ * Build the yellow (pending) or green (complete) contract banner HTML.
+ * deal must contain: contract_status, brand_signed, brand_signed_at,
+ *   creator_signed, creator_signed_at, contract_completed_url, brand_name, creator_name
+ */
+function _contractBannerHtml(deal) {
+  const cs = deal.contract_status || '';
+  const isPending  = ['contract_sent','brand_signed','creator_signed'].includes(cs);
+  const isComplete = cs === 'contract_complete';
+  if (!isPending && !isComplete) return '';
+
+  const brandSigned   = deal.brand_signed;
+  const creatorSigned = deal.creator_signed;
+  const brandName     = escHtml(deal.brand_name   || 'Brand');
+  const creatorName   = escHtml(deal.creator_name || 'Creator');
+
+  const signerRow = (signed, name, ts) => `
+    <div class="flex items-center gap-2.5">
+      <span class="text-lg leading-none">${signed ? '✅' : '⏰'}</span>
+      <div>
+        <p class="text-sm font-medium text-gray-800">${name}</p>
+        <p class="text-xs ${signed ? 'text-green-600' : 'text-gray-400'}">
+          ${signed ? 'Signed ' + _fmtContractDate(ts) : 'Pending signature'}
+        </p>
+      </div>
+    </div>`;
+
+  if (isPending) {
+    return `
+      <div class="rounded-xl border border-yellow-200 bg-yellow-50 p-4 mb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-yellow-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span class="font-semibold text-yellow-800">Your contract is ready to sign</span>
+          </div>
+          <button onclick="openContractSigningTab(${deal.id})"
+            class="bg-[#C8F135] text-gray-900 px-4 py-2 rounded-lg text-sm font-bold hover:bg-lime-400 transition shrink-0">
+            Sign Contract
+          </button>
+        </div>
+        <div class="flex gap-6 flex-wrap">
+          ${signerRow(brandSigned,   brandName,   deal.brand_signed_at)}
+          ${signerRow(creatorSigned, creatorName, deal.creator_signed_at)}
+        </div>
+      </div>`;
+  }
+
+  // contract_complete — green banner
+  const pdfBtn = deal.contract_completed_url
+    ? `<button onclick="window.open('${escHtml(deal.contract_completed_url)}','_blank')"
+         class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition shrink-0">
+         Download Contract
+       </button>`
+    : '';
+
+  return `
+    <div class="rounded-xl border border-green-200 bg-green-50 p-4 mb-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">✅</span>
+          <span class="font-semibold text-green-800">Contract fully signed by both parties</span>
+        </div>
+        ${pdfBtn}
+      </div>
+      <p class="text-xs text-green-700">
+        Brand signed ${_fmtContractDate(deal.brand_signed_at)} &nbsp;·&nbsp;
+        Creator signed ${_fmtContractDate(deal.creator_signed_at)}
+      </p>
+    </div>`;
+}
+
+/** Render the full Contracts section card for a dashboard container element. */
+function _renderContractSection(containerId, contractDeals) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  if (!contractDeals || contractDeals.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const items = contractDeals.map(d => `
+    <div id="contract-item-${d.id}" class="px-6 py-5 border-b border-gray-50 last:border-b-0">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <p class="font-semibold text-gray-900">${escHtml(d.campaign_title || d.title || 'Deal #' + d.id)}</p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            ${escHtml(d.brand_name || 'Brand')} × ${escHtml(d.creator_name || 'Creator')}
+            &nbsp;·&nbsp; $${(d.amount || 0).toLocaleString()}
+          </p>
+        </div>
+      </div>
+      ${_contractBannerHtml(d)}
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div class="bg-white rounded-2xl border border-gray-100">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-900">Contracts</h2>
+      </div>
+      ${items}
+    </div>`;
+}
+
+/** Open the SignWell embedded signing URL in a new tab for the current user. */
+async function openContractSigningTab(dealId) {
+  try {
+    const data = await apiGet(`/api/deals/${dealId}/my-signing-url`);
+    if (data.signing_url) {
+      window.open(data.signing_url, '_blank');
+    } else {
+      alert('Signing URL not available. The document may already be signed or expired.');
+    }
+  } catch (err) {
+    alert('Could not get signing URL: ' + err.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 30-second contract status poller
+// ---------------------------------------------------------------------------
+
+let _contractPollTimer   = null;
+let _contractPollDealIds = [];
+
+function _startContractPoller(dealIds, dashboardType) {
+  _stopContractPoller();
+  _contractPollDealIds = dealIds.filter(Boolean);
+  if (_contractPollDealIds.length === 0) return;
+
+  _contractPollTimer = setInterval(async () => {
+    let anyChange = false;
+    const stillPending = [];
+
+    for (const dealId of _contractPollDealIds) {
+      try {
+        const updated = await apiGet(`/api/deals/${dealId}/contract-status`);
+        const item    = document.getElementById(`contract-item-${dealId}`);
+        if (!item) continue;
+
+        const cs = updated.contract_status || '';
+
+        // Re-render just this deal's banner in place
+        const bannerEl = item.querySelector('.rounded-xl');
+        if (bannerEl) {
+          const newHtml = _contractBannerHtml(updated);
+          if (newHtml) bannerEl.outerHTML = newHtml;
+        }
+
+        if (cs === 'contract_complete') {
+          anyChange = true;
+          // Stop polling this deal — it's done
+        } else {
+          stillPending.push(dealId);
+        }
+      } catch (_) {
+        stillPending.push(dealId); // keep polling on transient errors
+      }
+    }
+
+    _contractPollDealIds = stillPending;
+
+    // If all contracts completed, stop the timer
+    if (_contractPollDealIds.length === 0) {
+      _stopContractPoller();
+    }
+
+    // Full dashboard refresh if any deal completed
+    if (anyChange) {
+      if (dashboardType === 'creator') renderCreatorDashboard();
+      else if (dashboardType === 'brand') renderBrandPortal();
+    }
+  }, 30_000); // 30 seconds
+}
+
+function _stopContractPoller() {
+  if (_contractPollTimer) {
+    clearInterval(_contractPollTimer);
+    _contractPollTimer = null;
+  }
+  _contractPollDealIds = [];
+}
+
 // --- Brand Fit Score ---
 function calcBrandFitScore(creator) {
   let score = 0;
@@ -1151,14 +1352,15 @@ async function renderBrandPortal() {
   if (!grid) return;
 
   try {
-    // Fetch campaigns + brand profile (with ratings) in parallel
-    const [campaigns, brandProfile] = await Promise.all([
+    // Fetch campaigns + brand profile + deals in parallel
+    const [campaigns, brandProfile, deals] = await Promise.all([
       apiGet('/api/campaigns'),
       apiGet('/api/brand/profile').catch(() => null),
+      apiGet('/api/deals').catch(() => []),
     ]);
     _brandPortalAllCampaigns = campaigns;
 
-    // Stats row — 4 tiles (change grid to 4-col)
+    // Stats row
     if (statsEl) {
       statsEl.className = 'grid grid-cols-3 gap-4 mb-8';
       const active = campaigns.filter(c => (c.status || 'open') === 'open').length;
@@ -1177,6 +1379,16 @@ async function renderBrandPortal() {
         </div>
       `;
     }
+
+    // Contracts section
+    const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
+    const contractDeals    = (deals || []).filter(d => contractStatuses.has(d.contract_status));
+    _renderContractSection('brand-portal-contracts', contractDeals);
+
+    const pendingPoll = contractDeals
+      .filter(d => d.contract_status !== 'contract_complete')
+      .map(d => d.id);
+    _startContractPoller(pendingPoll, 'brand');
 
     renderBrandPortalGrid(campaigns);
   } catch (err) {
@@ -1267,6 +1479,17 @@ async function renderCreatorDashboard() {
           </div>
         </div>`;
     }).join('');
+
+    // Contracts section — deals with an active or completed contract
+    const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
+    const contractDeals    = deals.filter(d => contractStatuses.has(d.contract_status));
+    _renderContractSection('creator-dash-contracts', contractDeals);
+
+    // Start 30-second poller for any deals still awaiting signatures
+    const pendingPoll = contractDeals
+      .filter(d => d.contract_status !== 'contract_complete')
+      .map(d => d.id);
+    _startContractPoller(pendingPoll, 'creator');
 
   } catch (err) {
     statsEl.innerHTML = '';

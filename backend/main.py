@@ -3610,6 +3610,69 @@ async def delete_signwell_webhook(webhook_id: str, user: dict = Depends(require_
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
 
 
+@app.get("/api/deals/{deal_id}/contract-status")
+async def get_deal_contract_status(deal_id: int, user: dict = Depends(current_user)):
+    """
+    Lightweight endpoint for the frontend contract-status poller.
+    Returns only the contract fields needed to render the UI banner.
+    """
+    with get_conn() as conn:
+        deal = _row(conn, """
+            SELECT d.id, d.brand_id, d.creator_id,
+                   d.contract_status, d.contract_document_id,
+                   d.brand_signed, d.brand_signed_at,
+                   d.creator_signed, d.creator_signed_at,
+                   d.contract_completed_url,
+                   ub.name AS brand_name,
+                   uc.name AS creator_name
+            FROM deals d
+            JOIN users ub ON ub.id = d.brand_id
+            JOIN users uc ON uc.id = d.creator_id
+            WHERE d.id = ?
+        """, (deal_id,))
+
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+        raise HTTPException(403, "Not your deal")
+
+    # Tell the frontend which party the current user is
+    role = "brand" if user["id"] == deal["brand_id"] else "creator"
+    return {**dict(deal), "my_role": role}
+
+
+@app.get("/api/deals/{deal_id}/my-signing-url")
+async def get_my_signing_url(deal_id: int, user: dict = Depends(current_user)):
+    """
+    Return the embedded SignWell signing URL for the current user.
+    Brand is always recipient "1"; creator is always recipient "2".
+    """
+    with get_conn() as conn:
+        deal = _row(conn,
+            "SELECT id, brand_id, creator_id, contract_document_id FROM deals WHERE id = ?",
+            (deal_id,))
+
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+        raise HTTPException(403, "Not your deal")
+
+    doc_id = deal.get("contract_document_id", "")
+    if not doc_id:
+        raise HTTPException(404, "No contract document found for this deal")
+
+    # Brand = recipient "1", Creator = recipient "2" (matches create_deal_contract signing order)
+    recipient_id = "1" if user["id"] == deal["brand_id"] else "2"
+
+    try:
+        url = await sw.get_embedded_signing_url(doc_id, recipient_id)
+        if not url:
+            raise HTTPException(404, "Signing URL not available — document may already be signed or expired")
+        return {"signing_url": url, "recipient_id": recipient_id}
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
+
 @app.post("/api/contracts/deals/{deal_id}/create", status_code=201)
 async def create_deal_contract(deal_id: int, user: dict = Depends(current_user)):
     """
