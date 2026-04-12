@@ -144,11 +144,17 @@ def _send_contract_complete_email(
         msg["To"]      = to_email
         msg.attach(MIMEText(body, "plain"))
 
-        with smtplib.SMTP(host, port, timeout=15) as srv:
-            srv.ehlo()
-            srv.starttls()
-            srv.login(user, passwd)
-            srv.sendmail(sender, [to_email], msg.as_string())
+        use_ssl = os.environ.get("SMTP_SSL", "false").lower() == "true" or port == 465
+        if use_ssl:
+            with smtplib.SMTP_SSL(host, port, timeout=15) as srv:
+                srv.login(user, passwd)
+                srv.sendmail(sender, [to_email], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port, timeout=15) as srv:
+                srv.ehlo()
+                srv.starttls()
+                srv.login(user, passwd)
+                srv.sendmail(sender, [to_email], msg.as_string())
 
         logging.info("[POLLER] Confirmation email sent to %s", to_email)
     except Exception as exc:
@@ -398,11 +404,17 @@ def _send_reminder_email(
         msg["To"]      = to_email
         msg.attach(MIMEText(body, "plain"))
 
-        with smtplib.SMTP(host, port, timeout=15) as srv:
-            srv.ehlo()
-            srv.starttls()
-            srv.login(user, passwd)
-            srv.sendmail(sender, [to_email], msg.as_string())
+        use_ssl = os.environ.get("SMTP_SSL", "false").lower() == "true" or port == 465
+        if use_ssl:
+            with smtplib.SMTP_SSL(host, port, timeout=15) as srv:
+                srv.login(user, passwd)
+                srv.sendmail(sender, [to_email], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port, timeout=15) as srv:
+                srv.ehlo()
+                srv.starttls()
+                srv.login(user, passwd)
+                srv.sendmail(sender, [to_email], msg.as_string())
 
         logging.info("[REMINDER] Reminder sent to %s for deal #%s", to_email, deal_id)
     except Exception as exc:
@@ -452,11 +464,17 @@ def _send_expiry_email(
         msg["To"]      = to_email
         msg.attach(MIMEText(body, "plain"))
 
-        with smtplib.SMTP(host, port, timeout=15) as srv:
-            srv.ehlo()
-            srv.starttls()
-            srv.login(user, passwd)
-            srv.sendmail(sender, [to_email], msg.as_string())
+        use_ssl = os.environ.get("SMTP_SSL", "false").lower() == "true" or port == 465
+        if use_ssl:
+            with smtplib.SMTP_SSL(host, port, timeout=15) as srv:
+                srv.login(user, passwd)
+                srv.sendmail(sender, [to_email], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port, timeout=15) as srv:
+                srv.ehlo()
+                srv.starttls()
+                srv.login(user, passwd)
+                srv.sendmail(sender, [to_email], msg.as_string())
 
         logging.info("[REMINDER] Expiry notice sent to %s for deal #%s", to_email, deal_id)
     except Exception as exc:

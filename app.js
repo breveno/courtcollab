@@ -181,6 +181,24 @@ async function apiPost(path, body, opts = {}) {
   } finally { if (opts.loading) hideLoading(); }
 }
 
+/**
+ * Raw authenticated fetch — returns the Response object (not parsed JSON).
+ * Used when callers need to inspect res.ok or call res.json() themselves.
+ */
+async function apiFetch(path, opts = {}) {
+  const token  = getToken();
+  const method = opts.method || 'GET';
+  const hasBody = opts.body !== undefined;
+  return fetch(API + path, {
+    method,
+    headers: {
+      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+      ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(hasBody ? { body: JSON.stringify(opts.body) } : {}),
+  });
+}
+
 async function apiGet(path, opts = {}) {
   if (opts.loading) showLoading(opts.msg || 'Loading…');
   try {
@@ -1431,20 +1449,20 @@ async function renderBrandPortal() {
     // Contracts section — fetch payments so the progress bar can show step 3
     const payments = await apiGet('/api/payments').catch(() => []);
 
-    // Terms confirmation banner — active deals awaiting term confirmations
+    // Contracts section — deals with an active or completed contract (render first)
+    const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
+    const contractDeals    = (deals || []).filter(d => contractStatuses.has(d.contract_status));
+    if (contractDeals.length > 0) {
+      _renderContractSection('brand-portal-contracts', contractDeals, payments);
+    }
+
+    // Terms confirmation banner — active deals awaiting term confirmations (prepended above contracts)
     const awaitingConfirmationBrand = (deals || []).filter(d =>
       d.status === 'active' &&
       (!d.contract_status || d.contract_status === 'none' || d.contract_status === '') &&
       !d.brand_terms_confirmed
     );
     _renderTermsConfirmationBanner('brand-portal-contracts', awaitingConfirmationBrand, 'brand');
-
-    // Contracts section — deals with an active or completed contract
-    const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
-    const contractDeals    = (deals || []).filter(d => contractStatuses.has(d.contract_status));
-    if (contractDeals.length > 0) {
-      _renderContractSection('brand-portal-contracts', contractDeals, payments);
-    }
 
     const pendingPoll = contractDeals
       .filter(d => d.contract_status !== 'contract_complete')
@@ -1541,20 +1559,20 @@ async function renderCreatorDashboard() {
         </div>`;
     }).join('');
 
-    // Terms confirmation banner — active deals awaiting term confirmations
+    // Contracts section — deals with an active or completed contract (render first)
+    const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
+    const contractDeals    = deals.filter(d => contractStatuses.has(d.contract_status));
+    if (contractDeals.length > 0) {
+      _renderContractSection('creator-dash-contracts', contractDeals, payments);
+    }
+
+    // Terms confirmation banner — active deals awaiting term confirmations (prepended above contracts)
     const awaitingConfirmation = deals.filter(d =>
       d.status === 'active' &&
       (!d.contract_status || d.contract_status === 'none' || d.contract_status === '') &&
       !d.creator_terms_confirmed
     );
     _renderTermsConfirmationBanner('creator-dash-contracts', awaitingConfirmation, 'creator');
-
-    // Contracts section — deals with an active or completed contract
-    const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
-    const contractDeals    = deals.filter(d => contractStatuses.has(d.contract_status));
-    if (contractDeals.length > 0) {
-      _renderContractSection('creator-dash-contracts', contractDeals, payments);
-    }
 
     // Start 30-second poller for any deals still awaiting signatures
     const pendingPoll = contractDeals

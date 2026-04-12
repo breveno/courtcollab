@@ -421,11 +421,17 @@ def _send_zoho_email(to_emails: list[str], subject: str, body: str) -> None:
             msg["To"]      = ", ".join(to_emails)
             msg.attach(MIMEText(body, "plain"))
 
-            with smtplib.SMTP(host, port, timeout=15) as server:
-                server.ehlo()
-                server.starttls()
-                server.login(user, passwd)
-                server.sendmail(sender, to_emails, msg.as_string())
+            use_ssl = os.environ.get("SMTP_SSL", "false").lower() == "true" or port == 465
+            if use_ssl:
+                with smtplib.SMTP_SSL(host, port, timeout=15) as server:
+                    server.login(user, passwd)
+                    server.sendmail(sender, to_emails, msg.as_string())
+            else:
+                with smtplib.SMTP(host, port, timeout=15) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.login(user, passwd)
+                    server.sendmail(sender, to_emails, msg.as_string())
 
             logging.info("[SMTP] Email sent to %s — %s", to_emails, subject)
         except Exception as exc:
@@ -1662,6 +1668,29 @@ def _build_contract_pdf(
 
     contract_text = _generate_contract(deal, campaign, brand_profile, creator_profile)
 
+    # fpdf2 core fonts (Helvetica) are Latin-1 only; replace non-Latin-1 box-drawing
+    # characters so the PDF renderer does not raise UnicodeEncodeError.
+    _BOX_REPLACEMENTS = {
+        "\u2550": "=",   # ═  double horizontal
+        "\u2554": "+",   # ╔
+        "\u2557": "+",   # ╗
+        "\u255a": "+",   # ╚
+        "\u255d": "+",   # ╝
+        "\u2551": "|",   # ║ double vertical
+        "\u2500": "-",   # ─ single horizontal
+        "\u2502": "|",   # │ single vertical
+        "\u2501": "-",   # ━ heavy horizontal
+        "\u2503": "|",   # ┃ heavy vertical
+        "\u2022": "-",   # • bullet
+        "\u2013": "-",   # – en dash
+        "\u2014": "--",  # — em dash
+    }
+    for ch, repl in _BOX_REPLACEMENTS.items():
+        contract_text = contract_text.replace(ch, repl)
+
+    # Encode to Latin-1, replacing any remaining non-encodable characters
+    contract_text = contract_text.encode("latin-1", errors="replace").decode("latin-1")
+
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_margins(left=20, top=20, right=20)
     pdf.set_auto_page_break(auto=True, margin=20)
@@ -1683,9 +1712,8 @@ def _build_contract_pdf(
         stripped = line.strip()
         is_header = (
             stripped.isupper() and len(stripped) > 3
-            or stripped.startswith("════")
-            or stripped.startswith("───")
-            or stripped.startswith("━━━")
+            or stripped.startswith("====")
+            or stripped.startswith("----")
         )
         if is_header:
             pdf.set_font("Helvetica", "B", 9)
@@ -1862,7 +1890,7 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         )
         with get_conn() as conn:
             conn.execute(
-                "INSERT OR IGNORE INTO contracts (deal_id, content) VALUES (?,?)",
+                "INSERT INTO contracts (deal_id, content) VALUES (?,?) ON CONFLICT (deal_id) DO NOTHING",
                 (deal_id, contract_text),
             )
             conn.commit()
@@ -3640,7 +3668,7 @@ async def get_deal_summary(deal_id: int, request: Request, user: dict = Depends(
                    uc.name       AS creator_name,
                    uc.email      AS creator_email,
                    bp.company_name   AS brand_company,
-                   bp.contact_name   AS brand_contact,
+                   ub.name           AS brand_contact,
                    cp.social_handles AS creator_social_handles
             FROM deals d
             JOIN campaigns c    ON c.id  = d.campaign_id
