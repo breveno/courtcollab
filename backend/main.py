@@ -224,8 +224,12 @@ def startup():
 @app.on_event("startup")
 async def start_contract_poller():
     """Start the SignWell status poller as a background asyncio task."""
-    from contractPoller import contract_poll_loop
-    asyncio.create_task(contract_poll_loop(get_conn))
+    try:
+        from contractPoller import contract_poll_loop
+        asyncio.get_event_loop().create_task(contract_poll_loop(get_conn))
+        print("[STARTUP] Contract poller task created.", flush=True)
+    except Exception as exc:
+        print(f"[STARTUP] Contract poller failed to start: {exc}", flush=True)
 
 @app.get("/debug/version")
 def debug_version():
