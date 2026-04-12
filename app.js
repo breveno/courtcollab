@@ -4111,7 +4111,7 @@ function _onboardClose(saved = false) {
 
 function _onboardSaveCreatorStep2() {
   // Cache text fields — they'll be merged into the single onboardFinish() API call
-  _onboardDisplayName = document.getElementById('onboard-display-name')?.value.trim() || '';
+  _onboardDisplayName = (state.currentUser?.name || '').trim();
   _onboardLocation    = document.getElementById('onboard-location')?.value.trim() || '';
   _onboardBio         = document.getElementById('onboard-bio')?.value.trim() || '';
 }
