@@ -251,8 +251,10 @@ function showAuthGate() {
   window.scrollTo(0, window.scrollY);
   const gate = document.getElementById('auth-gate');
   if (gate) { gate.style.display = ''; gate.classList.remove('hidden'); }
-  const nb = document.getElementById('main-navbar');
-  if (nb) nb.style.display = '';
+  const navLinks = document.getElementById('main-nav');
+  if (navLinks) navLinks.style.display = '';
+  const navRight = document.getElementById('nav-right-controls');
+  if (navRight) navRight.style.display = '';
   document.body.classList.add('no-scroll');
   document.documentElement.classList.add('gate-open');
   // Scroll auth gate to top
@@ -840,12 +842,14 @@ const _PUBLIC_PAGES = new Set(['privacy', 'terms']);
 let _navRafId = null;
 function navigate(page, activeNavId = null, _restoreScrollY = null) {
   if (!getToken() && !_PUBLIC_PAGES.has(page)) { showAuthGate(); return; }
-  // For public pages, hide the auth gate + nav and restore scrolling
+  // For public pages, hide the auth gate + nav links (keep logo) and restore scrolling
   if (_PUBLIC_PAGES.has(page)) {
     const ag = document.getElementById('auth-gate');
     if (ag) ag.style.display = 'none';
-    const nb = document.getElementById('main-navbar');
-    if (nb) nb.style.display = 'none';
+    const navLinks = document.getElementById('main-nav');
+    if (navLinks) navLinks.style.display = 'none';
+    const navRight = document.getElementById('nav-right-controls');
+    if (navRight) navRight.style.display = 'none';
     document.body.classList.remove('no-scroll');
     document.body.style.overflow = '';
     document.documentElement.classList.remove('gate-open');
