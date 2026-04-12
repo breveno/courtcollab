@@ -3515,6 +3515,89 @@ async def list_contract_templates(user: dict = Depends(current_user)):
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
 
 
+# ---------------------------------------------------------------------------
+# SignWell Webhook Registration (admin only)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/admin/signwell/webhooks/register", status_code=201)
+async def register_signwell_webhook(payload: dict, user: dict = Depends(require_admin)):
+    """
+    Register the CourtCollab webhook URL with SignWell via their API.
+
+    Call this ONCE after deploying to Railway — there is no webhook UI in the
+    SignWell dashboard, so this API call is how the URL gets registered.
+
+    Body (all optional):
+      {
+        "url": "https://your-app.railway.app/webhooks/signwell",  // auto-built from HOST if omitted
+        "events": ["document_signed", "document_completed", ...]  // defaults to all 4
+      }
+
+    Returns the created webhook object from SignWell, including its `id`
+    and `secret`. Store the `secret` as SIGNWELL_WEBHOOK_SECRET on Railway.
+    """
+    webhook_url = (payload.get("url") or "").strip()
+    if not webhook_url:
+        # Auto-build from the Railway PUBLIC_URL / HOST env var
+        host = (
+            os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+            or os.environ.get("PUBLIC_URL")
+            or os.environ.get("HOST", "")
+        ).rstrip("/")
+        if not host:
+            raise HTTPException(
+                400,
+                "Provide 'url' in the request body, or set RAILWAY_PUBLIC_DOMAIN on Railway.",
+            )
+        webhook_url = f"https://{host}/webhooks/signwell"
+
+    events = payload.get("events") or [
+        "document_signed",
+        "document_completed",
+        "document_declined",
+        "document_expired",
+    ]
+
+    try:
+        result = await sw.register_webhook(url=webhook_url, events=events)
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    webhook_id     = (result.get("api_webhook") or result).get("id", "")
+    webhook_secret = (result.get("api_webhook") or result).get("secret", "")
+
+    return {
+        "registered_url": webhook_url,
+        "webhook_id":     webhook_id,
+        "secret":         webhook_secret,
+        "next_step": (
+            f"Set SIGNWELL_WEBHOOK_SECRET={webhook_secret!r} "
+            "as an environment variable on Railway, then redeploy."
+        ) if webhook_secret else "Webhook registered. Check SignWell for the secret.",
+        "raw": result,
+    }
+
+
+@app.get("/api/admin/signwell/webhooks")
+async def list_signwell_webhooks(user: dict = Depends(require_admin)):
+    """List all webhooks currently registered with SignWell (admin only)."""
+    try:
+        return await sw.list_webhooks()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
+
+@app.delete("/api/admin/signwell/webhooks/{webhook_id}")
+async def delete_signwell_webhook(webhook_id: str, user: dict = Depends(require_admin)):
+    """Delete a registered SignWell webhook by ID (admin only)."""
+    try:
+        return await sw.delete_webhook(webhook_id)
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
+
 @app.post("/api/contracts/deals/{deal_id}/create", status_code=201)
 async def create_deal_contract(deal_id: int, user: dict = Depends(current_user)):
     """

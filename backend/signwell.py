@@ -154,6 +154,66 @@ async def list_templates() -> list:
         return resp.json().get("document_templates", [])
 
 
+# ---------------------------------------------------------------------------
+# Webhook management
+# ---------------------------------------------------------------------------
+
+async def register_webhook(url: str, events: list[str] = None) -> dict:
+    """
+    Register a webhook URL with SignWell so it receives signature events.
+
+    Default events:
+      document_signed, document_completed, document_declined, document_expired
+
+    Returns the created webhook object (includes `id` and `secret`).
+    """
+    if events is None:
+        events = [
+            "document_signed",
+            "document_completed",
+            "document_declined",
+            "document_expired",
+        ]
+    payload = {"api_webhook": {"url": url, "events": events}}
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{SIGNWELL_BASE_URL}/api_webhooks",
+            headers=_headers(),
+            json=payload,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def list_webhooks() -> list:
+    """List all registered webhooks on the SignWell account."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{SIGNWELL_BASE_URL}/api_webhooks",
+            headers=_headers(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        # SignWell returns { "api_webhooks": [...] } or a bare list
+        if isinstance(data, list):
+            return data
+        return data.get("api_webhooks", data)
+
+
+async def delete_webhook(webhook_id: str) -> dict:
+    """Delete a registered webhook by ID."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.delete(
+            f"{SIGNWELL_BASE_URL}/api_webhooks/{webhook_id}",
+            headers=_headers(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json() if resp.content else {"deleted": True}
+
+
 async def create_document_from_template(
     template_id: str,
     name: str,
