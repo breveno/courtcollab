@@ -121,9 +121,8 @@ STRIPE_CANCEL_URL     = os.environ.get("STRIPE_CANCEL_URL",  "http://localhost:3
 # ---------------------------------------------------------------------------
 # SignWell config
 # ---------------------------------------------------------------------------
-SIGNWELL_API_KEY       = os.environ.get("SIGNWELL_API_KEY", "")
-SIGNWELL_WEBHOOK_SECRET = os.environ.get("SIGNWELL_WEBHOOK_SECRET", "")
-SIGNWELL_TEST_MODE     = os.environ.get("SIGNWELL_TEST_MODE", "true").lower() == "true"
+SIGNWELL_API_KEY   = os.environ.get("SIGNWELL_API_KEY", "")
+SIGNWELL_TEST_MODE = os.environ.get("SIGNWELL_TEST_MODE", "true").lower() == "true"
 
 # ---------------------------------------------------------------------------
 # Email config
