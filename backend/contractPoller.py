@@ -24,8 +24,9 @@ from email.mime.text import MIMEText
 
 import httpx
 
-SIGNWELL_BASE_URL = "https://www.signwell.com/api/v1"
-POLL_INTERVAL_SECONDS = 600  # 10 minutes
+SIGNWELL_BASE_URL     = "https://www.signwell.com/api/v1"
+POLL_INTERVAL_SECONDS = 600   # 10 minutes
+STORAGE_BUCKET        = "signed-contracts"
 
 
 # ---------------------------------------------------------------------------
@@ -41,6 +42,59 @@ def _signwell_headers() -> dict:
 
 def _now_utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+async def _save_signed_pdf_to_storage(deal_id: int, pdf_url: str) -> str:
+    """
+    Download the completed PDF from SignWell and upload it permanently to
+    Supabase Storage.
+
+    Returns the public URL of the stored file, or "" on failure.
+
+    Required env vars:
+      SUPABASE_URL         — e.g. https://xyz.supabase.co
+      SUPABASE_SERVICE_KEY — service role key (has storage write access)
+    """
+    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    service_key  = os.environ.get("SUPABASE_SERVICE_KEY", "")
+
+    if not supabase_url or not service_key:
+        logging.warning(
+            "[STORAGE] SUPABASE_URL or SUPABASE_SERVICE_KEY not set — "
+            "skipping PDF storage for deal #%s", deal_id
+        )
+        return ""
+
+    filename     = f"deal-{deal_id}-signed.pdf"
+    upload_path  = f"{STORAGE_BUCKET}/{filename}"
+    upload_url   = f"{supabase_url}/storage/v1/object/{upload_path}"
+    public_url   = f"{supabase_url}/storage/v1/object/public/{upload_path}"
+
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            # 1. Download the signed PDF from SignWell
+            pdf_resp = await client.get(pdf_url)
+            pdf_resp.raise_for_status()
+            pdf_bytes = pdf_resp.content
+
+            # 2. Upload to Supabase Storage (upsert so re-runs don't fail)
+            up_resp = await client.post(
+                upload_url,
+                content=pdf_bytes,
+                headers={
+                    "Authorization":  f"Bearer {service_key}",
+                    "Content-Type":   "application/pdf",
+                    "x-upsert":       "true",
+                },
+            )
+            up_resp.raise_for_status()
+
+        logging.info("[STORAGE] Saved signed PDF for deal #%s → %s", deal_id, public_url)
+        return public_url
+
+    except Exception as exc:
+        logging.warning("[STORAGE] Failed to save PDF for deal #%s: %s", deal_id, exc)
+        return ""
 
 
 def _send_contract_complete_email(
@@ -225,6 +279,13 @@ async def _check_one_deal(deal, client: httpx.AsyncClient, get_conn) -> None:
         updates["contract_status"]        = "contract_complete"
         updates["contract_completed_url"] = completed_url
 
+    # 4a. If completing now, save the PDF to Supabase Storage first
+    signed_contract_url = ""
+    if updates.get("contract_status") == "contract_complete" and completed_url:
+        signed_contract_url = await _save_signed_pdf_to_storage(deal_id, completed_url)
+        if signed_contract_url:
+            updates["signed_contract_url"] = signed_contract_url
+
     set_clause = ", ".join(f"{k} = ?" for k in updates)
     values     = list(updates.values()) + [deal_id]
 
@@ -241,6 +302,7 @@ async def _check_one_deal(deal, client: httpx.AsyncClient, get_conn) -> None:
     if updates.get("contract_status") == "contract_complete":
         brand_display = (deal.get("brand_company") or deal.get("brand_name") or "Brand").strip()
         creator_name  = (deal.get("creator_name") or "Creator").strip()
+        display_url   = signed_contract_url or completed_url
 
         for name, email in [
             (brand_display, deal["brand_email"]),
@@ -253,7 +315,7 @@ async def _check_one_deal(deal, client: httpx.AsyncClient, get_conn) -> None:
                     deal_id      = deal_id,
                     brand_name   = brand_display,
                     creator_name = creator_name,
-                    completed_url= completed_url,
+                    completed_url= display_url,
                 )
 
 

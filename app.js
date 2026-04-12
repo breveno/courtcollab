@@ -962,8 +962,9 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
     if (msgDot?.classList.contains('hidden') && payDot?.classList.contains('hidden')) {
       document.getElementById('nav-activity-dot')?.classList.add('hidden');
     }
-    if (page === 'contact')         renderContact();
-    if (page === 'admin')           renderAdmin();
+    if (page === 'contact')           renderContact();
+    if (page === 'admin')             renderAdmin();
+    if (page === 'signed-contracts')  renderSignedContractsTab();
     if (page === 'creator-profile') { populateCreatorForm(); renderCreatorDealHistory(); }
     else { const el = document.getElementById('creator-profile-completion'); if (el) el.innerHTML = ''; }
     if (page === 'creator-dashboard') renderCreatorDashboard();
@@ -1544,6 +1545,98 @@ async function renderCreatorDashboard() {
     dealsEl.innerHTML = `<p class="p-6 text-red-500 text-sm">Could not load dashboard data.</p>`;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Signed Contracts Tab
+// ---------------------------------------------------------------------------
+
+async function renderSignedContractsTab() {
+  const listEl = document.getElementById('signed-contracts-list');
+  if (!listEl) return;
+
+  listEl.innerHTML = `
+    <div class="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400">
+      Loading contracts…
+    </div>`;
+
+  try {
+    const res = await apiFetch('/api/contracts/signed');
+    const { contracts = [] } = await res.json();
+
+    if (contracts.length === 0) {
+      listEl.innerHTML = `
+        <div class="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+          <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <p class="text-gray-500 text-sm">No signed contracts yet</p>
+          <p class="text-gray-400 text-xs mt-1">Contracts appear here once both parties have signed</p>
+        </div>`;
+      return;
+    }
+
+    const rows = contracts.map(c => {
+      const signedDate = c.creator_signed_at
+        ? _fmtContractDate(c.creator_signed_at)
+        : (c.brand_signed_at ? _fmtContractDate(c.brand_signed_at) : '—');
+      const roleLabel  = c.my_role === 'brand' ? 'Brand' : 'Creator';
+      const roleBadge  = c.my_role === 'brand'
+        ? 'bg-blue-100 text-blue-700'
+        : 'bg-purple-100 text-purple-700';
+      const amount     = c.amount ? `$${Number(c.amount).toLocaleString()}` : '—';
+      const downloadBtn = c.download_url
+        ? `<a href="${c.download_url}" target="_blank" rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 bg-lime-400 hover:bg-lime-500 text-gray-900
+                     font-medium text-xs px-3 py-1.5 rounded-lg transition">
+             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                 d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+             </svg>
+             Download PDF
+           </a>`
+        : `<span class="text-xs text-gray-400 italic">PDF not yet available</span>`;
+
+      return `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4
+                    p-5 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition rounded-xl">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="font-semibold text-gray-900 text-sm truncate">${c.campaign_title || `Deal #${c.deal_id}`}</h3>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full ${roleBadge}">${roleLabel}</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-0.5">
+              ${c.brand_company || c.brand_name} × ${c.creator_name}
+              &nbsp;·&nbsp; ${amount}
+              &nbsp;·&nbsp; Signed ${signedDate}
+            </p>
+          </div>
+          <div class="shrink-0">${downloadBtn}</div>
+        </div>`;
+    }).join('');
+
+    listEl.innerHTML = `
+      <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="font-bold text-gray-900">Signed Contracts
+            <span class="ml-2 text-xs font-semibold bg-lime-100 text-lime-800 px-2 py-0.5 rounded-full">
+              ${contracts.length}
+            </span>
+          </h2>
+        </div>
+        <div class="px-2">${rows}</div>
+      </div>`;
+
+  } catch (err) {
+    listEl.innerHTML = `
+      <div class="bg-white rounded-2xl border border-gray-100 p-8 text-center text-red-400 text-sm">
+        Could not load contracts: ${err.message}
+      </div>`;
+  }
+}
+
 
 function renderBrandPortalGrid(campaigns) {
   const grid = document.getElementById('brand-portal-campaign-grid');

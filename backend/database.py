@@ -441,6 +441,7 @@ def _init_pg():
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_signed_at     TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_completed_url TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_sent_at      TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS signed_contract_url  TEXT")
 
         conn.commit()
 
@@ -700,6 +701,7 @@ def _init_sqlite():
     _add_column_if_missing("deals",            "creator_signed_at",       "TEXT")
     _add_column_if_missing("deals",            "contract_completed_url",  "TEXT")
     _add_column_if_missing("deals",            "contract_sent_at",        "TEXT")
+    _add_column_if_missing("deals",            "signed_contract_url",     "TEXT")
 
 
 def _migrate_deal_statuses():

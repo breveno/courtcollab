@@ -3652,6 +3652,50 @@ async def get_deal_contract_status(deal_id: int, user: dict = Depends(current_us
     return {**dict(deal), "my_role": role}
 
 
+@app.get("/api/contracts/signed")
+def get_signed_contracts(user: dict = Depends(current_user)):
+    """
+    Return all fully-signed contracts where the current user is brand or creator.
+    Includes the permanent Supabase Storage URL (signed_contract_url) and
+    a fallback to contract_completed_url if storage upload wasn't available.
+    """
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT d.id               AS deal_id,
+                   d.amount,
+                   d.contract_status,
+                   d.contract_completed_url,
+                   d.signed_contract_url,
+                   d.brand_signed_at,
+                   d.creator_signed_at,
+                   c.title            AS campaign_title,
+                   ub.name            AS brand_name,
+                   ub.email           AS brand_email,
+                   uc.name            AS creator_name,
+                   uc.email           AS creator_email,
+                   bp.company_name    AS brand_company
+            FROM deals d
+            JOIN campaigns c    ON c.id  = d.campaign_id
+            JOIN users ub       ON ub.id = d.brand_id
+            JOIN users uc       ON uc.id = d.creator_id
+            LEFT JOIN brand_profiles bp ON bp.user_id = d.brand_id
+            WHERE d.contract_status = 'contract_complete'
+              AND (d.brand_id = ? OR d.creator_id = ?)
+            ORDER BY d.updated_at DESC
+        """, (user["id"], user["id"])).fetchall()
+
+    results = []
+    for r in rows:
+        row = dict(r)
+        # Prefer permanent Supabase URL; fall back to SignWell temporary URL
+        row["download_url"] = row.get("signed_contract_url") or row.get("contract_completed_url") or ""
+        # Determine the user's role in this deal
+        row["my_role"] = "brand" if row.get("brand_email", "").lower() == (user.get("email") or "").lower() else "creator"
+        results.append(row)
+
+    return {"contracts": results}
+
+
 @app.get("/api/deals/{deal_id}/my-signing-url")
 async def get_my_signing_url(deal_id: int, user: dict = Depends(current_user)):
     """
