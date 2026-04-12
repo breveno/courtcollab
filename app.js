@@ -1140,7 +1140,11 @@ async function renderBrandPortal() {
   const greeting = document.getElementById('brand-portal-greeting');
   if (greeting && state.currentUser) {
     const name = state.currentUser.company_name || state.currentUser.name || 'Brand';
-    greeting.textContent = 'Welcome back, ' + name.split(' ')[0];
+    const first = name.split(' ')[0];
+    const visitKey = `visited_${state.currentUser.id}`;
+    const returning = localStorage.getItem(visitKey);
+    localStorage.setItem(visitKey, '1');
+    greeting.textContent = returning ? `Welcome back, ${first}` : `Welcome, ${first}`;
   }
   const grid    = document.getElementById('brand-portal-campaign-grid');
   const statsEl = document.getElementById('brand-portal-stats');
@@ -1190,7 +1194,10 @@ async function renderCreatorDashboard() {
 
   if (greetEl && state.currentUser) {
     const first = (state.currentUser.name || 'Creator').split(' ')[0];
-    greetEl.textContent = `Welcome back, ${first}`;
+    const visitKey = `visited_${state.currentUser.id}`;
+    const returning = localStorage.getItem(visitKey);
+    localStorage.setItem(visitKey, '1');
+    greetEl.textContent = returning ? `Welcome back, ${first}` : `Welcome, ${first}`;
   }
 
   try {
