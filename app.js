@@ -838,10 +838,14 @@ const _PUBLIC_PAGES = new Set(['privacy', 'terms']);
 let _navRafId = null;
 function navigate(page, activeNavId = null, _restoreScrollY = null) {
   if (!getToken() && !_PUBLIC_PAGES.has(page)) { showAuthGate(); return; }
-  // For public pages, hide the auth gate so the page is visible
+  // For public pages, hide the auth gate and restore scrolling
   if (_PUBLIC_PAGES.has(page)) {
     const ag = document.getElementById('auth-gate');
     if (ag) ag.style.display = 'none';
+    document.body.classList.remove('no-scroll');
+    document.body.style.overflow = '';
+    document.documentElement.classList.remove('gate-open');
+    document.documentElement.style.overflow = '';
   }
 
   // Save current scroll position into current history entry before leaving
