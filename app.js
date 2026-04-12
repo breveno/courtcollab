@@ -4065,6 +4065,16 @@ async function onboardFinish() {
 
     if (Object.keys(payload).length) await apiPut('/api/creator/profile', payload);
   } catch (_) { /* best-effort */ }
+
+  // Refresh nav verified badge after saving
+  apiGet('/api/creator/profile').then(p => {
+    p.social_handles = (typeof p.social_handles === 'object' && p.social_handles) ? p.social_handles : {};
+    p.skills = Array.isArray(p.skills) ? p.skills : [];
+    const pct = _calcCompletion(p, _CREATOR_COMPLETION_FIELDS);
+    const navBadge = document.getElementById('nav-verified-badge');
+    if (navBadge) navBadge.classList.toggle('hidden', pct < 100);
+  }).catch(() => {});
+
   // Advance to Stripe connect step
   _onboardGoToStep(4);
 }
