@@ -68,6 +68,7 @@ Stripe Connect
   POST   /api/stripe/webhook                 — Stripe webhook (no auth)
 """
 
+import httpx
 import json
 import logging
 import os
@@ -2982,6 +2983,130 @@ def get_saved_creators(user: dict = Depends(current_user)):
         )
         results.append(r)
     return results
+
+
+# ---------------------------------------------------------------------------
+# SignWell — contract signing
+# ---------------------------------------------------------------------------
+import signwell as sw
+
+@app.post("/api/contracts/send", status_code=201)
+async def send_contract(payload: dict, user: dict = Depends(current_user)):
+    """
+    Create and send a signature request via SignWell.
+
+    Expected body:
+    {
+      "deal_id": 123,
+      "name": "CourtCollab Deal #123",
+      "subject": "Please sign your collaboration agreement",
+      "message": "Hi — please review and sign below.",
+      "signers": [{"name": "Jane", "email": "jane@example.com"}],
+      "file_urls": ["https://...pdf"]          // optional
+    }
+    """
+    try:
+        doc = await sw.create_document(
+            name=payload["name"],
+            subject=payload.get("subject", "Please sign your agreement"),
+            message=payload.get("message", "Please review and sign the attached agreement."),
+            signers=payload["signers"],
+            file_urls=payload.get("file_urls"),
+        )
+        # Persist document_id against the deal so we can look it up later
+        deal_id = payload.get("deal_id")
+        if deal_id:
+            with get_conn() as conn:
+                conn.execute(
+                    "UPDATE deals SET contract_document_id = ?, contract_status = 'sent' WHERE id = ?",
+                    (doc["id"], deal_id),
+                )
+        return {"document_id": doc["id"], "document": doc}
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.get("/api/contracts/{document_id}")
+async def get_contract(document_id: str, user: dict = Depends(current_user)):
+    """Return the current status of a SignWell document."""
+    try:
+        return await sw.get_document(document_id)
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
+
+@app.get("/api/contracts/{document_id}/signing-url/{recipient_id}")
+async def get_signing_url(document_id: str, recipient_id: str, user: dict = Depends(current_user)):
+    """Get an embedded signing URL for a specific recipient."""
+    try:
+        url = await sw.get_embedded_signing_url(document_id, recipient_id)
+        return {"signing_url": url}
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
+
+@app.get("/api/contracts/{document_id}/download")
+async def download_contract(document_id: str, user: dict = Depends(current_user)):
+    """Return the completed PDF download URL (only available once fully signed)."""
+    try:
+        pdf_url = await sw.get_completed_pdf_url(document_id)
+        if not pdf_url:
+            raise HTTPException(status_code=404, detail="Signed PDF not yet available")
+        return {"pdf_url": pdf_url}
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
+
+@app.delete("/api/contracts/{document_id}", status_code=200)
+async def cancel_contract(document_id: str, user: dict = Depends(current_user)):
+    """Cancel a pending signature request."""
+    try:
+        result = await sw.cancel_document(document_id)
+        return result
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
+
+@app.post("/api/signwell/webhook", include_in_schema=False)
+async def signwell_webhook(request: Request):
+    """
+    Receive SignWell event callbacks.
+    Events: document_completed, document_declined, document_expired, signer_viewed
+    """
+    try:
+        event = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    event_type = event.get("event", {}).get("type") or event.get("type", "")
+    doc        = event.get("document", {})
+    doc_id     = doc.get("id", "")
+
+    if event_type == "document_completed":
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE deals SET contract_status = 'signed' WHERE contract_document_id = ?",
+                (doc_id,),
+            )
+    elif event_type in ("document_declined", "document_expired"):
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE deals SET contract_status = ? WHERE contract_document_id = ?",
+                (event_type.replace("document_", ""), doc_id),
+            )
+
+    return {"received": True}
+
+
+@app.get("/api/contracts/templates")
+async def list_contract_templates(user: dict = Depends(current_user)):
+    """List all available SignWell document templates."""
+    try:
+        return await sw.list_templates()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
 
 
 # ---------------------------------------------------------------------------

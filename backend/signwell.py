@@ -1,0 +1,186 @@
+"""
+SignWell API helper module for CourtCollab.
+All calls go through this module — the API key is read from the
+SIGNWELL_API_KEY environment variable and never hardcoded.
+
+Base URL: https://www.signwell.com/api/v1
+Auth:     X-Api-Token header
+"""
+
+import os
+import httpx
+
+SIGNWELL_BASE_URL = "https://www.signwell.com/api/v1"
+SIGNWELL_TEST_MODE = os.environ.get("SIGNWELL_TEST_MODE", "true").lower() == "true"
+
+
+def _headers() -> dict:
+    api_key = os.environ.get("SIGNWELL_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("SIGNWELL_API_KEY environment variable is not set")
+    return {
+        "X-Api-Token": api_key,
+        "Content-Type": "application/json",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Documents
+# ---------------------------------------------------------------------------
+
+async def create_document(
+    name: str,
+    subject: str,
+    message: str,
+    signers: list[dict],          # [{"name": "...", "email": "..."}]
+    file_urls: list[str] = None,  # list of public PDF URLs
+    redirect_url: str = None,
+) -> dict:
+    """
+    Create a new signature request document.
+
+    Returns the SignWell document object including `id` and per-signer
+    `embedded_signing_url` values.
+    """
+    payload = {
+        "test_mode": SIGNWELL_TEST_MODE,
+        "name": name,
+        "subject": subject,
+        "message": message,
+        "recipients": [
+            {"id": str(i + 1), "name": s["name"], "email": s["email"]}
+            for i, s in enumerate(signers)
+        ],
+        "files": [
+            {"file_url": url, "file_name": f"contract_{i+1}.pdf"}
+            for i, url in enumerate(file_urls or [])
+        ],
+    }
+    if redirect_url:
+        payload["redirect_url"] = redirect_url
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{SIGNWELL_BASE_URL}/documents",
+            headers=_headers(),
+            json=payload,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def get_document(document_id: str) -> dict:
+    """Fetch the current status and metadata of a document."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{SIGNWELL_BASE_URL}/documents/{document_id}",
+            headers=_headers(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def cancel_document(document_id: str) -> dict:
+    """Cancel (delete) a pending document."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.delete(
+            f"{SIGNWELL_BASE_URL}/documents/{document_id}",
+            headers=_headers(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json() if resp.content else {"status": "cancelled"}
+
+
+async def get_completed_pdf_url(document_id: str) -> str:
+    """
+    Returns the download URL for the completed (fully signed) PDF.
+    Only available once all signers have signed.
+    """
+    doc = await get_document(document_id)
+    return doc.get("completed_pdf_url", "")
+
+
+# ---------------------------------------------------------------------------
+# Embedded signing
+# ---------------------------------------------------------------------------
+
+async def get_embedded_signing_url(document_id: str, recipient_id: str) -> str:
+    """
+    Generate an embedded signing URL for a specific recipient so they can
+    sign inside the CourtCollab UI without leaving the platform.
+    """
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{SIGNWELL_BASE_URL}/documents/{document_id}/recipients/{recipient_id}/embedded_signing_url",
+            headers=_headers(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("embedded_signing_url", "")
+
+
+# ---------------------------------------------------------------------------
+# Templates (optional — used when you have a pre-built contract template)
+# ---------------------------------------------------------------------------
+
+async def list_templates() -> list:
+    """List all available document templates in the SignWell account."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{SIGNWELL_BASE_URL}/document_templates",
+            headers=_headers(),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json().get("document_templates", [])
+
+
+async def create_document_from_template(
+    template_id: str,
+    name: str,
+    subject: str,
+    message: str,
+    signers: list[dict],
+    fields: dict = None,
+    redirect_url: str = None,
+) -> dict:
+    """
+    Create a signature request from a saved SignWell template.
+
+    `signers`  — [{"name": "...", "email": "...", "role": "template_role"}]
+    `fields`   — {"field_name": "value"} merge-field overrides
+    """
+    payload = {
+        "test_mode": SIGNWELL_TEST_MODE,
+        "name": name,
+        "subject": subject,
+        "message": message,
+        "template_id": template_id,
+        "recipients": [
+            {
+                "id": str(i + 1),
+                "name": s["name"],
+                "email": s["email"],
+                **({"role": s["role"]} if "role" in s else {}),
+            }
+            for i, s in enumerate(signers)
+        ],
+    }
+    if fields:
+        payload["fields"] = [{"api_id": k, "value": v} for k, v in fields.items()]
+    if redirect_url:
+        payload["redirect_url"] = redirect_url
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{SIGNWELL_BASE_URL}/document_templates/{template_id}/documents",
+            headers=_headers(),
+            json=payload,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()

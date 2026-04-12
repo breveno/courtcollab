@@ -428,6 +428,10 @@ def _init_pg():
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_followers INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS max_rate      INTEGER DEFAULT 0")
 
+        # deals — SignWell contract tracking
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_document_id TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_status      TEXT DEFAULT 'none'")
+
         conn.commit()
 
 
@@ -674,6 +678,8 @@ def _init_sqlite():
     _add_column_if_missing("payments",         "stripe_transfer_id",   "TEXT")
     _add_column_if_missing("users",            "reset_token",          "TEXT")
     _add_column_if_missing("users",            "reset_token_expires",  "TEXT")
+    _add_column_if_missing("deals",            "contract_document_id", "TEXT")
+    _add_column_if_missing("deals",            "contract_status",      "TEXT DEFAULT 'none'")
 
 
 def _migrate_deal_statuses():
