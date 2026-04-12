@@ -862,7 +862,7 @@ async function confirmDeleteAccount() {
 }
 
 // Pages accessible without a login token
-const _PUBLIC_PAGES = new Set(['privacy', 'terms']);
+const _PUBLIC_PAGES = new Set(['privacy', 'terms', 'cookies']);
 
 let _navRafId = null;
 function navigate(page, activeNavId = null, _restoreScrollY = null) {

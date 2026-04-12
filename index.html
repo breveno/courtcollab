@@ -262,7 +262,7 @@
       <div style="flex:1;min-width:220px;">
         <p style="margin:0;font-size:0.875rem;color:rgba(255,255,255,0.85);line-height:1.6;">
           We use cookies to improve your experience on CourtCollab.
-          <button onclick="navigate('privacy')" style="color:#C8F135;background:none;border:none;cursor:pointer;padding:0;font-size:inherit;text-decoration:underline;font-weight:600;">View our Cookie Policy</button>
+          <button onclick="navigate('cookies')" style="color:#C8F135;background:none;border:none;cursor:pointer;padding:0;font-size:inherit;text-decoration:underline;font-weight:600;">View our Cookie Policy</button>
         </p>
       </div>
       <div style="display:flex;gap:0.75rem;flex-shrink:0;">
@@ -2673,6 +2673,32 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div>
   </div>
 
+  <!-- Cookie Policy Page -->
+  <div id="page-cookies" class="page">
+    <div class="gradient-bg text-white py-16">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <button onclick="showAuthGate()" style="display:inline-flex;align-items:center;gap:0.4rem;color:rgba(255,255,255,0.65);font-size:0.875rem;background:none;border:none;cursor:pointer;padding:0;margin-bottom:1.5rem;" onmouseover="this.style.color='#C8F135'" onmouseout="this.style.color='rgba(255,255,255,0.65)'">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          Back to Sign In
+        </button>
+        <div class="text-center">
+          <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Cookie Policy</h1>
+          <p class="text-lg text-pickle-100 max-w-xl mx-auto">How we use cookies and similar technologies on CourtCollab.</p>
+        </div>
+      </div>
+    </div>
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div name="termly-embed" data-id="d7fa1a1d-8cef-40ef-b03e-d11ad8e6282f"></div>
+      <script type="text/javascript">(function(d, s, id) {
+        var js, tjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://app.termly.io/embed-policy.min.js";
+        tjs.parentNode.insertBefore(js, tjs);
+      }(document, 'script', 'termly-jssdk'));</script>
+    </div>
+  </div>
+
   <!-- Privacy Policy Page -->
   <div id="page-privacy" class="page">
     <div class="gradient-bg text-white py-16">
@@ -3205,6 +3231,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=127"></script>
+  <script src="app.js?v=128"></script>
 </body>
 </html>
