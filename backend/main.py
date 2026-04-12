@@ -119,6 +119,13 @@ STRIPE_SUCCESS_URL    = os.environ.get("STRIPE_SUCCESS_URL", "http://localhost:3
 STRIPE_CANCEL_URL     = os.environ.get("STRIPE_CANCEL_URL",  "http://localhost:3000/deal-cancel")
 
 # ---------------------------------------------------------------------------
+# SignWell config
+# ---------------------------------------------------------------------------
+SIGNWELL_API_KEY       = os.environ.get("SIGNWELL_API_KEY", "")
+SIGNWELL_WEBHOOK_SECRET = os.environ.get("SIGNWELL_WEBHOOK_SECRET", "")
+SIGNWELL_TEST_MODE     = os.environ.get("SIGNWELL_TEST_MODE", "true").lower() == "true"
+
+# ---------------------------------------------------------------------------
 # Email config
 # ---------------------------------------------------------------------------
 # Runtime overrides via environment variables (set these before launching):
