@@ -188,6 +188,7 @@
     .auth-scroll-hint { display:flex; margin-top:2.5rem; }
   }
   @media(max-width:899px) {
+    .why-split-grid { grid-template-columns:1fr !important; }
     .auth-hero-left { width:100%; }
     .auth-hero-right { width:100%; }
     .auth-gate-hero { padding:2.5rem 1rem 3.5rem; text-align:center; }
@@ -510,34 +511,112 @@
 
     <!-- ═══ WHY COURTCOLLAB ═══ -->
     <section class="auth-gate-section auth-gate-section-lime">
-      <div class="auth-gate-wrap" style="max-width:900px;">
-        <div class="auth-pop" style="text-align:center;margin-bottom:0.5rem;">
-          <h2 style="color:white;font-size:2rem;font-weight:800;margin:0 0 0.75rem;letter-spacing:-0.02em;">Why CourtCollab?</h2>
-          <p style="color:rgba(255,255,255,0.5);font-size:1rem;max-width:440px;margin:0 auto;">Built specifically for the pickleball market — not a generic influencer tool.</p>
+      <div class="auth-gate-wrap" style="max-width:960px;">
+        <div class="auth-pop" style="text-align:center;margin-bottom:2.5rem;">
+          <h2 style="color:white;font-size:2rem;font-weight:800;margin:0 0 0.5rem;letter-spacing:-0.02em;">Why CourtCollab?</h2>
+          <p style="color:rgba(255,255,255,0.5);font-size:1rem;margin:0 auto;">Built specifically for the pickleball market — not a generic influencer tool.</p>
         </div>
-        <div class="auth-gate-cards">
-          <div class="auth-gate-card-lime auth-pop auth-pop-d1">
-            <div style="width:2.5rem;height:2.5rem;background:#f0fdb0;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;">
-              <svg width="18" height="18" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+
+        <!-- Two-column split -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;" class="why-split-grid">
+
+          <!-- ── CREATORS SIDE ── -->
+          <div class="auth-pop auth-pop-d1">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
+              <div style="width:2.5rem;height:2.5rem;background:#C8F135;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="18" height="18" fill="none" stroke="#0B1F4A" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.82V15.18a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+              </div>
+              <div>
+                <p style="color:#C8F135;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 0.1rem;">For Creators</p>
+                <h3 style="color:white;font-size:1.2rem;font-weight:800;margin:0;">Monetize Your Game</h3>
+              </div>
             </div>
-            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Verified Creator Stats</h3>
-            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">No fake numbers. Every creator's follower counts, engagement rates, and handles are verified.</p>
-          </div>
-          <div class="auth-gate-card-lime auth-pop auth-pop-d2">
-            <div style="width:2.5rem;height:2.5rem;background:#f0fdb0;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;">
-              <svg width="18" height="18" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+              <div class="auth-gate-card-lime">
+                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                  <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                  </div>
+                  <div>
+                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Get Discovered by Brands</h4>
+                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Brands filter by niche, follower count, skill level, and engagement to find creators like you.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="auth-gate-card-lime">
+                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                  <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div>
+                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Set Your Rates, Keep Control</h4>
+                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">List your IG, TikTok, and YouTube rates. You choose which deals to apply for or accept.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="auth-gate-card-lime">
+                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                  <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div>
+                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Secure Escrow Payments</h4>
+                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Get paid when you deliver. Funds are held in escrow and released once content is approved.</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Contract Protected Deals</h3>
-            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">All campaigns run through signed agreements. Protect your brand or lock in your creator rate.</p>
           </div>
-          <div class="auth-gate-card-lime auth-pop auth-pop-d3">
-            <div style="width:2.5rem;height:2.5rem;background:#f0fdb0;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem;">
-              <svg width="18" height="18" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+
+          <!-- ── BRANDS SIDE ── -->
+          <div class="auth-pop auth-pop-d2">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
+              <div style="width:2.5rem;height:2.5rem;background:#1E6EA6;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+              </div>
+              <div>
+                <p style="color:#7EC8E3;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 0.1rem;">For Brands</p>
+                <h3 style="color:white;font-size:1.2rem;font-weight:800;margin:0;">Grow Your Reach</h3>
+              </div>
             </div>
-            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Pay Only on Results</h3>
-            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Funds held in escrow and released only when deliverables are confirmed and approved.</p>
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+              <div class="auth-gate-card-lime">
+                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                  <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  </div>
+                  <div>
+                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Find the Right Creator</h4>
+                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Search verified pickleball creators by niche, audience size, location, and skill level.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="auth-gate-card-lime">
+                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                  <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  </div>
+                  <div>
+                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Post Campaigns &amp; Sign Contracts</h4>
+                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Launch a campaign brief, review applicants, negotiate terms, and sign — all inside CourtCollab.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="auth-gate-card-lime">
+                <div style="display:flex;gap:0.875rem;align-items:flex-start;">
+                  <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                  </div>
+                  <div>
+                    <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Pay Only on Results</h4>
+                    <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Funds held in escrow and released only after content is delivered and approved by you.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+
+        </div><!-- /why-split-grid -->
       </div>
     </section>
 
@@ -2938,6 +3017,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=120"></script>
+  <script src="app.js?v=121"></script>
 </body>
 </html>
