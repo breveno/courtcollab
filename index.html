@@ -279,7 +279,7 @@
         </p>
       </div>
       <div style="display:flex;gap:0.75rem;flex-shrink:0;">
-        <button onclick="acceptCookies()" style="background:#C8F135;color:#0B1F4A;font-weight:700;font-size:0.875rem;padding:0.55rem 1.4rem;border-radius:0.5rem;border:none;cursor:pointer;">Accept</button>
+        <button onclick="acceptCookies()" style="background:#1E6EA6;color:#ffffff;font-weight:700;font-size:0.875rem;padding:0.55rem 1.4rem;border-radius:0.5rem;border:none;cursor:pointer;">Accept</button>
         <button onclick="declineCookies()" style="background:transparent;color:rgba(255,255,255,0.55);font-weight:500;font-size:0.875rem;padding:0.55rem 1rem;border-radius:0.5rem;border:1px solid rgba(255,255,255,0.2);cursor:pointer;">Decline</button>
       </div>
     </div>
@@ -717,7 +717,22 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16 pr-4 sm:pr-0">
         <div class="flex items-center cursor-pointer" onclick="navigate('landing')">
-          <img src="logo-transparent.png" alt="CourtCollab" style="height:48px;width:auto;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 52" height="44" aria-label="CourtCollab" style="display:block;flex-shrink:0;">
+            <!-- Blue paddle (behind) -->
+            <g transform="translate(24,27) rotate(-33)">
+              <rect x="-10" y="-28" width="20" height="28" rx="8" fill="#3D7FC2"/>
+              <rect x="-3.5" y="0" width="7" height="17" rx="3" fill="#163a70"/>
+            </g>
+            <!-- Lime paddle (front) -->
+            <g transform="translate(40,27) rotate(33)">
+              <rect x="-10" y="-28" width="20" height="28" rx="8" fill="#7DC433"/>
+              <rect x="-3.5" y="0" width="7" height="17" rx="3" fill="#2a5a08"/>
+            </g>
+            <!-- Wordmark -->
+            <text x="62" y="34" font-family="Inter,system-ui,sans-serif" font-weight="800" font-size="24" dominant-baseline="auto" letter-spacing="-0.3">
+              <tspan fill="#C8F135">Court</tspan><tspan fill="#ffffff">Collab</tspan>
+            </text>
+          </svg>
         </div>
         <div class="hidden md:flex items-center gap-1" id="main-nav">
           <!-- Home -->
