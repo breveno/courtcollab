@@ -428,13 +428,18 @@ def _init_pg():
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_followers INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS max_rate      INTEGER DEFAULT 0")
 
-        # deals — SignWell contract tracking + contract terms
+        # deals — SignWell contract tracking + contract terms + per-signer status
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_document_id  TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_status       TEXT DEFAULT 'none'")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS num_posts             INTEGER DEFAULT 1")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS deadline              TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS usage_rights_duration TEXT DEFAULT '1 year'")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS exclusivity_terms     TEXT DEFAULT 'None'")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_signed          INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_signed_at       TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_signed        INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_signed_at     TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_completed_url TEXT")
 
         conn.commit()
 
@@ -688,6 +693,11 @@ def _init_sqlite():
     _add_column_if_missing("deals",            "deadline",                "TEXT")
     _add_column_if_missing("deals",            "usage_rights_duration",   "TEXT DEFAULT '1 year'")
     _add_column_if_missing("deals",            "exclusivity_terms",       "TEXT DEFAULT 'None'")
+    _add_column_if_missing("deals",            "brand_signed",            "INTEGER DEFAULT 0")
+    _add_column_if_missing("deals",            "brand_signed_at",         "TEXT")
+    _add_column_if_missing("deals",            "creator_signed",          "INTEGER DEFAULT 0")
+    _add_column_if_missing("deals",            "creator_signed_at",       "TEXT")
+    _add_column_if_missing("deals",            "contract_completed_url",  "TEXT")
 
 
 def _migrate_deal_statuses():

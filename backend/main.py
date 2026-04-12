@@ -69,6 +69,8 @@ Stripe Connect
 """
 
 import base64
+import hashlib
+import hmac
 import httpx
 import json
 import logging
@@ -369,6 +371,80 @@ def _send_email(to_email: str, subject: str, body: str, event_type: str = ""):
             logging.warning("Email delivery failed for %s: %s", to_email, exc)
 
     threading.Thread(target=_send, daemon=True).start()
+
+
+def _send_zoho_email(to_emails: list[str], subject: str, body: str) -> None:
+    """
+    Send email via Zoho SMTP (or any SMTP provider) using smtplib.
+
+    Required Railway env vars:
+      SMTP_HOST  — e.g. smtp.zoho.com
+      SMTP_PORT  — default 587
+      SMTP_USER  — your Zoho email address (also used as sender)
+      SMTP_PASS  — Zoho app-specific password or account password
+      FROM_EMAIL — sender address (falls back to SMTP_USER)
+    """
+    import smtplib
+    import threading
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    def _send():
+        host  = os.environ.get("SMTP_HOST", "smtp.zoho.com")
+        port  = int(os.environ.get("SMTP_PORT", "587"))
+        user  = os.environ.get("SMTP_USER", "")
+        passwd= os.environ.get("SMTP_PASS", "")
+        sender= os.environ.get("FROM_EMAIL", user) or user
+
+        if not user or not passwd:
+            logging.warning("[SMTP] SMTP_USER or SMTP_PASS not set — skipping Zoho email to %s", to_emails)
+            return
+
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"]    = f"CourtCollab <{sender}>"
+            msg["To"]      = ", ".join(to_emails)
+            msg.attach(MIMEText(body, "plain"))
+
+            with smtplib.SMTP(host, port, timeout=15) as server:
+                server.ehlo()
+                server.starttls()
+                server.login(user, passwd)
+                server.sendmail(sender, to_emails, msg.as_string())
+
+            logging.info("[SMTP] Email sent to %s — %s", to_emails, subject)
+        except Exception as exc:
+            logging.warning("[SMTP] Delivery failed for %s: %s", to_emails, exc)
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def _verify_signwell_signature(raw_body: bytes, header_sig: str) -> bool:
+    """
+    Verify a SignWell webhook payload using HMAC-SHA256.
+
+    SignWell signs the raw request body with the webhook secret and sends
+    the hex digest in the X-SignWell-Signature header.
+
+    Returns True if the signature is valid, False otherwise.
+    If SIGNWELL_WEBHOOK_SECRET is not set, logs a warning and returns True
+    (permissive fallback — set the secret on Railway to enforce verification).
+    """
+    secret = os.environ.get("SIGNWELL_WEBHOOK_SECRET", "")
+    if not secret:
+        logging.warning("[WEBHOOK] SIGNWELL_WEBHOOK_SECRET not set — skipping signature check")
+        return True
+
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        msg=raw_body,
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+
+    # Strip optional "sha256=" prefix SignWell may prepend
+    incoming = header_sig.removeprefix("sha256=").strip()
+    return hmac.compare_digest(expected, incoming)
 
 
 def _admin_email_body(
@@ -3201,34 +3277,232 @@ async def cancel_contract(document_id: str, user: dict = Depends(current_user)):
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
 
 
-@app.post("/api/signwell/webhook", include_in_schema=False)
-async def signwell_webhook(request: Request):
+async def _handle_signwell_event(event: dict) -> None:
     """
-    Receive SignWell event callbacks.
-    Events: document_completed, document_declined, document_expired, signer_viewed
+    Shared logic for processing a verified SignWell webhook event.
+
+    Handles:
+      document_signed    — marks brand_signed or creator_signed; triggers
+                           contract_complete when both have signed
+      document_completed — fallback for platforms that emit this instead
+      document_declined  — marks contract declined
+      document_expired   — marks contract expired
     """
+    event_type  = (event.get("event") or {}).get("type") or event.get("type", "")
+    doc         = event.get("document") or {}
+    doc_id      = doc.get("id", "")
+    signer      = event.get("signer") or {}        # present on document_signed
+    signer_email= (signer.get("email") or "").lower().strip()
+    signed_at   = signer.get("signed_at") or datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    if not doc_id:
+        return
+
+    # ── document_signed: one signer just signed ────────────────────────────
+    if event_type == "document_signed":
+        with get_conn() as conn:
+            deal = _row(conn, """
+                SELECT d.id, d.brand_signed, d.creator_signed,
+                       ub.email AS brand_email,
+                       uc.email AS creator_email,
+                       ub.name  AS brand_name,
+                       uc.name  AS creator_name
+                FROM deals d
+                JOIN users ub ON ub.id = d.brand_id
+                JOIN users uc ON uc.id = d.creator_id
+                WHERE d.contract_document_id = ?
+            """, (doc_id,))
+
+            if not deal:
+                return
+
+            brand_email   = (deal["brand_email"]   or "").lower().strip()
+            creator_email = (deal["creator_email"] or "").lower().strip()
+            deal_id       = deal["id"]
+
+            # Identify which party signed by matching email
+            if signer_email == brand_email:
+                conn.execute(
+                    """UPDATE deals SET brand_signed = 1, brand_signed_at = ?,
+                       contract_status = 'brand_signed', updated_at = datetime('now')
+                       WHERE id = ?""",
+                    (signed_at, deal_id),
+                )
+                logging.info("[WEBHOOK] Brand signed deal #%s at %s", deal_id, signed_at)
+
+            elif signer_email == creator_email:
+                conn.execute(
+                    """UPDATE deals SET creator_signed = 1, creator_signed_at = ?,
+                       contract_status = 'creator_signed', updated_at = datetime('now')
+                       WHERE id = ?""",
+                    (signed_at, deal_id),
+                )
+                logging.info("[WEBHOOK] Creator signed deal #%s at %s", deal_id, signed_at)
+            else:
+                logging.warning(
+                    "[WEBHOOK] Unrecognised signer email %s for deal #%s",
+                    signer_email, deal_id,
+                )
+
+            conn.commit()
+
+            # Re-fetch to check if both have now signed
+            deal = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+
+        # Both signed → contract_complete
+        if deal and deal["brand_signed"] and deal["creator_signed"]:
+            # Try to fetch the completed PDF URL from SignWell
+            completed_url = ""
+            try:
+                completed_url = await sw.get_completed_pdf_url(doc_id) or ""
+            except Exception:
+                pass
+
+            with get_conn() as conn:
+                conn.execute(
+                    """UPDATE deals
+                       SET contract_status        = 'contract_complete',
+                           contract_completed_url = ?,
+                           updated_at             = datetime('now')
+                       WHERE id = ?""",
+                    (completed_url, deal_id),
+                )
+                conn.commit()
+
+            logging.info("[WEBHOOK] Deal #%s contract_complete — both parties signed", deal_id)
+
+            # Send confirmation email to both parties via Zoho SMTP
+            brand_name   = deal.get("brand_name",   "Brand")
+            creator_name = deal.get("creator_name", "Creator")
+            brand_email_addr   = (deal.get("brand_email")   or "").strip()
+            creator_email_addr = (deal.get("creator_email") or "").strip()
+
+            subject = "Your CourtCollab contract is fully signed — payment is now unlocked"
+            body_template = (
+                "Hi {name},\n\n"
+                "Great news! Your brand deal agreement on CourtCollab has been signed by both parties "
+                "and the contract is now fully executed.\n\n"
+                "  Deal ID         : #{deal_id}\n"
+                "  Brand           : {brand}\n"
+                "  Creator         : {creator}\n"
+                "  Contract Status : Fully Signed\n"
+                "{pdf_line}"
+                "\n"
+                "What happens next:\n"
+                "  • Creator — you can now begin work on the agreed deliverables.\n"
+                "  • Brand — payment is unlocked and will be held in escrow by CourtCollab "
+                "until you confirm delivery of all content.\n"
+                "  • Once the brand confirms delivery, the creator receives 85% of the deal "
+                "amount within 7 days.\n\n"
+                "Log in to CourtCollab at any time to track progress: https://courtcollab.com\n\n"
+                "— The CourtCollab Team\n"
+                "courtcollab.com\n"
+            )
+            pdf_line = (
+                f"  Signed PDF      : {completed_url}\n" if completed_url else ""
+            )
+
+            recipients = [r for r in [brand_email_addr, creator_email_addr] if r]
+            if recipients:
+                for addr, name in [(brand_email_addr, brand_name), (creator_email_addr, creator_name)]:
+                    if not addr:
+                        continue
+                    _send_zoho_email(
+                        to_emails=[addr],
+                        subject=subject,
+                        body=body_template.format(
+                            name=name,
+                            deal_id=deal_id,
+                            brand=brand_name,
+                            creator=creator_name,
+                            pdf_line=pdf_line,
+                        ),
+                    )
+
+    # ── document_completed: all signers done (fallback event) ──────────────
+    elif event_type == "document_completed":
+        completed_url = ""
+        try:
+            recipients_list = doc.get("recipients") or []
+            for r in recipients_list:
+                pass  # SignWell may embed the URL in the doc
+            completed_url = doc.get("completed_pdf_url") or await sw.get_completed_pdf_url(doc_id) or ""
+        except Exception:
+            pass
+
+        with get_conn() as conn:
+            conn.execute(
+                """UPDATE deals
+                   SET brand_signed = 1, creator_signed = 1,
+                       contract_status        = 'contract_complete',
+                       contract_completed_url = ?,
+                       updated_at             = datetime('now')
+                   WHERE contract_document_id = ?""",
+                (completed_url, doc_id),
+            )
+            conn.commit()
+
+    # ── document_declined / document_expired ───────────────────────────────
+    elif event_type in ("document_declined", "document_expired"):
+        new_status = event_type.replace("document_", "")
+        with get_conn() as conn:
+            conn.execute(
+                """UPDATE deals SET contract_status = ?, updated_at = datetime('now')
+                   WHERE contract_document_id = ?""",
+                (new_status, doc_id),
+            )
+            conn.commit()
+
+
+@app.post("/webhooks/signwell", include_in_schema=False)
+async def signwell_webhook_v2(request: Request):
+    """
+    Primary SignWell webhook receiver — POST /webhooks/signwell
+
+    Configure this URL in your SignWell dashboard under Settings → Webhooks.
+    Set SIGNWELL_WEBHOOK_SECRET on Railway to the secret shown in the dashboard.
+
+    Handles events:
+      document_signed    — per-signer tracking; triggers contract_complete + emails
+      document_completed — fallback for fully-signed documents
+      document_declined  — marks contract declined
+      document_expired   — marks contract expired
+    """
+    raw_body = await request.body()
+
+    # ── Signature verification ─────────────────────────────────────────────
+    sig_header = request.headers.get("X-SignWell-Signature", "")
+    if not _verify_signwell_signature(raw_body, sig_header):
+        logging.warning("[WEBHOOK] Invalid SignWell signature — rejecting request")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
     try:
-        event = await request.json()
+        event = json.loads(raw_body)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    event_type = event.get("event", {}).get("type") or event.get("type", "")
-    doc        = event.get("document", {})
-    doc_id     = doc.get("id", "")
+    await _handle_signwell_event(event)
+    return {"received": True}
 
-    if event_type == "document_completed":
-        with get_conn() as conn:
-            conn.execute(
-                "UPDATE deals SET contract_status = 'signed' WHERE contract_document_id = ?",
-                (doc_id,),
-            )
-    elif event_type in ("document_declined", "document_expired"):
-        with get_conn() as conn:
-            conn.execute(
-                "UPDATE deals SET contract_status = ? WHERE contract_document_id = ?",
-                (event_type.replace("document_", ""), doc_id),
-            )
 
+@app.post("/api/signwell/webhook", include_in_schema=False)
+async def signwell_webhook_legacy(request: Request):
+    """
+    Legacy webhook path — kept for backward compatibility.
+    New installs should use POST /webhooks/signwell.
+    """
+    raw_body = await request.body()
+
+    sig_header = request.headers.get("X-SignWell-Signature", "")
+    if not _verify_signwell_signature(raw_body, sig_header):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        event = json.loads(raw_body)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    await _handle_signwell_event(event)
     return {"received": True}
 
 
