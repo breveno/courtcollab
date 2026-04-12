@@ -554,7 +554,7 @@
           <svg width="14" height="14" fill="rgba(255,255,255,0.7)" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/></svg>
         </a>
         <div style="width:1px;height:1rem;background:rgba(255,255,255,0.15);"></div>
-        <button onclick="navigate('contact')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Privacy</button>
+        <button onclick="navigate('privacy')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Privacy</button>
         <button onclick="navigate('contact')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Terms</button>
         <button onclick="navigate('contact')" style="color:rgba(255,255,255,0.45);font-size:0.75rem;background:none;border:none;cursor:pointer;padding:0;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Contact</button>
       </div>
@@ -2404,6 +2404,26 @@
     </div>
   </div>
 
+  <!-- Privacy Policy Page -->
+  <div id="page-privacy" class="page">
+    <div class="gradient-bg text-white py-16">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Privacy Policy</h1>
+        <p class="text-lg text-pickle-100 max-w-xl mx-auto">How we collect, use, and protect your information.</p>
+      </div>
+    </div>
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div name="termly-embed" data-id="36c5cc1c-38e2-45d1-9070-72a99392606b"></div>
+      <script type="text/javascript">(function(d, s, id) {
+        var js, tjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://app.termly.io/embed-policy.min.js";
+        tjs.parentNode.insertBefore(js, tjs);
+      }(document, 'script', 'termly-jssdk'));</script>
+    </div>
+  </div>
+
   <!-- 404 Page -->
   <div id="page-404" class="page">
     <div class="min-h-screen flex flex-col items-center justify-center text-center px-6 py-20">
@@ -2863,7 +2883,7 @@
       <div class="border-t pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm" style="border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);">
         <p>&copy; 2026 CourtCollab. All rights reserved.</p>
         <div class="flex items-center gap-6">
-          <button onclick="navigate('contact')" class="hover:text-white transition">Privacy Policy</button>
+          <button onclick="navigate('privacy')" class="hover:text-white transition">Privacy Policy</button>
           <button onclick="navigate('contact')" class="hover:text-white transition">Terms of Service</button>
         </div>
       </div>
@@ -2910,6 +2930,6 @@
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=116"></script>
+  <script src="app.js?v=117"></script>
 </body>
 </html>
