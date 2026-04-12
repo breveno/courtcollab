@@ -280,3 +280,267 @@ async def contract_poll_loop(get_conn=None) -> None:
             logging.error("[POLLER] Unexpected error: %s", exc, exc_info=True)
 
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
+
+
+# ---------------------------------------------------------------------------
+# Contract reminder / expiry job — runs every 24 hours
+# ---------------------------------------------------------------------------
+
+REMINDER_INTERVAL_SECONDS = 86_400  # 24 hours
+REMINDER_THRESHOLD_HOURS  = 24      # send reminder after this many hours unsigned
+EXPIRY_THRESHOLD_DAYS     = 7       # expire contract after this many days unsigned
+APP_URL = os.environ.get("PUBLIC_URL", "https://courtcollab.com")
+
+
+def _send_reminder_email(
+    to_name: str,
+    to_email: str,
+    deal_id: int,
+    campaign_title: str,
+    partner_name: str,
+    amount: int,
+    hours_waiting: int,
+) -> None:
+    """Send a signature reminder email via Zoho SMTP."""
+    host   = os.environ.get("SMTP_HOST",  "smtp.zoho.com")
+    port   = int(os.environ.get("SMTP_PORT", "587"))
+    user   = os.environ.get("SMTP_USER",  "")
+    passwd = os.environ.get("SMTP_PASS",  "")
+    sender = os.environ.get("FROM_EMAIL", user) or user
+
+    if not user or not passwd:
+        logging.warning("[REMINDER] SMTP not configured — skipping reminder to %s", to_email)
+        return
+
+    dashboard_url = APP_URL.rstrip("/")
+    body = (
+        f"Hi {to_name},\n\n"
+        f"Your deal contract has been waiting for your signature for more than "
+        f"{hours_waiting} hours. Please sign as soon as possible to keep your deal active.\n\n"
+        f"  Deal          : {campaign_title}\n"
+        f"  Partner       : {partner_name}\n"
+        f"  Deal Amount   : ${amount:,}\n"
+        f"  Deal ID       : #{deal_id}\n\n"
+        f"Sign your contract now by logging into your CourtCollab dashboard:\n"
+        f"{dashboard_url}\n\n"
+        f"If you do not sign within 7 days of receiving the contract, the deal will "
+        f"automatically expire and both parties will need to restart the process.\n\n"
+        f"— The CourtCollab Team\n"
+        f"courtcollab.com\n"
+    )
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Action Required: Your CourtCollab Contract Needs Your Signature"
+        msg["From"]    = f"CourtCollab <{sender}>"
+        msg["To"]      = to_email
+        msg.attach(MIMEText(body, "plain"))
+
+        with smtplib.SMTP(host, port, timeout=15) as srv:
+            srv.ehlo()
+            srv.starttls()
+            srv.login(user, passwd)
+            srv.sendmail(sender, [to_email], msg.as_string())
+
+        logging.info("[REMINDER] Reminder sent to %s for deal #%s", to_email, deal_id)
+    except Exception as exc:
+        logging.warning("[REMINDER] Email failed for %s: %s", to_email, exc)
+
+
+def _send_expiry_email(
+    to_name: str,
+    to_email: str,
+    deal_id: int,
+    campaign_title: str,
+    partner_name: str,
+    amount: int,
+) -> None:
+    """Send a contract-expired notice via Zoho SMTP."""
+    host   = os.environ.get("SMTP_HOST",  "smtp.zoho.com")
+    port   = int(os.environ.get("SMTP_PORT", "587"))
+    user   = os.environ.get("SMTP_USER",  "")
+    passwd = os.environ.get("SMTP_PASS",  "")
+    sender = os.environ.get("FROM_EMAIL", user) or user
+
+    if not user or not passwd:
+        logging.warning("[REMINDER] SMTP not configured — skipping expiry email to %s", to_email)
+        return
+
+    dashboard_url = APP_URL.rstrip("/")
+    body = (
+        f"Hi {to_name},\n\n"
+        f"Unfortunately, your brand deal contract on CourtCollab has expired because "
+        f"it was not signed by all parties within 7 days.\n\n"
+        f"  Deal          : {campaign_title}\n"
+        f"  Partner       : {partner_name}\n"
+        f"  Deal Amount   : ${amount:,}\n"
+        f"  Deal ID       : #{deal_id}\n\n"
+        f"If both parties are still interested in working together, you can restart "
+        f"the process by creating a new deal on CourtCollab.\n\n"
+        f"Visit your dashboard to get started:\n"
+        f"{dashboard_url}\n\n"
+        f"— The CourtCollab Team\n"
+        f"courtcollab.com\n"
+    )
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Your CourtCollab Contract Has Expired"
+        msg["From"]    = f"CourtCollab <{sender}>"
+        msg["To"]      = to_email
+        msg.attach(MIMEText(body, "plain"))
+
+        with smtplib.SMTP(host, port, timeout=15) as srv:
+            srv.ehlo()
+            srv.starttls()
+            srv.login(user, passwd)
+            srv.sendmail(sender, [to_email], msg.as_string())
+
+        logging.info("[REMINDER] Expiry notice sent to %s for deal #%s", to_email, deal_id)
+    except Exception as exc:
+        logging.warning("[REMINDER] Expiry email failed for %s: %s", to_email, exc)
+
+
+async def contract_reminder_job(get_conn=None) -> None:
+    """
+    Runs once every 24 hours.
+
+    1. Query all deals with pending contract signatures where contract_sent_at
+       is more than REMINDER_THRESHOLD_HOURS old.
+    2. Send a reminder email to any party that has not yet signed.
+    3. For contracts unsigned for more than EXPIRY_THRESHOLD_DAYS days:
+       - Update contract_status to 'contract_expired' in the database.
+       - Send an expiry email to both parties.
+    """
+    try:
+        from database import get_conn as _get_conn
+        _gc = get_conn or _get_conn
+    except Exception:
+        logging.error("[REMINDER] Could not import get_conn")
+        return
+
+    logging.info("[REMINDER] Running contract reminder job...")
+
+    with _gc() as conn:
+        pending_deals = conn.execute("""
+            SELECT d.id,
+                   d.contract_sent_at,
+                   d.brand_signed,
+                   d.creator_signed,
+                   d.amount,
+                   ub.name  AS brand_name,
+                   ub.email AS brand_email,
+                   uc.name  AS creator_name,
+                   uc.email AS creator_email,
+                   c.title  AS campaign_title
+            FROM deals d
+            JOIN users ub    ON ub.id = d.brand_id
+            JOIN users uc    ON uc.id = d.creator_id
+            JOIN campaigns c ON c.id  = d.campaign_id
+            WHERE d.contract_status IN ('contract_sent', 'brand_signed', 'creator_signed')
+              AND d.contract_sent_at IS NOT NULL
+              AND d.contract_sent_at != ''
+        """).fetchall()
+
+    if not pending_deals:
+        logging.info("[REMINDER] No pending contracts to check.")
+        return
+
+    now = datetime.now(timezone.utc)
+
+    for deal in pending_deals:
+        deal_id        = deal["id"]
+        campaign_title = deal["campaign_title"] or f"Deal #{deal_id}"
+        amount         = deal["amount"] or 0
+
+        # Parse contract_sent_at
+        try:
+            sent_str = deal["contract_sent_at"].replace(" ", "T")
+            if not sent_str.endswith("Z") and "+" not in sent_str:
+                sent_str += "+00:00"
+            sent_at = datetime.fromisoformat(sent_str)
+            if sent_at.tzinfo is None:
+                sent_at = sent_at.replace(tzinfo=timezone.utc)
+        except Exception as exc:
+            logging.warning("[REMINDER] Could not parse contract_sent_at for deal #%s: %s", deal_id, exc)
+            continue
+
+        hours_since = (now - sent_at).total_seconds() / 3600
+        days_since  = hours_since / 24
+
+        # ── 7-day expiry ────────────────────────────────────────────────────
+        if days_since >= EXPIRY_THRESHOLD_DAYS:
+            with _gc() as conn:
+                conn.execute(
+                    """UPDATE deals
+                       SET contract_status = 'contract_expired',
+                           updated_at      = ?
+                       WHERE id = ?""",
+                    (_now_utc(), deal_id),
+                )
+                conn.commit()
+
+            logging.info(
+                "[REMINDER] Deal #%s contract expired after %.1f days",
+                deal_id, days_since,
+            )
+
+            # Notify both parties
+            for name, email in [
+                (deal["brand_name"],   deal["brand_email"]),
+                (deal["creator_name"], deal["creator_email"]),
+            ]:
+                if email:
+                    _send_expiry_email(
+                        to_name        = name   or "there",
+                        to_email       = email,
+                        deal_id        = deal_id,
+                        campaign_title = campaign_title,
+                        partner_name   = deal["creator_name"] if email == deal["brand_email"] else deal["brand_name"],
+                        amount         = amount,
+                    )
+            continue  # skip reminder for expired deals
+
+        # ── 24-hour reminder ─────────────────────────────────────────────────
+        if hours_since < REMINDER_THRESHOLD_HOURS:
+            continue  # too soon to remind
+
+        # Send reminder only to the party that has NOT yet signed
+        unsigned = []
+        if not deal["brand_signed"]:
+            unsigned.append((deal["brand_name"], deal["brand_email"], deal["creator_name"]))
+        if not deal["creator_signed"]:
+            unsigned.append((deal["creator_name"], deal["creator_email"], deal["brand_name"]))
+
+        for name, email, partner in unsigned:
+            if email:
+                _send_reminder_email(
+                    to_name        = name    or "there",
+                    to_email       = email,
+                    deal_id        = deal_id,
+                    campaign_title = campaign_title,
+                    partner_name   = partner or "your partner",
+                    amount         = amount,
+                    hours_waiting  = int(hours_since),
+                )
+
+    logging.info("[REMINDER] Contract reminder job complete.")
+
+
+async def contract_reminder_loop(get_conn=None) -> None:
+    """
+    Infinite loop that runs contract_reminder_job every 24 hours.
+    Staggered by 60 seconds after server boot so the poller starts first.
+
+        asyncio.create_task(contract_reminder_loop())
+    """
+    logging.info("[REMINDER] Contract reminder loop started — interval 24h")
+    await asyncio.sleep(60)  # let server fully boot
+
+    while True:
+        try:
+            await contract_reminder_job(get_conn)
+        except Exception as exc:
+            logging.error("[REMINDER] Unexpected error: %s", exc, exc_info=True)
+
+        await asyncio.sleep(REMINDER_INTERVAL_SECONDS)

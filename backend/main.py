@@ -223,14 +223,16 @@ def startup():
 
 @app.on_event("startup")
 async def start_contract_poller():
-    """Start the SignWell status poller as a background asyncio task."""
+    """Start the SignWell status poller and daily reminder job as background asyncio tasks."""
     import asyncio as _asyncio
     try:
-        from contractPoller import contract_poll_loop
-        _asyncio.get_event_loop().create_task(contract_poll_loop(get_conn))
-        print("[STARTUP] Contract poller task created.", flush=True)
+        from contractPoller import contract_poll_loop, contract_reminder_loop
+        loop = _asyncio.get_event_loop()
+        loop.create_task(contract_poll_loop(get_conn))
+        loop.create_task(contract_reminder_loop(get_conn))
+        print("[STARTUP] Contract poller + reminder tasks created.", flush=True)
     except Exception as exc:
-        print(f"[STARTUP] Contract poller failed to start: {exc}", flush=True)
+        print(f"[STARTUP] Contract tasks failed to start: {exc}", flush=True)
 
 @app.get("/debug/version")
 def debug_version():
@@ -1930,6 +1932,7 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
                             """UPDATE deals
                                SET contract_document_id = ?,
                                    contract_status      = 'contract_sent',
+                                   contract_sent_at     = datetime('now'),
                                    updated_at           = datetime('now')
                                WHERE id = ?""",
                             (sw_doc_id, deal_id),
@@ -3764,6 +3767,7 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
             """UPDATE deals
                SET contract_document_id = ?,
                    contract_status      = 'contract_sent',
+                   contract_sent_at     = datetime('now'),
                    updated_at           = datetime('now')
                WHERE id = ?""",
             (sw_doc_id, deal_id),
