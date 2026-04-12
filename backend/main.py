@@ -220,6 +220,13 @@ def startup():
     sg_key = os.environ.get("SENDGRID_API_KEY", "")
     print(f"[STARTUP] SENDGRID_API_KEY present={bool(sg_key)} prefix={sg_key[:8] if sg_key else 'NONE'}", flush=True)
 
+
+@app.on_event("startup")
+async def start_contract_poller():
+    """Start the SignWell status poller as a background asyncio task."""
+    from contractPoller import contract_poll_loop
+    asyncio.create_task(contract_poll_loop(get_conn))
+
 @app.get("/debug/version")
 def debug_version():
     import traceback as _tb
