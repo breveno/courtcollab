@@ -458,6 +458,12 @@ async function handleSignup(e) {
     return;
   }
 
+  // Terms agreement required
+  if (!document.getElementById('signup-agree-terms')?.checked) {
+    showAuthError('You must agree to the Terms of Service and Privacy Policy to create an account.');
+    return;
+  }
+
   // Role-specific validation
   if (role === 'creator') {
     const bday = (document.getElementById('signup-birthday')?.value || '').trim();

@@ -462,12 +462,22 @@
                   </div>
                 </div>
               </div>
+              <!-- Consent checkboxes -->
+              <div style="display:flex;flex-direction:column;gap:0.85rem;padding:1rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:0.75rem;">
+                <label style="display:flex;align-items:flex-start;gap:0.75rem;cursor:pointer;">
+                  <input type="checkbox" id="signup-agree-terms" style="width:1.1rem;height:1.1rem;min-width:1.1rem;margin-top:0.15rem;accent-color:#0B1F4A;cursor:pointer;" required />
+                  <span style="font-size:0.82rem;color:#374151;line-height:1.55;">By checking this box and clicking 'Create Account', I acknowledge that I have read and agree to be bound by the <button type="button" onclick="navigate('terms')" style="color:#3030F1;background:none;border:none;cursor:pointer;padding:0;font-size:inherit;text-decoration:underline;">Terms of Service</button> and acknowledge the <button type="button" onclick="navigate('privacy')" style="color:#3030F1;background:none;border:none;cursor:pointer;padding:0;font-size:inherit;text-decoration:underline;">Privacy Policy</button>. <span style="color:#ef4444;font-weight:600;">*</span></span>
+                </label>
+                <label style="display:flex;align-items:flex-start;gap:0.75rem;cursor:pointer;">
+                  <input type="checkbox" id="signup-agree-marketing" style="width:1.1rem;height:1.1rem;min-width:1.1rem;margin-top:0.15rem;accent-color:#0B1F4A;cursor:pointer;" />
+                  <span style="font-size:0.82rem;color:#374151;line-height:1.55;">I agree to receive marketing emails and texts from CourtCollab and its clients.</span>
+                </label>
+              </div>
+
               <button type="submit" class="auth-btn" style="margin-top:0.25rem;">Create Account</button>
             </div>
             <p style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:#6b7280;">Already have an account? <button type="button" onclick="showAuthTab('login')" style="color:#0B1F4A;font-weight:600;background:none;border:none;cursor:pointer;">Sign in</button></p>
           </form>
-
-          <p style="text-align:center;margin-top:1.5rem;font-size:0.78rem;color:#9ca3af;">By continuing, you agree to CourtCollab's Terms of Service and Privacy Policy.</p>
         </div><!-- /auth-form-card -->
         </div><!-- /auth-hero-right -->
 
@@ -3179,6 +3189,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     <span id="toast-text"></span>
   </div>
 
-  <script src="app.js?v=124"></script>
+  <script src="app.js?v=125"></script>
 </body>
 </html>
