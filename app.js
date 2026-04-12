@@ -2,6 +2,25 @@
 // CourtCollab — App Logic (API-connected, no mock data)
 // ============================================================
 
+// --- Cookie Consent Banner ---
+function initCookieBanner() {
+  if (!localStorage.getItem('cc_consent')) {
+    const banner = document.getElementById('cookie-banner');
+    if (banner) banner.style.display = '';
+  }
+}
+function acceptCookies() {
+  localStorage.setItem('cc_consent', 'accepted');
+  const banner = document.getElementById('cookie-banner');
+  if (banner) banner.style.display = 'none';
+}
+function declineCookies() {
+  localStorage.setItem('cc_consent', 'declined');
+  const banner = document.getElementById('cookie-banner');
+  if (banner) banner.style.display = 'none';
+}
+document.addEventListener('DOMContentLoaded', initCookieBanner);
+
 // --- Auth & API Helpers ---
 const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'https://courtcollab-production.up.railway.app'
