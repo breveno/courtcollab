@@ -2040,11 +2040,6 @@ async function saveCreatorProfile(e) {
       demo_gender:     (document.getElementById('cp-gender')?.value       || ''),
       demo_locations:  (document.getElementById('cp-locations')?.value    || ''),
       demo_interests:  (document.getElementById('cp-interests')?.value    || ''),
-      rate_ig:         parseInt(document.getElementById('cp-rate-ig')?.value)      || 0,
-      rate_tiktok:     parseInt(document.getElementById('cp-rate-tiktok')?.value)  || 0,
-      rate_yt:         parseInt(document.getElementById('cp-rate-yt')?.value)      || 0,
-      rate_ugc:        parseInt(document.getElementById('cp-rate-ugc')?.value)     || 0,
-      rate_notes:      (document.getElementById('cp-rate-notes')?.value   || ''),
     };
     // Social handles — build dict, skip blanks
     const _ig = (document.getElementById('cp-handle-ig')?.value || '').trim().replace(/^@/, '');
@@ -2996,12 +2991,6 @@ const _CREATOR_COMPLETION_FIELDS = [
     focusId: 'cp-ig',
   },
   {
-    key: 'rates', label: 'Set your rates', icon: '💰', pct: 15,
-    tip: 'Creators with listed rates close deals faster.',
-    check: p => (p.rate_ig || 0) + (p.rate_tiktok || 0) + (p.rate_yt || 0) + (p.rate_ugc || 0) > 0,
-    focusId: 'cp-rate-ig',
-  },
-  {
     key: 'name', label: 'Add a display name', icon: '👤', pct: 10,
     tip: 'Your creator name shown to brands.',
     check: p => !!(p.name || '').trim(),
@@ -3151,10 +3140,6 @@ function _buildProfileFromForm() {
     followers_tt:    parseInt(document.getElementById('cp-tiktok')?.value)     || 0,
     followers_yt:    parseInt(document.getElementById('cp-yt')?.value)         || 0,
     engagement_rate: parseFloat(document.getElementById('cp-engagement')?.value) || 0,
-    rate_ig:         parseInt(document.getElementById('cp-rate-ig')?.value)    || 0,
-    rate_tiktok:     parseInt(document.getElementById('cp-rate-tiktok')?.value) || 0,
-    rate_yt:         parseInt(document.getElementById('cp-rate-yt')?.value)    || 0,
-    rate_ugc:        parseInt(document.getElementById('cp-rate-ugc')?.value)   || 0,
     demo_age:        (document.getElementById('cp-age')?.value         || '').trim(),
     demo_gender:     (document.getElementById('cp-gender')?.value      || '').trim(),
     demo_locations:  (document.getElementById('cp-locations')?.value   || '').trim(),
@@ -3175,7 +3160,6 @@ function _attachProfileFormListeners() {
   const fieldIds = [
     'cp-name','cp-bio','cp-location','cp-skill-level','cp-niche',
     'cp-ig','cp-tiktok','cp-yt','cp-engagement','cp-views',
-    'cp-rate-ig','cp-rate-tiktok','cp-rate-yt','cp-rate-ugc','cp-rate-notes',
     'cp-age','cp-gender','cp-locations','cp-interests',
     'cp-handle-ig','cp-handle-tt','cp-handle-yt',
   ];
@@ -3229,11 +3213,6 @@ async function populateCreatorForm() {
     setSel('cp-gender',     p.demo_gender);
     setVal('cp-locations',  p.demo_locations);
     setVal('cp-interests',  p.demo_interests);
-    setNum('cp-rate-ig',    p.rate_ig);
-    setNum('cp-rate-tiktok', p.rate_tiktok);
-    setNum('cp-rate-yt',    p.rate_yt);
-    setNum('cp-rate-ugc',   p.rate_ugc);
-    setVal('cp-rate-notes', p.rate_notes);
 
     // Tick skill checkboxes
     const skills = Array.isArray(p.skills) ? p.skills : [];
@@ -4063,10 +4042,6 @@ async function onboardFinish() {
     const tt   = parseInt(document.getElementById('onboard-tt')?.value  || '0') || 0;
     const yt   = parseInt(document.getElementById('onboard-yt')?.value  || '0') || 0;
     const eng  = parseFloat(document.getElementById('onboard-engagement')?.value || '0') || 0;
-    const rIg  = parseInt(document.getElementById('onboard-rate-ig')?.value  || '0') || 0;
-    const rTt  = parseInt(document.getElementById('onboard-rate-tt')?.value  || '0') || 0;
-    const rYt  = parseInt(document.getElementById('onboard-rate-yt')?.value  || '0') || 0;
-    const rUgc = parseInt(document.getElementById('onboard-rate-ugc')?.value  || '0') || 0;
     const demoAge       = document.getElementById('onboard-demo-age')?.value.trim()       || '';
     const demoGender    = document.getElementById('onboard-demo-gender')?.value.trim()    || '';
     const demoLocations = document.getElementById('onboard-demo-locations')?.value.trim() || '';
@@ -4084,10 +4059,6 @@ async function onboardFinish() {
     if (tt)   payload.followers_tt    = tt;
     if (yt)   payload.followers_yt    = yt;
     if (eng)  payload.engagement_rate = eng;
-    if (rIg)  payload.rate_ig         = rIg;
-    if (rTt)  payload.rate_tiktok     = rTt;
-    if (rYt)  payload.rate_yt         = rYt;
-    if (rUgc) payload.rate_ugc        = rUgc;
     if (demoAge)       payload.demo_age       = demoAge;
     if (demoGender)    payload.demo_gender    = demoGender;
     if (demoLocations) payload.demo_locations = demoLocations;
