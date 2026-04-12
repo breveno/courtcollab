@@ -2485,6 +2485,14 @@ def stripe_checkout(request: Request, deal_id: int, user: dict = Depends(current
         if not deal:
             raise HTTPException(404, "Active deal not found or not yours")
 
+        # Server-side contract gate — both parties must have signed before payment
+        if deal.get("contract_status") != "contract_complete":
+            raise HTTPException(
+                403,
+                "Payment is locked until both parties have signed the contract. "
+                "Complete contract signing to unlock payment."
+            )
+
         # Block duplicate payments
         existing = _row(conn,
             "SELECT id FROM payments WHERE deal_id = ? AND status NOT IN ('refunded')",

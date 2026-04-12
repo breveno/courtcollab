@@ -1154,8 +1154,45 @@ function _contractBannerHtml(deal) {
     </div>`;
 }
 
+/**
+ * 3-step payment progress bar for the brand dashboard.
+ *
+ * Step 1 — Contract Sent    (contract_status = contract_sent / brand_signed / creator_signed)
+ * Step 2 — Contract Signed  (contract_status = contract_complete)
+ * Step 3 — Payment Unlocked (payment exists on this deal)
+ */
+function _contractProgressBar(deal) {
+  const cs          = deal.contract_status || '';
+  const hasPay      = deal.has_payment;   // set in _renderContractSection
+  const step1Active = ['contract_sent','brand_signed','creator_signed','contract_complete'].includes(cs);
+  const step2Active = cs === 'contract_complete';
+  const step3Active = !!(hasPay || deal.payment_status === 'released' || deal.payment_status === 'held');
+
+  const step = (label, icon, active, last) => {
+    const ring  = active ? 'bg-[#C8F135] text-gray-900 border-2 border-[#C8F135]'
+                         : 'bg-white text-gray-300 border-2 border-gray-200';
+    const lbl   = active ? 'text-gray-800 font-semibold' : 'text-gray-400';
+    const line  = active ? 'bg-[#C8F135]' : 'bg-gray-200';
+    return `
+      <div class="flex flex-col items-center flex-shrink-0" style="min-width:4rem">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${ring}">
+          ${active ? `<span>${icon}</span>` : `<span class="text-xs text-gray-300">${icon}</span>`}
+        </div>
+        <span class="text-[11px] mt-1.5 text-center leading-tight ${lbl}">${label}</span>
+      </div>
+      ${!last ? `<div class="flex-1 h-0.5 ${line} mt-4 mx-1 transition-all min-w-[16px]"></div>` : ''}`;
+  };
+
+  return `
+    <div class="flex items-start w-full mt-3 mb-1 px-1">
+      ${step('Contract Sent',   '📤', step1Active, false)}
+      ${step('Contract Signed', '✅', step2Active, false)}
+      ${step('Payment Unlocked','💳', step3Active, true)}
+    </div>`;
+}
+
 /** Render the full Contracts section card for a dashboard container element. */
-function _renderContractSection(containerId, contractDeals) {
+function _renderContractSection(containerId, contractDeals, payments) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
@@ -1164,7 +1201,16 @@ function _renderContractSection(containerId, contractDeals) {
     return;
   }
 
-  const items = contractDeals.map(d => `
+  // Annotate deals with payment info so progress bar knows step 3
+  const paymentsArr = payments || [];
+  const annotated   = contractDeals.map(d => {
+    const pay = paymentsArr.find(p => p.deal_id === d.id);
+    return { ...d, has_payment: !!pay, payment_status: pay ? pay.status : null };
+  });
+
+  const isOnBrandDashboard = containerId === 'brand-portal-contracts';
+
+  const items = annotated.map(d => `
     <div id="contract-item-${d.id}" class="px-6 py-5 border-b border-gray-50 last:border-b-0">
       <div class="flex items-center justify-between mb-3">
         <div>
@@ -1175,7 +1221,8 @@ function _renderContractSection(containerId, contractDeals) {
           </p>
         </div>
       </div>
-      ${_contractBannerHtml(d)}
+      ${isOnBrandDashboard ? _contractProgressBar(d) : ''}
+      <div class="mt-3">${_contractBannerHtml(d)}</div>
     </div>`).join('');
 
   el.innerHTML = `
@@ -1380,10 +1427,11 @@ async function renderBrandPortal() {
       `;
     }
 
-    // Contracts section
+    // Contracts section — fetch payments so the progress bar can show step 3
+    const payments = await apiGet('/api/payments').catch(() => []);
     const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
     const contractDeals    = (deals || []).filter(d => contractStatuses.has(d.contract_status));
-    _renderContractSection('brand-portal-contracts', contractDeals);
+    _renderContractSection('brand-portal-contracts', contractDeals, payments);
 
     const pendingPoll = contractDeals
       .filter(d => d.contract_status !== 'contract_complete')
@@ -1483,7 +1531,7 @@ async function renderCreatorDashboard() {
     // Contracts section — deals with an active or completed contract
     const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
     const contractDeals    = deals.filter(d => contractStatuses.has(d.contract_status));
-    _renderContractSection('creator-dash-contracts', contractDeals);
+    _renderContractSection('creator-dash-contracts', contractDeals, payments);
 
     // Start 30-second poller for any deals still awaiting signatures
     const pendingPoll = contractDeals
@@ -2995,9 +3043,19 @@ async function openConversation(partnerId, knownName = null) {
           const btn = document.querySelector(`[data-contract-btn="${deal.id}"]`);
           if (btn) btn.innerHTML = `${badge} ${c.is_fully_signed ? 'Contract Signed' : c.i_have_signed ? 'Awaiting Co-Sign' : 'Sign Contract'}`;
         }).catch(() => {});
+        const contractComplete = deal.contract_status === 'contract_complete';
+        const payBtn = contractComplete
+          ? `<button onclick="stripeCheckout(${deal.id})"
+               class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-1.5">
+               💳 Pay Now
+             </button>`
+          : `<span class="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
+               🔒 Complete contract signing to unlock payment
+             </span>`;
+
         dealActions.innerHTML = state.role === 'brand'
           ? `<button onclick="updateDealStatus(${deal.id}, 'completed')" class="bg-lime-400 text-gray-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Mark Complete</button>
-             <button onclick="stripeCheckout(${deal.id})" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Pay with Stripe</button>
+             ${payBtn}
              <button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>
              <button onclick="openDisputeModal(${deal.id})" class="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition" title="File a dispute">🚩</button>`
           : `<button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>
