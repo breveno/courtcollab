@@ -179,11 +179,18 @@
   .auth-error { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:0.5rem; padding:0.6rem 1rem; font-size:0.85rem; }
   /* Desktop two-column hero */
   @media(min-width:900px) {
+    /* On desktop, carousel slides are always visible — only animate on mobile */
+    .why-carousel-slide.auth-pop { opacity:1 !important; transform:none !important; transition:none !important; }
+    /* Why CourtCollab section: equal padding and equal-height columns */
+    .auth-gate-section-lime, .auth-gate-section-white { padding:5rem 3rem; }
+    .auth-gate-section-lime .auth-gate-wrap,
+    .auth-gate-section-white .auth-gate-wrap { max-width:960px; margin-left:auto; margin-right:auto; }
+    .why-split-grid > .auth-pop { height:100%; }
     .auth-gate-hero { padding:4rem 3rem 2.5rem; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:max(4rem, calc(50vh - 280px)); }
     .auth-gate-hero .auth-gate-wrap { max-width:1000px; width:100%; display:flex; flex-direction:row; align-items:flex-start; justify-content:flex-start; gap:4rem; text-align:left; }
     .auth-hero-left { flex:1; min-width:0; position:sticky; top:calc(50vh - 220px); }
     .auth-hero-right { flex:0 0 420px; }
-    .auth-hero-left .auth-gate-logo { justify-content:flex-start; margin-left:-79px; }
+    .auth-hero-left .auth-gate-logo { justify-content:flex-start; margin-left:-20px; }
     .auth-hero-left h1 { font-size:2.8rem; }
     .auth-hero-left p { margin-left:0; margin-right:0; }
     .auth-scroll-hint { display:flex; margin-top:2.5rem; }
@@ -192,17 +199,20 @@
   .why-carousel-slide { min-width:100%;box-sizing:border-box; }
   .why-carousel-btn { width:2.2rem;height:2.2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity 0.2s; }
   .why-carousel-btn:hover { opacity:0.75; }
-  .why-carousel-dot { width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.25);cursor:pointer;transition:background 0.2s,transform 0.2s; }
+  .why-carousel-dot { width:7px;height:7px;border-radius:50%;background:rgba(11,31,74,0.2);cursor:pointer;transition:background 0.2s,transform 0.2s; }
   .why-carousel-dot.active { background:#C8F135;transform:scale(1.25); }
   .why-carousel-dot-brand.active { background:#7EC8E3; }
 
   @media(max-width:899px) {
     .why-split-grid { grid-template-columns:1fr !important; }
-    /* On mobile: show all cards stacked, hide carousel controls */
+    /* On mobile: show all cards stacked as individual cards, hide carousel controls */
     .why-carousel-track { flex-direction:column !important;transform:none !important;transition:none !important; }
-    .why-carousel-slide { min-width:100% !important;margin-bottom:1rem; }
+    .why-carousel-slide { min-width:100% !important;margin-bottom:1rem;background:#ffffff;border-radius:1rem;padding:1.75rem !important; }
     .why-carousel-slide:last-child { margin-bottom:0; }
     .why-carousel-btn, #carousel-creators-dots, #carousel-brands-dots { display:none !important; }
+    .why-carousel-card { background:transparent !important;box-shadow:none !important;overflow:visible !important;border-radius:0 !important; }
+    .why-carousel-card > div { overflow:visible !important; }
+    .why-carousel-controls { display:none !important; }
     .auth-hero-left { width:100%; }
     .auth-hero-right { width:100%; }
     .auth-gate-hero { padding:2.5rem 1rem 3.5rem; text-align:center; }
@@ -213,6 +223,7 @@
     .auth-gate-logo img { height:60px !important; }
     .auth-hero-left h1 { font-size:1.9rem !important; }
     .auth-hero-left .auth-gate-logo { justify-content:center !important; margin-left:0 !important; }
+    .auth-hero-left .auth-gate-logo span { font-size:1.9rem !important; }
     .auth-hero-left p { margin-left:auto !important; margin-right:auto !important; }
   }
   /* Mobile hamburger menu */
@@ -289,7 +300,7 @@
   <!-- Initial app splash screen -->
   <div id="app-splash">
     <div style="display:flex;align-items:center;gap:0.75rem;">
-      <img src="logo.svg" alt="" aria-hidden="true" style="height:72px;width:auto;flex-shrink:0;filter:drop-shadow(0 0 24px rgba(200,241,53,0.4));">
+      <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:72px;width:auto;flex-shrink:0;filter:drop-shadow(0 0 24px rgba(200,241,53,0.4));">
       <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:3rem;letter-spacing:-0.03em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
     </div>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="80" height="80">
@@ -341,13 +352,13 @@
         <div class="auth-hero-left">
           <div class="auth-gate-logo" style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:2rem;">
             <div style="display:flex;align-items:center;gap:0.6rem;">
-              <img src="logo.svg" alt="" aria-hidden="true" style="height:72px;width:auto;flex-shrink:0;">
+              <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:72px;width:auto;flex-shrink:0;">
               <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:3rem;letter-spacing:-0.03em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
             </div>
           </div>
           <div style="margin-bottom:0.75rem;display:inline-block;background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);border-radius:9999px;padding:0.3rem 1rem;font-size:0.78rem;font-weight:700;letter-spacing:0.06em;color:#C8F135;">The 1st Pickleball Creator Marketplace</div>
           <h1 style="color:white;font-size:2.4rem;font-weight:900;line-height:1.15;margin:0.75rem 0 1rem;letter-spacing:-0.02em;">Connect Creators<br>with Top Brands</h1>
-          <p style="color:rgba(255,255,255,0.65);font-size:1rem;line-height:1.7;margin:0 0 2.5rem;max-width:400px;">The marketplace where pickleball creators monetize their audience and brands find their perfect partners.</p>
+          <p style="color:rgba(255,255,255,0.65);font-size:1rem;line-height:1.7;margin:0 0 2.5rem;max-width:400px;">The first marketplace of its kind, bringing pickleball creators and brands together to find their perfect partners.</p>
         </div>
 
         <!-- RIGHT: form -->
@@ -367,11 +378,11 @@
           <div id="auth-error" class="auth-error hidden" style="margin-bottom:1rem;"></div>
 
           <!-- Login Form -->
-          <form id="login-form" onsubmit="handleLogin(event)">
+          <form id="login-form" onsubmit="handleLogin(event)" novalidate>
             <div style="display:flex;flex-direction:column;gap:1rem;">
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email</label>
-                <input id="login-email" type="email" class="auth-input" placeholder="you@example.com" required />
+                <input id="login-email" type="email" class="auth-input" placeholder="you@example.com" required autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" />
               </div>
               <div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
@@ -379,7 +390,7 @@
                   <button type="button" onclick="showForgotPassword()" style="font-size:0.8rem;color:#0B1F4A;font-weight:500;background:none;border:none;cursor:pointer;">Forgot password?</button>
                 </div>
                 <div style="position:relative;">
-                  <input id="login-password" type="password" class="auth-input" placeholder="Password" required style="padding-right:2.75rem;" />
+                  <input id="login-password" type="password" class="auth-input" placeholder="Password" required autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false" style="padding-right:2.75rem;" />
                   <button type="button" onclick="togglePassword('login-password', this)" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;" tabindex="-1">
                     <svg id="login-password-eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                   </button>
@@ -408,7 +419,7 @@
             <div style="display:flex;flex-direction:column;gap:0.85rem;">
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email address</label>
-                <input id="forgot-email" type="email" class="auth-input" placeholder="you@example.com" required />
+                <input id="forgot-email" type="email" class="auth-input" placeholder="you@example.com" required autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" />
               </div>
               <button type="button" onclick="handleForgotPassword()" class="auth-btn">Send Reset Link</button>
             </div>
@@ -434,7 +445,7 @@
           </div>
 
           <!-- Signup Form -->
-          <form id="signup-form" onsubmit="handleSignup(event)" style="display:none;">
+          <form id="signup-form" onsubmit="handleSignup(event)" style="display:none;" novalidate>
             <div style="display:flex;flex-direction:column;gap:1rem;">
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Full Name <span style="color:#ef4444;">*</span></label>
@@ -442,12 +453,12 @@
               </div>
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email <span style="color:#ef4444;">*</span></label>
-                <input id="signup-email" type="email" class="auth-input" placeholder="you@example.com" required />
+                <input id="signup-email" type="email" class="auth-input" placeholder="you@example.com" required autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" />
               </div>
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Password <span style="color:#ef4444;">*</span></label>
                 <div style="position:relative;">
-                  <input id="signup-password" type="password" class="auth-input" placeholder="Min. 6 characters" required minlength="6" style="padding-right:2.75rem;" />
+                  <input id="signup-password" type="password" class="auth-input" placeholder="Min. 6 characters" required minlength="6" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" style="padding-right:2.75rem;" />
                   <button type="button" onclick="togglePassword('signup-password', this)" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;padding:0;" tabindex="-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                   </button>
@@ -477,7 +488,7 @@
               <div id="creator-social-fields" style="display:none;flex-direction:column;gap:1rem;">
                 <div>
                   <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Date of Birth <span style="color:#ef4444;">*</span></label>
-                  <input id="signup-birthday" type="date" class="auth-input" max="" />
+                  <input id="signup-birthday" type="date" class="auth-input" max="" style="-webkit-appearance:none;appearance:none;width:100%;box-sizing:border-box;min-height:2.75rem;height:2.75rem;" />
                 </div>
                 <div style="background:#f5fde0;border-radius:0.5rem;padding:0.6rem 0.75rem;">
                   <p style="font-size:0.8rem;color:#0B1F4A;font-weight:600;margin:0;">At least one social handle is required</p>
@@ -530,26 +541,54 @@
     <!-- ═══ HOW IT WORKS ═══ -->
     <section class="auth-gate-section auth-gate-section-white">
       <div class="auth-gate-wrap" style="max-width:900px;">
-        <div class="auth-pop" style="text-align:center;margin-bottom:0.5rem;">
+        <div class="auth-pop" style="text-align:center;margin-bottom:2rem;">
           <span style="display:inline-block;background:#0B1F4A;border-radius:9999px;padding:0.3rem 1rem;font-size:0.75rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#C8F135;margin-bottom:1rem;">How It Works</span>
           <h2 style="color:#0B1F4A;font-size:2rem;font-weight:800;margin:0 0 0.75rem;letter-spacing:-0.02em;">Get Started in 3 Steps</h2>
-          <p style="color:#6b7280;font-size:1rem;max-width:440px;margin:0 auto;">Whether you're a creator or a brand, CourtCollab makes it simple.</p>
+          <p style="color:#6b7280;font-size:1rem;max-width:440px;margin:0 auto 1.75rem;">Whether you're a creator or a brand, CourtCollab makes it simple.</p>
+          <!-- Toggle -->
+          <div style="display:flex;justify-content:center;">
+            <div style="display:inline-flex;background:#f3f4f6;border-radius:9999px;padding:0.3rem;gap:0.25rem;">
+              <button id="hiw-btn-creator" onclick="hiwToggle('creator')" style="padding:0.5rem 1.4rem;border-radius:9999px;border:none;cursor:pointer;font-weight:700;font-size:0.88rem;background:#0B1F4A;color:#C8F135;transition:all 0.2s;">For Creators</button>
+              <button id="hiw-btn-brand" onclick="hiwToggle('brand')" style="padding:0.5rem 1.4rem;border-radius:9999px;border:none;cursor:pointer;font-weight:700;font-size:0.88rem;background:transparent;color:#6b7280;transition:all 0.2s;">For Brands</button>
+            </div>
+          </div>
         </div>
-        <div class="auth-gate-cards">
+
+        <!-- Creators steps -->
+        <div id="hiw-creators" class="auth-gate-cards">
           <div class="auth-gate-card-white auth-pop auth-pop-d1">
-            <div style="width:2.75rem;height:2.75rem;background:#0B1F4A;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#C8F135;margin-bottom:1.25rem;">1</div>
-            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Build Your Profile</h3>
-            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Creators set up a media kit with stats, rates, and niche. Brands post their campaign briefs in minutes.</p>
+            <div style="width:2.75rem;height:2.75rem;background:#C8F135;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#0B1F4A;margin-bottom:1.25rem;">1</div>
+            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Build your player profile</h3>
+            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Set up your media kit in minutes. Think of it as your highlight reel, but for brand deals.</p>
           </div>
           <div class="auth-gate-card-white auth-pop auth-pop-d2">
-            <div style="width:2.75rem;height:2.75rem;background:#0B1F4A;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#C8F135;margin-bottom:1.25rem;">2</div>
-            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Connect &amp; Collaborate</h3>
-            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Browse creators or campaigns, send messages, and negotiate terms, all inside the platform.</p>
+            <div style="width:2.75rem;height:2.75rem;background:#C8F135;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#0B1F4A;margin-bottom:1.25rem;">2</div>
+            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Find campaigns that fit your vibe</h3>
+            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Browse open campaigns from brands and apply to the ones that feel like a match. No cold outreach needed.</p>
           </div>
           <div class="auth-gate-card-white auth-pop auth-pop-d3">
-            <div style="width:2.75rem;height:2.75rem;background:#0B1F4A;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#C8F135;margin-bottom:1.25rem;">3</div>
-            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Sign, Deliver &amp; Get Paid</h3>
-            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Execute contracts, deliver content, and release escrow payments, all tracked in one place.</p>
+            <div style="width:2.75rem;height:2.75rem;background:#C8F135;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#0B1F4A;margin-bottom:1.25rem;">3</div>
+            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Create and get paid</h3>
+            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Deliver your content and get paid. Everything tracked in one place so you can focus on creating, not chasing.</p>
+          </div>
+        </div>
+
+        <!-- Brands steps -->
+        <div id="hiw-brands" class="auth-gate-cards" style="display:none;">
+          <div class="auth-gate-card-white auth-pop auth-pop-d1">
+            <div style="width:2.75rem;height:2.75rem;background:#1E6EA6;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#ffffff;margin-bottom:1.25rem;">1</div>
+            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Post your campaign</h3>
+            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Create a campaign brief in minutes. Add your goals, deliverables, and timeline.</p>
+          </div>
+          <div class="auth-gate-card-white auth-pop auth-pop-d2">
+            <div style="width:2.75rem;height:2.75rem;background:#1E6EA6;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#ffffff;margin-bottom:1.25rem;">2</div>
+            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Review creators</h3>
+            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Browse creators who applied or invite creators to your campaign. Select the ones that are the right fit for your brand.</p>
+          </div>
+          <div class="auth-gate-card-white auth-pop auth-pop-d3">
+            <div style="width:2.75rem;height:2.75rem;background:#1E6EA6;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#ffffff;margin-bottom:1.25rem;">3</div>
+            <h3 style="color:#0B1F4A;font-weight:700;font-size:1rem;margin:0 0 0.5rem;">Get content, track results</h3>
+            <p style="color:#6b7280;font-size:0.875rem;line-height:1.6;margin:0;">Approve deliverables and release payment. Everything is managed in one place, from briefs to payments.</p>
           </div>
         </div>
       </div>
@@ -564,10 +603,10 @@
         </div>
 
         <!-- Two-column split -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;" class="why-split-grid">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2rem;align-items:stretch;" class="why-split-grid">
 
           <!-- ── CREATORS CAROUSEL ── -->
-          <div class="auth-pop auth-pop-d1">
+          <div class="auth-pop auth-pop-d1" style="display:flex;flex-direction:column;">
             <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
               <div style="width:2.5rem;height:2.5rem;background:#C8F135;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <svg width="18" height="18" fill="none" stroke="#0B1F4A" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.82V15.18a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
@@ -578,51 +617,51 @@
               </div>
             </div>
             <!-- Carousel -->
-            <div style="position:relative;">
-              <div id="carousel-creators" style="overflow:hidden;border-radius:1rem;">
+            <div class="auth-gate-card-lime why-carousel-card" style="padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;">
+              <div id="carousel-creators" style="overflow:hidden;flex:1;min-height:160px;">
                 <div class="why-carousel-track" id="carousel-creators-track" style="display:flex;transition:transform 0.35s ease;">
-                  <div class="auth-gate-card-lime why-carousel-slide">
+                  <div class="why-carousel-slide auth-pop auth-pop-d1" style="padding:1.75rem;">
                     <div style="display:flex;gap:0.875rem;align-items:flex-start;">
                       <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                       </div>
                       <div>
-                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Get Discovered by Brands</h4>
-                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Get discovered by the brands you love. Join for free and start collaborating today.</p>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:1.05rem;margin:0 0 0.3rem;">Built for Your Sport</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">CourtCollab is made for pickleball creators. Brands here are looking for people just like YOU.</p>
                       </div>
                     </div>
                   </div>
-                  <div class="auth-gate-card-lime why-carousel-slide">
+                  <div class="why-carousel-slide auth-pop auth-pop-d2" style="padding:1.75rem;">
                     <div style="display:flex;gap:0.875rem;align-items:flex-start;">
                       <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                       </div>
                       <div>
-                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Set Your Rates, Keep Control</h4>
-                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Get paid to create content for top brands.</p>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:1.05rem;margin:0 0 0.3rem;">No Follower Minimum</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">You don't need a million followers to land brand deals. You just need the right platform.</p>
                       </div>
                     </div>
                   </div>
-                  <div class="auth-gate-card-lime why-carousel-slide">
+                  <div class="why-carousel-slide auth-pop auth-pop-d3" style="padding:1.75rem;">
                     <div style="display:flex;gap:0.875rem;align-items:flex-start;">
                       <div style="width:2rem;height:2rem;background:#f0fdb0;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <svg width="14" height="14" fill="none" stroke="#0B1F4A" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                       </div>
                       <div>
-                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Secure Escrow Payments</h4>
-                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Payments are processed securely through Stripe once your content is delivered.</p>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:1.05rem;margin:0 0 0.3rem;">Free to Join. Easy to Start.</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Create your profile for free and start applying to campaigns today.</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <!-- Controls -->
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;">
-                <button onclick="whyCarouselPrev('creators')" class="why-carousel-btn" style="background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);color:#C8F135;">
+              <!-- Controls inside white card -->
+              <div class="why-carousel-controls" style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 1.25rem 1rem;border-top:1px solid #f3f4f6;">
+                <button onclick="whyCarouselPrev('creators')" class="why-carousel-btn" style="background:#C8F135;border:1px solid #acd120;color:#0B1F4A;">
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
                 <div id="carousel-creators-dots" style="display:flex;gap:0.4rem;"></div>
-                <button onclick="whyCarouselNext('creators')" class="why-carousel-btn" style="background:rgba(200,241,53,0.15);border:1px solid rgba(200,241,53,0.3);color:#C8F135;">
+                <button onclick="whyCarouselNext('creators')" class="why-carousel-btn" style="background:#C8F135;border:1px solid #acd120;color:#0B1F4A;">
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                 </button>
               </div>
@@ -630,7 +669,7 @@
           </div>
 
           <!-- ── BRANDS CAROUSEL ── -->
-          <div class="auth-pop auth-pop-d2">
+          <div class="auth-pop auth-pop-d2" style="display:flex;flex-direction:column;">
             <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;">
               <div style="width:2.5rem;height:2.5rem;background:#1E6EA6;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
@@ -641,51 +680,51 @@
               </div>
             </div>
             <!-- Carousel -->
-            <div style="position:relative;">
-              <div id="carousel-brands" style="overflow:hidden;border-radius:1rem;">
+            <div class="auth-gate-card-lime why-carousel-card" style="padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;">
+              <div id="carousel-brands" style="overflow:hidden;flex:1;min-height:160px;">
                 <div class="why-carousel-track" id="carousel-brands-track" style="display:flex;transition:transform 0.35s ease;">
-                  <div class="auth-gate-card-lime why-carousel-slide">
+                  <div class="why-carousel-slide auth-pop auth-pop-d1" style="padding:1.75rem;">
                     <div style="display:flex;gap:0.875rem;align-items:flex-start;">
                       <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                       </div>
                       <div>
-                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Find the Right Creator</h4>
-                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Search verified pickleball creators by niche, audience size, location, and skill level.</p>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:1.05rem;margin:0 0 0.3rem;">A Highly Engaged, Fast-Growing Audience</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Pickleball is the fastest growing sport in America. CourtCollab gives you direct access to the creators driving that conversation.</p>
                       </div>
                     </div>
                   </div>
-                  <div class="auth-gate-card-lime why-carousel-slide">
+                  <div class="why-carousel-slide auth-pop auth-pop-d2" style="padding:1.75rem;">
                     <div style="display:flex;gap:0.875rem;align-items:flex-start;">
                       <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                       </div>
                       <div>
-                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Post Campaigns &amp; Sign Contracts</h4>
-                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Browse creator profiles and negotiate terms that work for both of you.</p>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:1.05rem;margin:0 0 0.3rem;">No More Spreadsheets and Email Chains</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Post your campaign, review applicants, approve content, and release payment all in one place.</p>
                       </div>
                     </div>
                   </div>
-                  <div class="auth-gate-card-lime why-carousel-slide">
+                  <div class="why-carousel-slide auth-pop auth-pop-d3" style="padding:1.75rem;">
                     <div style="display:flex;gap:0.875rem;align-items:flex-start;">
                       <div style="width:2rem;height:2rem;background:#dbeafe;border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <svg width="14" height="14" fill="none" stroke="#1E6EA6" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                       </div>
                       <div>
-                        <h4 style="color:#0B1F4A;font-weight:700;font-size:0.9rem;margin:0 0 0.3rem;">Pay Only on Results</h4>
-                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Funds held in escrow and released only after content is delivered and approved by you.</p>
+                        <h4 style="color:#0B1F4A;font-weight:700;font-size:1.05rem;margin:0 0 0.3rem;">The Right Creators, Not Just Any Creators</h4>
+                        <p style="color:#6b7280;font-size:0.82rem;line-height:1.6;margin:0;">Every creator on CourtCollab is here because they play and create in the pickleball space.</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <!-- Controls -->
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;">
-                <button onclick="whyCarouselPrev('brands')" class="why-carousel-btn" style="background:rgba(30,110,166,0.2);border:1px solid rgba(126,200,227,0.3);color:#7EC8E3;">
+              <!-- Controls inside white card -->
+              <div class="why-carousel-controls" style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 1.25rem 1rem;border-top:1px solid #f3f4f6;">
+                <button onclick="whyCarouselPrev('brands')" class="why-carousel-btn" style="background:#1E6EA6;border:1px solid #175d8e;color:#ffffff;">
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
                 <div id="carousel-brands-dots" style="display:flex;gap:0.4rem;"></div>
-                <button onclick="whyCarouselNext('brands')" class="why-carousel-btn" style="background:rgba(30,110,166,0.2);border:1px solid rgba(126,200,227,0.3);color:#7EC8E3;">
+                <button onclick="whyCarouselNext('brands')" class="why-carousel-btn" style="background:#1E6EA6;border:1px solid #175d8e;color:#ffffff;">
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                 </button>
               </div>
@@ -724,7 +763,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16 pr-4 sm:pr-0">
         <div class="flex items-center gap-2 cursor-pointer" onclick="navigate('landing')">
-          <img src="logo.svg" alt="" aria-hidden="true" style="height:38px;width:auto;flex-shrink:0;">
+          <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:38px;width:auto;flex-shrink:0;">
           <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:1.375rem;letter-spacing:-0.02em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
         </div>
         <div class="hidden md:flex items-center gap-1" id="main-nav">
@@ -2938,7 +2977,7 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
       <!-- Navy logo header -->
       <div style="background:linear-gradient(135deg,#0B1F4A 0%,#163a70 60%,#0d2a60 100%);padding:1.25rem 2rem;display:flex;align-items:center;justify-content:center;">
         <div style="display:flex;align-items:center;gap:0.5rem;">
-          <img src="logo.svg" alt="" aria-hidden="true" style="height:36px;width:auto;flex-shrink:0;">
+          <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:36px;width:auto;flex-shrink:0;">
           <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:1.375rem;letter-spacing:-0.02em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
         </div>
       </div>
@@ -3181,7 +3220,7 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
         <!-- Brand -->
         <div class="col-span-2 md:col-span-1">
           <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-            <img src="logo.svg" alt="" aria-hidden="true" style="height:32px;width:auto;flex-shrink:0;">
+            <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:32px;width:auto;flex-shrink:0;">
             <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:1.25rem;letter-spacing:-0.02em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
           </div>
           <p style="color:rgba(255,255,255,0.5);" class="text-sm leading-relaxed">The 1st marketplace for connecting pickleball creators with top brands.</p>

@@ -2,6 +2,22 @@
 // CourtCollab — App Logic (API-connected, no mock data)
 // ============================================================
 
+// --- How It Works toggle ---
+function hiwToggle(type) {
+  const creators = document.getElementById('hiw-creators');
+  const brands   = document.getElementById('hiw-brands');
+  const btnC     = document.getElementById('hiw-btn-creator');
+  const btnB     = document.getElementById('hiw-btn-brand');
+  if (!creators || !brands) return;
+  const isCreator = type === 'creator';
+  creators.style.display = isCreator ? '' : 'none';
+  brands.style.display   = isCreator ? 'none' : '';
+  btnC.style.background  = isCreator ? '#0B1F4A' : 'transparent';
+  btnC.style.color       = isCreator ? '#C8F135' : '#6b7280';
+  btnB.style.background  = isCreator ? 'transparent' : '#0B1F4A';
+  btnB.style.color       = isCreator ? '#6b7280' : '#ffffff';
+}
+
 // --- Cookie Consent Banner ---
 function initCookieBanner() {
   if (!localStorage.getItem('cc_consent')) {
@@ -461,6 +477,7 @@ async function handleLogin(e) {
   const password = document.getElementById('login-password').value;
   const remember = document.getElementById('remember-me')?.checked ?? true;
   if (!email)    { showFieldError('login-email',    'Please enter your email.');    return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showFieldError('login-email', 'Please enter a valid email address.'); return; }
   if (!password) { showFieldError('login-password', 'Please enter your password.'); return; }
   setAuthBtnLoading('login-form', true);
   try {
@@ -490,6 +507,9 @@ async function handleSignup(e) {
   const password = document.getElementById('signup-password').value;
   const role     = document.querySelector('input[name="signup-role"]:checked').value;
 
+  if (!name)  { showFieldError('signup-name',  'Please enter your name.');  return; }
+  if (!email) { showFieldError('signup-email', 'Please enter your email.'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showFieldError('signup-email', 'Please enter a valid email address.'); return; }
   if (password.length < 6) {
     showFieldError('signup-password', 'Password must be at least 6 characters.');
     return;

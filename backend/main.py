@@ -96,7 +96,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr, Field, field_validator
+import re as _re
+from pydantic import BaseModel, Field, field_validator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -548,16 +549,32 @@ def require_role(role: str, user: dict):
 # Schemas — Auth
 # ---------------------------------------------------------------------------
 
+def _validate_email(v: str) -> str:
+    v = v.strip().lower()
+    if not _re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', v):
+        raise ValueError("Please enter a valid email address")
+    return v
+
 class SignupIn(BaseModel):
-    name:     str      = Field(min_length=2, max_length=100)
-    email:    EmailStr
-    password: str      = Field(min_length=6, max_length=200)
+    name:     str = Field(min_length=2, max_length=100)
+    email:    str = Field(min_length=5, max_length=254)
+    password: str = Field(min_length=6, max_length=200)
     role:     str
 
+    @field_validator('email')
+    @classmethod
+    def email_valid(cls, v):
+        return _validate_email(v)
+
 class LoginIn(BaseModel):
-    email:    EmailStr
-    password: str      = Field(min_length=1)
-    remember: bool     = False
+    email:    str  = Field(min_length=5, max_length=254)
+    password: str  = Field(min_length=1)
+    remember: bool = False
+
+    @field_validator('email')
+    @classmethod
+    def email_valid(cls, v):
+        return _validate_email(v)
 
 class UserOut(BaseModel):
     id:           int
