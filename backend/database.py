@@ -224,19 +224,24 @@ def _init_pg():
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS applications (
-                id          SERIAL PRIMARY KEY,
-                campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-                creator_id  INTEGER NOT NULL REFERENCES users(id)     ON DELETE CASCADE,
-                answers     TEXT    NOT NULL DEFAULT '[]',
-                message     TEXT,
-                status      TEXT    NOT NULL DEFAULT 'pending'
-                                CHECK(status IN ('pending','accepted','declined')),
-                created_at  TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                id             SERIAL PRIMARY KEY,
+                campaign_id    INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+                creator_id     INTEGER NOT NULL REFERENCES users(id)     ON DELETE CASCADE,
+                answers        TEXT    NOT NULL DEFAULT '[]',
+                message        TEXT,
+                status         TEXT    NOT NULL DEFAULT 'pending'
+                                   CHECK(status IN ('pending','accepted','declined')),
+                source         TEXT    NOT NULL DEFAULT 'creator',
+                invite_message TEXT,
+                created_at     TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
                 UNIQUE(campaign_id, creator_id)
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_applications_campaign ON applications(campaign_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_applications_creator  ON applications(creator_id)")
+        # Invite columns — safe to run every startup for existing deployments
+        conn.execute("ALTER TABLE applications ADD COLUMN IF NOT EXISTS source         TEXT NOT NULL DEFAULT 'creator'")
+        conn.execute("ALTER TABLE applications ADD COLUMN IF NOT EXISTS invite_message TEXT")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS matches (

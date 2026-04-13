@@ -1293,7 +1293,9 @@ def get_campaign_applications(campaign_id: int, user: dict = Depends(current_use
             JOIN users u ON u.id = a.creator_id
             LEFT JOIN creator_profiles cp ON cp.user_id = a.creator_id
             WHERE a.campaign_id = ?
-            ORDER BY a.created_at DESC
+            ORDER BY
+                CASE WHEN a.source = 'invite' AND a.status = 'pending' THEN 0 ELSE 1 END,
+                a.created_at DESC
         """, (campaign_id,))
     for r in rows:
         r["answers"] = json.loads(r.get("answers") or "[]")
@@ -1315,6 +1317,123 @@ def update_application_status(application_id: int, body: ApplicationStatusIn, us
             raise HTTPException(404, "Application not found or not yours")
         conn.execute("UPDATE applications SET status = ? WHERE id = ?", (body.status, application_id))
         conn.commit()
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Routes — Campaign Invitations (brand → creator)
+# ---------------------------------------------------------------------------
+
+class InviteIn(BaseModel):
+    message: Optional[str] = None
+
+class InviteRespondIn(BaseModel):
+    action: str   # "accept" | "decline"
+
+@app.post("/api/campaigns/{campaign_id}/invite/{creator_id}", status_code=201)
+async def invite_creator(campaign_id: int, creator_id: int, body: InviteIn,
+                         user: dict = Depends(current_user)):
+    require_role("brand", user)
+    with get_conn() as conn:
+        campaign = _row(conn, "SELECT * FROM campaigns WHERE id = ? AND brand_id = ? AND status = 'open'",
+                        (campaign_id, user["id"]))
+        if not campaign:
+            raise HTTPException(404, "Campaign not found, not yours, or not open")
+        creator = _row(conn, "SELECT * FROM users WHERE id = ? AND role = 'creator'", (creator_id,))
+        if not creator:
+            raise HTTPException(404, "Creator not found")
+        existing = _row(conn, "SELECT id, source FROM applications WHERE campaign_id = ? AND creator_id = ?",
+                        (campaign_id, creator_id))
+        if existing:
+            raise HTTPException(409, "This creator has already applied or been invited to this campaign")
+        conn.execute("""
+            INSERT INTO applications (campaign_id, creator_id, answers, source, invite_message, status)
+            VALUES (?, ?, '[]', 'invite', ?, 'pending')
+        """, (campaign_id, creator_id, body.message or None))
+        conn.commit()
+
+    brand_name = (user.get("company_name") or user.get("name") or "A brand")
+    await _notify(
+        user_id    = creator_id,
+        notif_type = "campaign_invite",
+        title      = f"You've been invited to a campaign!",
+        body       = f"{brand_name} invited you to apply to \"{campaign['title']}\". Check your invitations to respond.",
+        data       = {"campaign_id": campaign_id, "brand_id": user["id"]},
+        email      = creator.get("email"),
+    )
+    return {"ok": True}
+
+
+@app.get("/api/invitations")
+def get_invitations(user: dict = Depends(current_user)):
+    """Creator: list pending campaign invitations."""
+    require_role("creator", user)
+    with get_conn() as conn:
+        rows = _rows(conn, """
+            SELECT a.id, a.campaign_id, a.invite_message, a.status, a.created_at,
+                   c.title AS campaign_title, c.description AS campaign_description,
+                   c.budget, c.niche AS campaign_niche, c.status AS campaign_status,
+                   u.name AS brand_name, bp.company_name, bp.industry, bp.logo_url
+            FROM applications a
+            JOIN campaigns c ON c.id = a.campaign_id
+            JOIN users u     ON u.id = c.brand_id
+            LEFT JOIN brand_profiles bp ON bp.user_id = c.brand_id
+            WHERE a.creator_id = ? AND a.source = 'invite'
+            ORDER BY a.created_at DESC
+        """, (user["id"],))
+    return rows
+
+
+@app.patch("/api/invitations/{application_id}/respond")
+async def respond_to_invitation(application_id: int, body: InviteRespondIn,
+                                user: dict = Depends(current_user)):
+    """Creator: accept or decline a campaign invitation."""
+    require_role("creator", user)
+    if body.action not in ("accept", "decline"):
+        raise HTTPException(400, "action must be 'accept' or 'decline'")
+    with get_conn() as conn:
+        row = _row(conn, """
+            SELECT a.*, c.title AS campaign_title, c.brand_id,
+                   u.name AS brand_user_name, u.email AS brand_email,
+                   bp.company_name
+            FROM applications a
+            JOIN campaigns c ON c.id = a.campaign_id
+            JOIN users u     ON u.id = c.brand_id
+            LEFT JOIN brand_profiles bp ON bp.user_id = c.brand_id
+            WHERE a.id = ? AND a.creator_id = ? AND a.source = 'invite'
+        """, (application_id, user["id"]))
+        if not row:
+            raise HTTPException(404, "Invitation not found")
+        if row["status"] != "pending":
+            raise HTTPException(409, "Invitation already responded to")
+        new_status = "accepted" if body.action == "accept" else "declined"
+        conn.execute("UPDATE applications SET status = ? WHERE id = ?", (new_status, application_id))
+        conn.commit()
+
+    # Notify the brand
+    creator_name = user.get("name") or "A creator"
+    brand_id     = row["brand_id"]
+    brand_email  = row.get("brand_email")
+    brand_name   = row.get("company_name") or row.get("brand_user_name") or "Brand"
+    campaign_title = row.get("campaign_title", "your campaign")
+    if body.action == "accept":
+        await _notify(
+            user_id    = brand_id,
+            notif_type = "invite_accepted",
+            title      = f"{creator_name} accepted your invitation!",
+            body       = f"{creator_name} accepted your invitation to \"{campaign_title}\". Their application is now in your queue.",
+            data       = {"campaign_id": row["campaign_id"], "application_id": application_id},
+            email      = brand_email,
+        )
+    else:
+        await _notify(
+            user_id    = brand_id,
+            notif_type = "invite_declined",
+            title      = f"{creator_name} declined your invitation",
+            body       = f"{creator_name} declined your invitation to \"{campaign_title}\".",
+            data       = {"campaign_id": row["campaign_id"]},
+            email      = brand_email,
+        )
     return {"ok": True}
 
 
