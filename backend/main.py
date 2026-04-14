@@ -2877,7 +2877,12 @@ def mark_one_read(notif_id: int, user: dict = Depends(current_user)):
 # ---------------------------------------------------------------------------
 
 class ForgotPasswordIn(BaseModel):
-    email: EmailStr
+    email: str = Field(min_length=5, max_length=254)
+
+    @field_validator('email')
+    @classmethod
+    def email_valid(cls, v):
+        return _validate_email(v)
 
 class ResetPasswordIn(BaseModel):
     token: str
