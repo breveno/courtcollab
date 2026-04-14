@@ -191,14 +191,15 @@ def _init_pg():
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS brand_profiles (
-                user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-                company_name TEXT,
-                industry     TEXT,
-                website      TEXT,
-                budget_min   INTEGER DEFAULT 0,
-                budget_max   INTEGER DEFAULT 0,
-                description  TEXT,
-                updated_at   TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS')
+                user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                company_name   TEXT,
+                industry       TEXT,
+                website        TEXT,
+                budget_min     INTEGER DEFAULT 0,
+                budget_max     INTEGER DEFAULT 0,
+                description    TEXT,
+                social_handles TEXT DEFAULT '{}',
+                updated_at     TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS')
             )
         """)
         conn.execute("""
@@ -462,6 +463,7 @@ def _init_pg():
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS signed_contract_url  TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_terms_confirmed    INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_terms_confirmed  INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS social_handles TEXT DEFAULT '{}'")
 
         conn.commit()
 
@@ -509,14 +511,15 @@ def _init_sqlite():
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS brand_profiles (
-                user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-                company_name TEXT,
-                industry     TEXT,
-                website      TEXT,
-                budget_min   INTEGER DEFAULT 0,
-                budget_max   INTEGER DEFAULT 0,
-                description  TEXT,
-                updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+                user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                company_name   TEXT,
+                industry       TEXT,
+                website        TEXT,
+                budget_min     INTEGER DEFAULT 0,
+                budget_max     INTEGER DEFAULT 0,
+                description    TEXT,
+                social_handles TEXT DEFAULT '{}',
+                updated_at     TEXT    NOT NULL DEFAULT (datetime('now'))
             )
         """)
         conn.execute("""
@@ -734,8 +737,9 @@ def _init_sqlite():
     _add_column_if_missing("deals",            "contract_completed_url",  "TEXT")
     _add_column_if_missing("deals",            "contract_sent_at",        "TEXT")
     _add_column_if_missing("deals",            "signed_contract_url",     "TEXT")
-    _add_column_if_missing("deals", "brand_terms_confirmed",   "INTEGER DEFAULT 0")
-    _add_column_if_missing("deals", "creator_terms_confirmed", "INTEGER DEFAULT 0")
+    _add_column_if_missing("deals",          "brand_terms_confirmed",   "INTEGER DEFAULT 0")
+    _add_column_if_missing("deals",          "creator_terms_confirmed", "INTEGER DEFAULT 0")
+    _add_column_if_missing("brand_profiles", "social_handles",          "TEXT DEFAULT '{}'")
 
 
 def _migrate_deal_statuses():

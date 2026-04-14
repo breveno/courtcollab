@@ -928,12 +928,13 @@ def get_creator(user_id: int, user: dict = Depends(current_user)):
 # ---------------------------------------------------------------------------
 
 class BrandProfileIn(BaseModel):
-    company_name: Optional[str] = None
-    industry:     Optional[str] = None
-    website:      Optional[str] = None
-    budget_min:   Optional[int] = 0
-    budget_max:   Optional[int] = 0
-    description:  Optional[str] = None
+    company_name:   Optional[str] = None
+    industry:       Optional[str] = None
+    website:        Optional[str] = None
+    budget_min:     Optional[int] = 0
+    budget_max:     Optional[int] = 0
+    description:    Optional[str] = None
+    social_handles: Optional[str] = None
 
 # ---------------------------------------------------------------------------
 # Routes — Brand Profiles
@@ -945,15 +946,17 @@ def upsert_brand_profile(body: BrandProfileIn, user: dict = Depends(current_user
     with get_conn() as conn:
         conn.execute("""
             INSERT INTO brand_profiles
-              (user_id, company_name, industry, website, budget_min, budget_max, description, updated_at)
-            VALUES (?,?,?,?,?,?,?,datetime('now'))
+              (user_id, company_name, industry, website, budget_min, budget_max, description, social_handles, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,datetime('now'))
             ON CONFLICT(user_id) DO UPDATE SET
               company_name=excluded.company_name, industry=excluded.industry,
               website=excluded.website, budget_min=excluded.budget_min,
               budget_max=excluded.budget_max, description=excluded.description,
+              social_handles=excluded.social_handles,
               updated_at=datetime('now')
         """, (user["id"], body.company_name, body.industry, body.website,
-              body.budget_min, body.budget_max, body.description))
+              body.budget_min, body.budget_max, body.description,
+              body.social_handles or '{}'))
         conn.commit()
     return {"ok": True}
 
