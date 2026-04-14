@@ -1054,30 +1054,32 @@ def _to_int(v):
         return 0
 
 class CampaignIn(BaseModel):
-    title:         str                  = Field(min_length=2, max_length=200)
-    description:   Optional[str]        = None
-    budget:        Optional[int]        = Field(default=0, ge=0)
-    niche:         Optional[str]        = None
-    skills:        Optional[List[str]]  = []
-    target_age:    Optional[str]        = None
-    min_followers: Optional[int]        = Field(default=0, ge=0)
-    max_rate:      Optional[int]        = Field(default=0, ge=0)
-    questions:     Optional[List[str]]  = []
+    title:            str                  = Field(min_length=2, max_length=200)
+    description:      Optional[str]        = None
+    budget:           Optional[int]        = Field(default=0, ge=0)
+    niche:            Optional[str]        = None
+    skills:           Optional[List[str]]  = []
+    target_age:       Optional[str]        = None
+    min_followers:    Optional[int]        = Field(default=0, ge=0)
+    max_rate:         Optional[int]        = Field(default=0, ge=0)
+    questions:        Optional[List[str]]  = []
+    creators_needed:  Optional[int]        = Field(default=1, ge=1)
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
     def coerce_ints(cls, v): return _to_int(v)
 
 class CampaignUpdateIn(BaseModel):
-    title:         Optional[str]       = None
-    description:   Optional[str]       = None
-    budget:        Optional[int]       = None
-    niche:         Optional[str]       = None
-    skills:        Optional[List[str]] = None
-    target_age:    Optional[str]       = None
-    min_followers: Optional[int]       = None
-    max_rate:      Optional[int]       = None
-    questions:     Optional[List[str]] = None
+    title:            Optional[str]       = None
+    description:      Optional[str]       = None
+    budget:           Optional[int]       = None
+    niche:            Optional[str]       = None
+    skills:           Optional[List[str]] = None
+    target_age:       Optional[str]       = None
+    min_followers:    Optional[int]       = None
+    max_rate:         Optional[int]       = None
+    questions:        Optional[List[str]] = None
+    creators_needed:  Optional[int]       = None
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
@@ -1135,12 +1137,13 @@ def create_campaign(body: CampaignIn, background_tasks: BackgroundTasks, user: d
         cur = conn.execute("""
             INSERT INTO campaigns
               (brand_id, title, description, budget, niche, skills,
-               target_age, min_followers, max_rate, questions)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
+               target_age, min_followers, max_rate, questions, creators_needed)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
         """, (user["id"], body.title, body.description, body.budget,
               body.niche, json.dumps(body.skills),
               body.target_age, body.min_followers, body.max_rate,
-              json.dumps(body.questions or [])))
+              json.dumps(body.questions or []),
+              body.creators_needed or 1))
         conn.commit()
         cid = cur.lastrowid
     with get_conn() as conn:

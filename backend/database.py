@@ -211,9 +211,10 @@ def _init_pg():
                 budget        INTEGER DEFAULT 0,
                 niche         TEXT,
                 skills        TEXT    DEFAULT '[]',
-                target_age    TEXT,
-                min_followers INTEGER DEFAULT 0,
-                max_rate      INTEGER DEFAULT 0,
+                target_age       TEXT,
+                min_followers    INTEGER DEFAULT 0,
+                max_rate         INTEGER DEFAULT 0,
+                creators_needed  INTEGER DEFAULT 1,
                 status        TEXT    NOT NULL DEFAULT 'open'
                                   CHECK(status IN ('open','paused','closed')),
                 created_at    TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS')
@@ -443,9 +444,10 @@ def _init_pg():
         # campaigns
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS niche         TEXT")
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS skills        TEXT DEFAULT '[]'")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS target_age    TEXT")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_followers INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS max_rate      INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS target_age      TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_followers  INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS max_rate       INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS creators_needed INTEGER DEFAULT 1")
 
         # deals — SignWell contract tracking + contract terms + per-signer status
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_document_id  TEXT")
@@ -531,9 +533,10 @@ def _init_sqlite():
                 budget        INTEGER DEFAULT 0,
                 niche         TEXT,
                 skills        TEXT    DEFAULT '[]',
-                target_age    TEXT,
-                min_followers INTEGER DEFAULT 0,
-                max_rate      INTEGER DEFAULT 0,
+                target_age       TEXT,
+                min_followers    INTEGER DEFAULT 0,
+                max_rate         INTEGER DEFAULT 0,
+                creators_needed  INTEGER DEFAULT 1,
                 status        TEXT    NOT NULL DEFAULT 'open'
                                   CHECK(status IN ('open','paused','closed')),
                 created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
@@ -716,6 +719,7 @@ def _init_sqlite():
     _add_column_if_missing("campaigns",        "target_age",           "TEXT")
     _add_column_if_missing("campaigns",        "min_followers",        "INTEGER DEFAULT 0")
     _add_column_if_missing("campaigns",        "max_rate",             "INTEGER DEFAULT 0")
+    _add_column_if_missing("campaigns",        "creators_needed",      "INTEGER DEFAULT 1")
     _add_column_if_missing("matches",          "match_reasons",        "TEXT DEFAULT '[]'")
     _add_column_if_missing("messages",         "read_at",              "TEXT")
     _add_column_if_missing("creator_profiles", "stripe_account_id",    "TEXT")
