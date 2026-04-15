@@ -1164,15 +1164,19 @@ def list_campaigns(
 ):
     with get_conn() as conn:
         rows = _rows(conn, """
-            SELECT c.*, u.name AS brand_name, bp.company_name
+            SELECT c.*, u.name AS brand_name, bp.company_name,
+                   CASE WHEN a.id IS NOT NULL THEN 1 ELSE 0 END AS has_applied
             FROM campaigns c
             JOIN users u ON u.id = c.brand_id
             LEFT JOIN brand_profiles bp ON bp.user_id = c.brand_id
-        """)
+            LEFT JOIN applications a
+                   ON a.campaign_id = c.id AND a.creator_id = :uid
+        """, {"uid": user["id"]})
     results = []
     for r in rows:
-        r["skills"]    = json.loads(r.get("skills")    or "[]")
-        r["questions"] = json.loads(r.get("questions") or "[]")
+        r["skills"]      = json.loads(r.get("skills")    or "[]")
+        r["questions"]   = json.loads(r.get("questions") or "[]")
+        r["has_applied"] = bool(r.get("has_applied", 0))
         # Brands only see their own campaigns; creators see all
         if user["role"] == "brand" and r.get("brand_id") != user["id"]: continue
         if mine   and r.get("brand_id") != user["id"]: continue
