@@ -321,8 +321,9 @@ def _hash(plain: str) -> str:
 def _verify(plain: str, hashed: str) -> bool:
     return pwd_ctx.verify(plain, hashed)
 
-def _make_token(user_id: int) -> str:
-    exp = datetime.now(timezone.utc) + timedelta(hours=TOKEN_TTL_HRS)
+def _make_token(user_id: int, remember: bool = True) -> str:
+    ttl = TOKEN_TTL_REMEMBER if remember else TOKEN_TTL_HRS
+    exp = datetime.now(timezone.utc) + timedelta(hours=ttl)
     return jwt.encode({"sub": str(user_id), "exp": exp}, SECRET_KEY, algorithm=ALGORITHM)
 
 def _decode_token(token: str) -> int:
