@@ -1170,8 +1170,8 @@ def list_campaigns(
             JOIN users u ON u.id = c.brand_id
             LEFT JOIN brand_profiles bp ON bp.user_id = c.brand_id
             LEFT JOIN applications a
-                   ON a.campaign_id = c.id AND a.creator_id = :uid
-        """, {"uid": user["id"]})
+                   ON a.campaign_id = c.id AND a.creator_id = ?
+        """, (user["id"],))
     results = []
     for r in rows:
         r["skills"]      = json.loads(r.get("skills")    or "[]")
