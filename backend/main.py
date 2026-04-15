@@ -1065,6 +1065,7 @@ class CampaignIn(BaseModel):
     max_rate:         Optional[int]        = Field(default=0, ge=0)
     questions:        Optional[List[str]]  = []
     creators_needed:  Optional[int]        = Field(default=1, ge=1)
+    status:           Optional[str]        = Field(default='open')
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
@@ -1138,13 +1139,14 @@ def create_campaign(body: CampaignIn, background_tasks: BackgroundTasks, user: d
         cur = conn.execute("""
             INSERT INTO campaigns
               (brand_id, title, description, budget, niche, skills,
-               target_age, min_followers, max_rate, questions, creators_needed)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+               target_age, min_followers, max_rate, questions, creators_needed, status)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         """, (user["id"], body.title, body.description, body.budget,
               body.niche, json.dumps(body.skills),
               body.target_age, body.min_followers, body.max_rate,
               json.dumps(body.questions or []),
-              body.creators_needed or 1))
+              body.creators_needed or 1,
+              body.status or 'open'))
         conn.commit()
         cid = cur.lastrowid
     with get_conn() as conn:
