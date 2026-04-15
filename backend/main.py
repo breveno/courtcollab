@@ -776,7 +776,7 @@ def delete_creator_profile(user: dict = Depends(current_user)):
 
 @app.get("/api/featured-creators")
 def featured_creators():
-    """Public endpoint — returns all creators sorted by follower count for the hero carousel and featured strip."""
+    """Public endpoint — returns all creators with full profile data so the client can sort by Brand Fit score."""
     import json as _json
     with get_conn() as conn:
         rows = _rows(conn, """
@@ -786,10 +786,16 @@ def featured_creators():
                 COALESCE(cp.name,            u.name) AS name,
                 COALESCE(cp.niche,           '')     AS niche,
                 COALESCE(cp.location,        '')     AS location,
+                COALESCE(cp.bio,             '')     AS bio,
                 COALESCE(cp.followers_ig,    0)      AS followers_ig,
                 COALESCE(cp.followers_tt,    0)      AS followers_tt,
                 COALESCE(cp.followers_yt,    0)      AS followers_yt,
                 COALESCE(cp.engagement_rate, 0)      AS engagement_rate,
+                COALESCE(cp.avg_views,       0)      AS avg_views,
+                COALESCE(cp.rate_ig,         0)      AS rate_ig,
+                COALESCE(cp.rate_tiktok,     0)      AS rate_tiktok,
+                COALESCE(cp.rate_ugc,        0)      AS rate_ugc,
+                COALESCE(cp.skills,          '[]')   AS skills,
                 COALESCE(cp.social_handles,  '{}')   AS social_handles
             FROM users u
             LEFT JOIN creator_profiles cp ON cp.user_id = u.id
@@ -798,9 +804,9 @@ def featured_creators():
     results = []
     for r in rows:
         r["social_handles"] = _json.loads(r.get("social_handles") or "{}")
+        r["skills"]         = _json.loads(r.get("skills")         or "[]")
         r["total_followers"] = (r.get("followers_ig") or 0) + (r.get("followers_tt") or 0) + (r.get("followers_yt") or 0)
         results.append(r)
-    results.sort(key=lambda x: x["total_followers"], reverse=True)
     return results
 
 
