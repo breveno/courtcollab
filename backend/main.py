@@ -113,15 +113,17 @@ SECRET_KEY     = os.environ.get("JWT_SECRET", "change-me-in-production-use-a-lon
 ALGORITHM      = "HS256"
 TOKEN_TTL_HRS        = 72
 TOKEN_TTL_REMEMBER   = 24 * 30   # 30 days
-PLATFORM_FEE   = 0.15          # 15 % taken by CourtCollab
+PLATFORM_FEE_PERCENT = 15       # platform fee percentage taken by CourtCollab
+PLATFORM_FEE         = PLATFORM_FEE_PERCENT / 100  # decimal form used in calculations
 
 # ---------------------------------------------------------------------------
 # Stripe config
 # ---------------------------------------------------------------------------
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_SUCCESS_URL    = os.environ.get("STRIPE_SUCCESS_URL", "http://localhost:3000/deal-success")
-STRIPE_CANCEL_URL     = os.environ.get("STRIPE_CANCEL_URL",  "http://localhost:3000/deal-cancel")
+stripe.api_key            = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY    = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_WEBHOOK_SECRET     = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_SUCCESS_URL        = os.environ.get("STRIPE_SUCCESS_URL", "https://www.courtcollab.com")
+STRIPE_CANCEL_URL         = os.environ.get("STRIPE_CANCEL_URL",  "https://www.courtcollab.com")
 
 # ---------------------------------------------------------------------------
 # SignWell config
@@ -2585,8 +2587,18 @@ def release_payment(payment_id: int, user: dict = Depends(current_user)):
 
 
 # ---------------------------------------------------------------------------
-# Routes — Stripe Connect
+# Routes — Stripe
 # ---------------------------------------------------------------------------
+
+@app.get("/api/stripe/config")
+def stripe_config():
+    """Public — returns the Stripe publishable key and platform fee so the frontend
+    can initialise Stripe.js without any hardcoded values."""
+    return {
+        "publishable_key":    STRIPE_PUBLISHABLE_KEY,
+        "platform_fee_percent": PLATFORM_FEE_PERCENT,
+    }
+
 
 @app.post("/api/stripe/connect/onboard")
 def stripe_connect_onboard(user: dict = Depends(current_user)):
