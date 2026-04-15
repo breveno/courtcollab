@@ -776,7 +776,7 @@ def delete_creator_profile(user: dict = Depends(current_user)):
 
 @app.get("/api/featured-creators")
 def featured_creators():
-    """Public endpoint — returns up to 3 creators with the most followers for the hero carousel."""
+    """Public endpoint — returns all creators sorted by follower count for the hero carousel and featured strip."""
     import json as _json
     with get_conn() as conn:
         rows = _rows(conn, """
@@ -801,7 +801,7 @@ def featured_creators():
         r["total_followers"] = (r.get("followers_ig") or 0) + (r.get("followers_tt") or 0) + (r.get("followers_yt") or 0)
         results.append(r)
     results.sort(key=lambda x: x["total_followers"], reverse=True)
-    return results[:3]
+    return results
 
 
 @app.get("/api/creators")
