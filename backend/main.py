@@ -1657,10 +1657,11 @@ def discover(
 # ---------------------------------------------------------------------------
 
 class DealIn(BaseModel):
-    campaign_id: int
-    creator_id:  int
-    amount:      int            = Field(ge=0)
-    terms:       Optional[str] = None
+    campaign_id:   int
+    creator_id:    int
+    amount:        Optional[int] = Field(default=0, ge=0)
+    terms:         Optional[str] = None
+    contract_type: Optional[str] = None   # "template" | "custom"
 
 class DealStatusIn(BaseModel):
     status: str
