@@ -170,19 +170,27 @@ function _extractDetail(data) {
 }
 
 // Slow-load detector: show spinner if any fetch takes > 500ms
-// Silent paths: message/conversation polling — never trigger the loading overlay
-const _SILENT_PATHS = ['/api/messages', '/api/conversations', '/api/typing'];
+// Silent paths: background/polling calls — never trigger the loading overlay or error toasts
+const _SILENT_PATHS = [
+  '/api/messages',
+  '/api/conversations',
+  '/api/typing',
+  '/api/stripe/connect/status',   // checked silently on creator login
+  '/api/notifications',           // polled in background every 30s
+  '/api/featured-creators',       // homepage background load
+];
 const _origFetch = window.fetch;
 window.fetch = function(...args) {
   let _slowTimer = null;
   const url = typeof args[0] === 'string' ? args[0] : '';
   const isSilent = _SILENT_PATHS.some(p => url.includes(p));
-  // Only intercept our own API calls (not Stripe etc.)
+  // Only intercept our own API calls (not Stripe.js CDN etc.)
   if (!isSilent && (url.includes('railway.app') || url.startsWith('/api'))) {
     _slowTimer = setTimeout(() => showLoading('Loading…'), 500);
   }
   return _origFetch.apply(this, args).catch(err => {
-    if (err instanceof TypeError && (url.includes('railway.app') || url.startsWith('/api'))) {
+    // Only show the "connection failed" toast for user-triggered calls, not background polling
+    if (!isSilent && err instanceof TypeError && (url.includes('railway.app') || url.startsWith('/api'))) {
       showToast('Connection failed. Please check your internet and try again.', 'error');
     }
     throw err;
