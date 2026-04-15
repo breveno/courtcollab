@@ -1309,6 +1309,20 @@ def get_campaign_applications(campaign_id: int, user: dict = Depends(current_use
     return rows
 
 
+@app.get("/api/creator/applications")
+def get_my_applications(user: dict = Depends(current_user)):
+    """Return all campaigns the current creator has applied to."""
+    require_role("creator", user)
+    with get_conn() as conn:
+        rows = _rows(conn, """
+            SELECT a.id, a.campaign_id, a.status, a.created_at
+            FROM applications a
+            WHERE a.creator_id = ?
+            ORDER BY a.created_at DESC
+        """, (user["id"],))
+    return [dict(r) for r in rows]
+
+
 @app.patch("/api/applications/{application_id}/status")
 def update_application_status(application_id: int, body: ApplicationStatusIn, user: dict = Depends(current_user)):
     require_role("brand", user)
