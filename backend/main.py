@@ -2678,6 +2678,91 @@ def stripe_connect_status(user: dict = Depends(current_user)):
     }
 
 
+@app.post("/api/stripe/payment-intent/{deal_id}")
+@limiter.limit("5/minute")
+def stripe_payment_intent(request: Request, deal_id: int, user: dict = Depends(current_user)):
+    """
+    Brand: create a Stripe PaymentIntent for embedded checkout.
+    Returns client_secret so the frontend can mount Stripe Elements directly on the page.
+    15% platform fee via application_fee_amount; 85% transferred to creator's Connect account.
+    """
+    require_role("brand", user)
+    if not stripe.api_key or stripe.api_key.startswith("sk_test_REPLACE"):
+        raise HTTPException(503, "Stripe is not configured on this server")
+
+    with get_conn() as conn:
+        deal = _row(conn,
+            "SELECT d.*, c.title AS campaign_title, u.name AS creator_name "
+            "FROM deals d "
+            "JOIN campaigns c ON c.id = d.campaign_id "
+            "JOIN users u     ON u.id = d.creator_id "
+            "WHERE d.id = ? AND d.brand_id = ? AND d.status = 'active'",
+            (deal_id, user["id"]))
+        if not deal:
+            raise HTTPException(404, "Active deal not found or not yours")
+
+        if deal.get("contract_status") != "contract_complete":
+            raise HTTPException(403,
+                "Payment is locked until both parties have signed the contract.")
+
+        # Block duplicate payments
+        existing = _row(conn,
+            "SELECT id FROM payments WHERE deal_id = ? AND status NOT IN ('refunded')",
+            (deal_id,))
+        if existing:
+            raise HTTPException(409, "Payment already initiated for this deal")
+
+        creator_profile = _row(conn,
+            "SELECT stripe_account_id, stripe_onboarded FROM creator_profiles WHERE user_id = ?",
+            (deal["creator_id"],))
+
+    if not creator_profile or not creator_profile["stripe_account_id"]:
+        raise HTTPException(422, "Creator has not connected their Stripe account yet")
+    if not creator_profile["stripe_onboarded"]:
+        raise HTTPException(422, "Creator's Stripe account is not fully verified yet")
+
+    amount_cents    = int(deal["amount"]) * 100
+    platform_fee_c  = int(round(amount_cents * PLATFORM_FEE))
+
+    intent = stripe.PaymentIntent.create(
+        amount=amount_cents,
+        currency="usd",
+        application_fee_amount=platform_fee_c,
+        transfer_data={"destination": creator_profile["stripe_account_id"]},
+        metadata={
+            "deal_id":    str(deal_id),
+            "brand_id":   str(user["id"]),
+            "creator_id": str(deal["creator_id"]),
+        },
+    )
+
+    # Pre-create the payment record in 'pending' state
+    amount_dollars   = int(deal["amount"])
+    platform_fee_d   = int(round(amount_dollars * PLATFORM_FEE))
+    creator_payout_d = amount_dollars - platform_fee_d
+
+    with get_conn() as conn:
+        conn.execute("""
+            INSERT INTO payments
+              (deal_id, brand_id, creator_id, amount, platform_fee, creator_payout,
+               stripe_payment_id, status)
+            VALUES (?,?,?,?,?,?,?,'pending')
+        """, (
+            deal_id, user["id"], deal["creator_id"],
+            amount_dollars, platform_fee_d, creator_payout_d,
+            intent["id"],
+        ))
+        conn.commit()
+
+    return {
+        "client_secret":      intent["client_secret"],
+        "payment_intent_id":  intent["id"],
+        "amount":             amount_dollars,
+        "platform_fee":       platform_fee_d,
+        "creator_payout":     creator_payout_d,
+    }
+
+
 @app.post("/api/stripe/checkout/{deal_id}")
 @limiter.limit("5/minute")
 def stripe_checkout(request: Request, deal_id: int, user: dict = Depends(current_user)):
@@ -2843,6 +2928,48 @@ async def stripe_webhook(request: Request):
                     data={"deal_id": deal_id},
                     email=deal_row["creator_email"],
                 ))
+
+    elif etype == "payment_intent.succeeded":
+        payment_intent_id = data["id"]
+        deal_id = int(data.get("metadata", {}).get("deal_id", 0))
+
+        with get_conn() as conn:
+            # Mark payment as held
+            conn.execute("""
+                UPDATE payments
+                SET status = 'held'
+                WHERE stripe_payment_id = ?
+            """, (payment_intent_id,))
+            # Update deal status to payment_received and store payment intent ID
+            if deal_id:
+                conn.execute("""
+                    UPDATE deals
+                    SET status = 'payment_received',
+                        stripe_payment_intent_id = ?
+                    WHERE id = ?
+                """, (payment_intent_id, deal_id))
+            conn.commit()
+
+            if deal_id:
+                deal_row = _row(conn,
+                    "SELECT d.*, u.email AS creator_email "
+                    "FROM deals d JOIN users u ON u.id = d.creator_id "
+                    "WHERE d.id = ?", (deal_id,))
+                payment_row = _row(conn,
+                    "SELECT * FROM payments WHERE stripe_payment_id = ?", (payment_intent_id,))
+
+        if deal_id and deal_row:
+            import asyncio
+            asyncio.create_task(_notify(
+                user_id=deal_row["creator_id"],
+                notif_type="payment_received",
+                title="Payment received — funds held in escrow",
+                body=f"${payment_row['amount'] if payment_row else '?'} has been received and "
+                     f"is held in escrow for deal #{deal_id}. "
+                     f"Funds will be released once the brand confirms delivery.",
+                data={"deal_id": deal_id},
+                email=deal_row["creator_email"],
+            ))
 
     elif etype == "charge.refunded":
         payment_intent = data.get("payment_intent")

@@ -463,8 +463,9 @@ def _init_pg():
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_completed_url TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_sent_at      TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS signed_contract_url  TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_terms_confirmed    INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_terms_confirmed  INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_terms_confirmed      INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_terms_confirmed    INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS stripe_payment_intent_id  TEXT")
         conn.execute("ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS social_handles TEXT DEFAULT '{}'")
 
         conn.commit()
