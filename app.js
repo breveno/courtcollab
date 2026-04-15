@@ -4822,7 +4822,7 @@ async function _showPaymentSuccessPage(dealId) {
 }
 
 // Handle Stripe return URLs
-function handleStripeReturn() {
+async function handleStripeReturn() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('stripe_onboard')) {
     history.replaceState({}, '', '/');
