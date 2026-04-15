@@ -2932,43 +2932,103 @@ async def stripe_webhook(request: Request):
     elif etype == "payment_intent.succeeded":
         payment_intent_id = data["id"]
         deal_id = int(data.get("metadata", {}).get("deal_id", 0))
+        deal_row    = None
+        payment_row = None
 
         with get_conn() as conn:
-            # Mark payment as held
+            # Mark payment as held in our payments ledger
             conn.execute("""
                 UPDATE payments
                 SET status = 'held'
                 WHERE stripe_payment_id = ?
             """, (payment_intent_id,))
-            # Update deal status to payment_received and store payment intent ID
+            # Advance deal status to 'paid' and record the PaymentIntent ID
             if deal_id:
                 conn.execute("""
                     UPDATE deals
-                    SET status = 'payment_received',
+                    SET status = 'paid',
                         stripe_payment_intent_id = ?
                     WHERE id = ?
                 """, (payment_intent_id, deal_id))
             conn.commit()
 
             if deal_id:
-                deal_row = _row(conn,
-                    "SELECT d.*, u.email AS creator_email "
-                    "FROM deals d JOIN users u ON u.id = d.creator_id "
-                    "WHERE d.id = ?", (deal_id,))
+                deal_row = _row(conn, """
+                    SELECT d.*,
+                           uc.email AS creator_email, uc.name AS creator_name,
+                           ub.email AS brand_email,   ub.name AS brand_name,
+                           c.title  AS campaign_title
+                    FROM deals d
+                    JOIN users uc        ON uc.id = d.creator_id
+                    JOIN users ub        ON ub.id = d.brand_id
+                    LEFT JOIN campaigns c ON c.id  = d.campaign_id
+                    WHERE d.id = ?
+                """, (deal_id,))
                 payment_row = _row(conn,
                     "SELECT * FROM payments WHERE stripe_payment_id = ?", (payment_intent_id,))
 
         if deal_id and deal_row:
+            amount         = float(deal_row.get("amount") or 0)
+            creator_payout = round(amount * (1 - PLATFORM_FEE), 2)
+            deal_name      = deal_row.get("campaign_title") or f"Deal #{deal_id}"
+            creator_name   = deal_row.get("creator_name") or "Creator"
+            brand_name     = deal_row.get("brand_name")   or "Brand"
+            deadline_raw   = deal_row.get("deadline") or ""
+            deadline_str   = deadline_raw if deadline_raw else "as agreed in your contract"
+            brand_email    = (deal_row.get("brand_email")   or "").strip()
+            creator_email  = (deal_row.get("creator_email") or "").strip()
+
+            # ── Brand: payment confirmed email ─────────────────────────────
+            if brand_email:
+                _send_zoho_email(
+                    to_emails=[brand_email],
+                    subject="Payment Confirmed — CourtCollab Deal",
+                    body=(
+                        f"Hi {brand_name},\n\n"
+                        f"Your payment has been successfully processed. Here is a summary of your deal:\n\n"
+                        f"  Deal             : {deal_name}\n"
+                        f"  Amount paid      : ${amount:,.2f}\n"
+                        f"  Creator          : {creator_name}\n"
+                        f"  Expected delivery: {deadline_str}\n\n"
+                        f"Funds are held securely until you confirm content delivery. "
+                        f"Once you confirm, CourtCollab will release the payout to the creator.\n\n"
+                        f"Log in to track your deal: https://courtcollab.com\n\n"
+                        f"— The CourtCollab Team\n"
+                        f"courtcollab.com\n"
+                    ),
+                )
+
+            # ── Creator: payout notification email ─────────────────────────
+            if creator_email:
+                _send_zoho_email(
+                    to_emails=[creator_email],
+                    subject="You Have Been Paid — CourtCollab Deal",
+                    body=(
+                        f"Hi {creator_name},\n\n"
+                        f"Great news — payment has been received for your deal. Here is a summary:\n\n"
+                        f"  Deal        : {deal_name}\n"
+                        f"  Your payout : ${creator_payout:,.2f} (85% of the total deal)\n\n"
+                        f"Funds will arrive in your bank account within 2 to 7 business days "
+                        f"once the brand confirms content delivery.\n\n"
+                        f"Log in to CourtCollab to view your deal: https://courtcollab.com\n\n"
+                        f"— The CourtCollab Team\n"
+                        f"courtcollab.com\n"
+                    ),
+                )
+
+            # ── In-app notification to creator ─────────────────────────────
             import asyncio
             asyncio.create_task(_notify(
                 user_id=deal_row["creator_id"],
                 notif_type="payment_received",
-                title="Payment received — funds held in escrow",
-                body=f"${payment_row['amount'] if payment_row else '?'} has been received and "
-                     f"is held in escrow for deal #{deal_id}. "
-                     f"Funds will be released once the brand confirms delivery.",
+                title="You've been paid!",
+                body=(
+                    f"${creator_payout:,.2f} is on its way for \"{deal_name}\". "
+                    f"Funds arrive in your bank account within 2–7 business days "
+                    f"once the brand confirms delivery."
+                ),
                 data={"deal_id": deal_id},
-                email=deal_row["creator_email"],
+                email=None,   # direct email already sent above
             ))
 
     elif etype == "charge.refunded":

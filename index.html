@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0B1F4A" id="meta-theme-color">
   <title>CourtCollab — Creator & Brand Marketplace</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -21,7 +22,14 @@
     }
   </script>
   <style>
-    * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; -webkit-tap-highlight-color: transparent; }
+    /* Greyed-out placeholder for select elements */
+    select:has(option[value=""]:checked) { color: #9ca3af; }
+    select option { color: #111827; }
+    /* Prevent iOS Safari from auto-zooming on input focus — requires font-size >= 16px on all inputs */
+    @media screen and (max-width: 768px) {
+      input, textarea, select { font-size: 16px !important; }
+    }
     [x-cloak] { display: none !important; }
     .page { display: none; overflow-x: clip; max-width: 100vw; }
     .page.active { display: block; overflow-x: clip; max-width: 100vw; }
@@ -29,8 +37,11 @@
     .grid-fade-in { animation: fadeUp 0.22s ease forwards; }
     .nav-link.active { color: #C8F135; border-bottom: 2px solid #C8F135; }
     .tag { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; margin: 2px; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; }
-    .modal-content { background: white; border-radius: 1rem; padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    @keyframes modalFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalSlideIn { from { opacity: 0; transform: scale(0.94) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; animation: modalFadeIn 0.18s ease; }
+    .modal-overlay.hidden { display: none; animation: none; }
+    .modal-content { background: white; border-radius: 1rem; padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; animation: modalSlideIn 0.22s cubic-bezier(0.34,1.2,0.64,1); }
     .stat-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
     .stat-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #C8F135, #acd120); }
     .card-hover { transition: all 0.2s; }
@@ -145,6 +156,7 @@
   /* Auth gate */
   html { overflow-x: clip; max-width: 100vw; overscroll-behavior-x: none; }
   html.gate-open { overflow: hidden; background: #0B1F4A; }
+  html.gate-open body { background: #0B1F4A; }
   body { max-width: 100vw; overflow-x: clip; overscroll-behavior-x: none; }
   #auth-gate { position:fixed; inset:0; z-index:9999; background:#0B1F4A; overflow-y:auto; overflow-x:hidden; overscroll-behavior:none; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
   #auth-gate.hidden { display:none; }
@@ -172,7 +184,7 @@
   .auth-tab { flex:1; padding:0.45rem 1rem; font-weight:600; font-size:0.85rem; border-radius:0.45rem; cursor:pointer; transition:all 0.2s; text-align:center; }
   .auth-tab.active { background:#0B1F4A; color:#C8F135; }
   .auth-tab:not(.active) { color:#6b7280; }
-  .auth-input { width:100%; min-width:0; max-width:100%; box-sizing:border-box; border:1.5px solid #e5e7eb; border-radius:0.6rem; padding:0.7rem 1rem; font-size:0.95rem; transition:border-color 0.2s; }
+  .auth-input { width:100%; min-width:0; max-width:100%; box-sizing:border-box; border:1.5px solid #e5e7eb; border-radius:0.6rem; padding:0.7rem 1rem; font-size:1rem; transition:border-color 0.2s; }
   .auth-input:focus { border-color:#C8F135; outline:none; }
   .auth-btn { width:100%; background:#C8F135; color:#0B1F4A; padding:0.8rem; border-radius:0.6rem; font-weight:700; font-size:1rem; cursor:pointer; transition:background 0.2s; }
   .auth-btn:hover { background:#acd120; }
@@ -215,7 +227,7 @@
     .why-carousel-controls { display:none !important; }
     .auth-hero-left { width:100%; }
     .auth-hero-right { width:100%; }
-    .auth-gate-hero { padding:2.5rem 1rem 3.5rem; text-align:center; }
+    .auth-gate-hero { padding:2.5rem 1rem 3.5rem; text-align:center; min-height:100svh; min-height:100dvh; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; }
     .auth-gate-section { padding:3rem 1rem; }
     .auth-gate-cards { grid-template-columns:1fr; }
     .auth-form-card { padding:1.5rem 1.25rem; }
@@ -300,7 +312,7 @@
   <!-- Initial app splash screen -->
   <div id="app-splash">
     <div style="display:flex;align-items:center;gap:0.75rem;">
-      <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:72px;width:auto;flex-shrink:0;filter:drop-shadow(0 0 24px rgba(200,241,53,0.4));">
+      <img src="/logo-paddles.png?v=3" alt="" aria-hidden="true" style="height:72px;width:auto;flex-shrink:0;filter:drop-shadow(0 0 24px rgba(200,241,53,0.4));">
       <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:3rem;letter-spacing:-0.03em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
     </div>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="80" height="80">
@@ -352,7 +364,7 @@
         <div class="auth-hero-left">
           <div class="auth-gate-logo" style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:2rem;">
             <div style="display:flex;align-items:center;gap:0.6rem;">
-              <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:72px;width:auto;flex-shrink:0;">
+              <img src="/logo-paddles.png?v=3" alt="" aria-hidden="true" style="height:72px;width:auto;flex-shrink:0;">
               <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:3rem;letter-spacing:-0.03em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
             </div>
           </div>
@@ -382,7 +394,7 @@
             <div style="display:flex;flex-direction:column;gap:1rem;">
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email</label>
-                <input id="login-email" type="email" class="auth-input" placeholder="you@example.com" required autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                <input id="login-email" type="text" inputmode="email" class="auth-input" placeholder="you@example.com" autocomplete="email" autocorrect="off" autocapitalize="none" spellcheck="false" />
               </div>
               <div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
@@ -419,7 +431,7 @@
             <div style="display:flex;flex-direction:column;gap:0.85rem;">
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email address</label>
-                <input id="forgot-email" type="email" class="auth-input" placeholder="you@example.com" required autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                <input id="forgot-email" type="text" inputmode="email" class="auth-input" placeholder="you@example.com" autocomplete="email" autocorrect="off" autocapitalize="none" spellcheck="false" />
               </div>
               <button type="button" onclick="handleForgotPassword()" class="auth-btn">Send Reset Link</button>
             </div>
@@ -453,7 +465,7 @@
               </div>
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Email <span style="color:#ef4444;">*</span></label>
-                <input id="signup-email" type="email" class="auth-input" placeholder="you@example.com" required autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                <input id="signup-email" type="text" inputmode="email" class="auth-input" placeholder="you@example.com" autocomplete="email" autocorrect="off" autocapitalize="none" spellcheck="false" />
               </div>
               <div>
                 <label style="display:block;font-size:0.85rem;font-weight:600;color:#374151;margin-bottom:0.4rem;">Password <span style="color:#ef4444;">*</span></label>
@@ -763,7 +775,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16 pr-4 sm:pr-0">
         <div class="flex items-center gap-2 cursor-pointer" onclick="navigate('landing')">
-          <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:38px;width:auto;flex-shrink:0;">
+          <img src="/logo-paddles.png?v=3" alt="" aria-hidden="true" style="height:38px;width:auto;flex-shrink:0;" onerror="this.style.display='none'">
           <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:1.375rem;letter-spacing:-0.02em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
         </div>
         <div class="hidden md:flex items-center gap-1" id="main-nav">
@@ -835,7 +847,7 @@
           </div>
           <!-- Mobile: user initials only + hamburger on far right -->
           <div class="md:hidden flex items-center gap-2">
-            <button class="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-pickle-500 transition" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Open menu">
+            <button class="flex items-center justify-center w-9 h-9 rounded-lg active:bg-pickle-500 transition focus:outline-none focus:bg-transparent" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Open menu">
               <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:#C8F135;">
                 <rect y="3" width="22" height="2.5" rx="1.25" fill="currentColor"/>
                 <rect y="9.75" width="22" height="2.5" rx="1.25" fill="currentColor"/>
@@ -932,7 +944,7 @@
                     </div>
                     <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">96% fit</span>
                   </div>
-                  <div class="space-y-2.5 mb-4">
+                  <div class="space-y-2.5 mb-3">
                     <div class="flex items-center gap-2.5">
                       <svg class="w-4 h-4 flex-shrink-0" style="color:#e1306c" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
                       <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">@sarahkpkl</span>
@@ -944,10 +956,11 @@
                       <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">89.1K</span>
                     </div>
                   </div>
-                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,0.08)">
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3" style="background:rgba(255,255,255,0.08)">
                     <span class="text-xs" style="color:rgba(255,255,255,0.55)">Engagement Rate</span>
                     <span class="text-xs font-bold" style="color:#C8F135">6.8%</span>
                   </div>
+                  <button onclick="heroViewProfile(0)" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:#C8F135;color:#0B1F4A;" onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">View Profile →</button>
                 </div>
 
                 <!-- Card 2 — Marcus J. -->
@@ -960,7 +973,7 @@
                     </div>
                     <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">91% fit</span>
                   </div>
-                  <div class="space-y-2.5 mb-4">
+                  <div class="space-y-2.5 mb-3">
                     <div class="flex items-center gap-2.5">
                       <svg class="w-4 h-4 flex-shrink-0" style="color:#ff0000" fill="currentColor" viewBox="0 0 24 24"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 00.5 6.2 31.2 31.2 0 000 12a31.2 31.2 0 00.5 5.8 3 3 0 002.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 002.1-2.1A31.2 31.2 0 0024 12a31.2 31.2 0 00-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
                       <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">@marcuspickleball</span>
@@ -972,10 +985,11 @@
                       <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">32.4K</span>
                     </div>
                   </div>
-                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,0.08)">
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3" style="background:rgba(255,255,255,0.08)">
                     <span class="text-xs" style="color:rgba(255,255,255,0.55)">Engagement Rate</span>
                     <span class="text-xs font-bold" style="color:#C8F135">4.2%</span>
                   </div>
+                  <button onclick="heroViewProfile(0)" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:#C8F135;color:#0B1F4A;" onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">View Profile →</button>
                 </div>
 
                 <!-- Card 3 — Emma L. -->
@@ -988,7 +1002,7 @@
                     </div>
                     <span class="ml-auto flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style="background:#C8F135;color:#0B1F4A">88% fit</span>
                   </div>
-                  <div class="space-y-2.5 mb-4">
+                  <div class="space-y-2.5 mb-3">
                     <div class="flex items-center gap-2.5">
                       <svg class="w-4 h-4 flex-shrink-0" style="color:#e1306c" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
                       <span class="text-xs truncate" style="color:rgba(255,255,255,0.6)">@emmalcoaches</span>
@@ -1000,10 +1014,11 @@
                       <span class="ml-auto text-white text-xs font-semibold whitespace-nowrap">41.8K</span>
                     </div>
                   </div>
-                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5" style="background:rgba(255,255,255,0.08)">
+                  <div class="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3" style="background:rgba(255,255,255,0.08)">
                     <span class="text-xs" style="color:rgba(255,255,255,0.55)">Engagement Rate</span>
                     <span class="text-xs font-bold" style="color:#C8F135">7.4%</span>
                   </div>
+                  <button onclick="heroViewProfile(0)" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:#C8F135;color:#0B1F4A;" onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">View Profile →</button>
                 </div>
 
               </div><!-- /track -->
@@ -1262,10 +1277,8 @@
           <div class="feat-strip scroll-fade" id="creator-feat-strip">
             <!-- populated by JS -->
             <div class="feat-strip-card">
-              <div class="w-10 h-10 rounded-xl bg-pickle-600 flex items-center justify-center mb-3 text-white font-bold text-sm">PT</div>
-              <p class="font-semibold text-sm mb-0.5">Loading...</p>
-              <span class="inline-block text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full mb-2">Sponsored</span>
-              <p class="text-xs text-gray-400">$800–$1,200</p>
+              <div class="w-10 h-10 rounded-xl bg-pickle-600 flex items-center justify-center mb-3 text-white font-bold text-sm">…</div>
+              <p class="font-semibold text-sm mb-1 text-gray-300">Loading campaigns…</p>
             </div>
           </div>
         </div>
@@ -1315,6 +1328,20 @@
         <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-24"></div>
         <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse h-24"></div>
       </div>
+
+      <!-- Bank Account / Payout Settings -->
+      <div id="creator-dash-bank" class="mb-6">
+        <div class="bg-white rounded-2xl border border-gray-100 p-6 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl bg-gray-100 animate-pulse flex-shrink-0"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-3 bg-gray-100 rounded w-32 animate-pulse"></div>
+            <div class="h-3 bg-gray-100 rounded w-48 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Campaign Invitations Section -->
+      <div id="creator-dash-invitations" class="mb-6"></div>
 
       <!-- Contracts Section (rendered by JS when deals have contract_sent/complete) -->
       <div id="creator-dash-contracts" class="mb-6"></div>
@@ -1452,7 +1479,7 @@
       <!-- Profile completion bar -->
       <div id="creator-profile-completion" class="mb-8"></div>
 
-      <form id="creator-form" class="space-y-8" onsubmit="saveCreatorProfile(event)">
+      <form id="creator-form" class="space-y-8" onsubmit="saveCreatorProfile(event)" novalidate>
         <!-- Basic Info -->
         <div class="bg-white rounded-2xl border border-gray-200 p-6">
           <h2 class="font-bold text-lg mb-4">Basic Information</h2>
@@ -1808,11 +1835,40 @@
       <div id="detail-content"></div>
       <div class="flex gap-3 mt-6">
         <button id="detail-message-btn" onclick="startConversation()" class="bg-lime-400 text-gray-900 px-6 py-2.5 rounded-xl font-medium hover:bg-lime-500 transition flex-1">Message Creator</button>
+        <button id="detail-invite-btn" onclick="openInviteModal(_detailCreatorId)" class="hidden items-center gap-1.5 bg-[#1E6EA6] text-white px-5 py-2.5 rounded-xl font-medium hover:bg-[#185d8e] transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          Invite to Campaign
+        </button>
         <button id="detail-save-btn" onclick="toggleSaveCreator(_detailCreatorId)" class="hidden items-center gap-2 border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">
           <svg class="w-4 h-4 flex-shrink-0" id="detail-save-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
           <span id="detail-save-label">Save</span>
         </button>
         <button onclick="closeModal('creator-detail-modal')" class="border border-gray-300 text-gray-600 px-6 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invite to Campaign Modal -->
+  <div id="invite-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('invite-modal')">
+    <div class="modal-content max-w-md">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="text-xl font-bold">Invite to Campaign</h2>
+        <button onclick="closeModal('invite-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <p class="text-sm text-gray-500 mb-4">Select which campaign you'd like to invite <span id="invite-creator-name" class="font-semibold text-gray-800"></span> to.</p>
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Campaign</label>
+        <select id="invite-campaign-select" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+          <option value="">Loading campaigns…</option>
+        </select>
+      </div>
+      <div class="mb-5">
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Personal message <span class="font-normal text-gray-400">(optional)</span></label>
+        <textarea id="invite-message" rows="3" placeholder="e.g. We love your content and think you'd be a great fit…" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"></textarea>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="submitInvite()" id="invite-submit-btn" class="flex-1 bg-[#1E6EA6] text-white py-2.5 rounded-xl font-semibold hover:bg-[#185d8e] transition">Send Invite</button>
+        <button onclick="closeModal('invite-modal')" class="border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition">Cancel</button>
       </div>
     </div>
   </div>
@@ -1877,6 +1933,51 @@
         </div>
         <button onclick="closeModal('contract-modal')" class="w-full border border-gray-300 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Close</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Payment Modal — embedded Stripe Elements -->
+  <div id="payment-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('payment-modal')">
+    <div class="modal-content max-w-md w-full">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Complete Payment</h2>
+          <p class="text-sm text-gray-500 mt-0.5" id="payment-modal-subtitle">Secure payment via Stripe</p>
+        </div>
+        <button onclick="closeModal('payment-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+
+      <!-- Fee breakdown -->
+      <div class="rounded-xl p-3 mb-5 flex items-center justify-between text-sm" style="background:#f8fafc;border:1px solid #e2e8f0;">
+        <div class="text-gray-500">Deal amount</div>
+        <div id="payment-modal-amount" class="font-bold text-gray-900">—</div>
+      </div>
+      <div class="rounded-xl px-3 py-2 mb-5 text-xs text-gray-400 flex items-center justify-between" style="background:#f0fdb0;">
+        <span style="color:#3a5a0a">85% goes directly to the creator · CourtCollab keeps 15%</span>
+        <span id="payment-modal-payout" class="font-semibold" style="color:#0B1F4A"></span>
+      </div>
+
+      <!-- Stripe Element mount point -->
+      <div id="stripe-payment-element" class="mb-5 min-h-[140px]">
+        <div class="flex items-center justify-center gap-2 text-gray-400 text-sm py-8">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+          Loading secure payment form…
+        </div>
+      </div>
+
+      <!-- Error message -->
+      <div id="payment-modal-error" class="hidden mb-4 rounded-xl px-4 py-3 text-sm text-red-700 bg-red-50 border border-red-200"></div>
+
+      <!-- Submit -->
+      <button id="payment-modal-submit" onclick="submitStripePayment()"
+        class="w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        style="background:#0B1F4A;color:white;" disabled>
+        Pay Now
+      </button>
+      <p class="text-center text-xs text-gray-400 mt-3 flex items-center justify-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        Secured by Stripe · Your card details are never stored by CourtCollab
+      </p>
     </div>
   </div>
 
@@ -2016,7 +2117,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Website</label>
-            <input type="url" id="bp-website" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="https://yourbrand.com">
+            <input type="text" inputmode="url" id="bp-website" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="https://yourbrand.com">
           </div>
           <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1">About Your Brand</label>
@@ -2054,7 +2155,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-          <input type="email" id="acct-email" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="you@example.com">
+          <input type="text" inputmode="email" autocapitalize="none" autocorrect="off" id="acct-email" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400" placeholder="you@example.com">
         </div>
         <button onclick="saveAccountInfo()" class="w-full bg-lime-400 text-gray-900 py-2.5 rounded-xl font-semibold hover:bg-lime-500 transition text-sm">Save Changes</button>
       </div>
@@ -2120,18 +2221,27 @@
   <!-- Campaign Post Modal -->
   <div id="campaign-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('campaign-modal')">
     <div class="modal-content">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold">Post a Campaign Brief</h2>
-        <button onclick="closeModal('campaign-modal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+      <!-- Step indicator -->
+      <div class="flex items-center gap-2 mb-6">
+        <div id="camp-step-indicator" class="flex items-center gap-2 text-sm flex-1 min-w-0">
+          <span id="camp-step-1-dot" class="w-6 h-6 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+          <span id="camp-step-1-label" class="font-semibold text-gray-900 hidden sm:inline whitespace-nowrap">Details</span>
+          <svg class="w-3 h-3 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <span id="camp-step-2-dot" class="w-6 h-6 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+          <span id="camp-step-2-label" class="text-gray-400 hidden sm:inline whitespace-nowrap">Contract</span>
+          <svg class="w-3 h-3 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <span id="camp-step-3-dot" class="w-6 h-6 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+          <span id="camp-step-3-label" class="text-gray-400 hidden sm:inline whitespace-nowrap">Review</span>
+        </div>
+        <button onclick="closeModal('campaign-modal')" class="ml-2 text-gray-400 hover:text-gray-600 text-2xl leading-none flex-shrink-0">&times;</button>
       </div>
-      <form onsubmit="postCampaign(event)" class="space-y-4">
+
+      <!-- Step 1: Campaign Details -->
+      <div id="camp-step-1">
+      <form onsubmit="campaignNextStep(event)" class="space-y-4" novalidate>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Campaign Title</label>
           <input type="text" id="camp-title" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="e.g., Summer Paddle Launch" required>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
-          <input type="text" id="camp-brand" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Your brand name" required>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Campaign Cover Photo <span class="text-gray-400 font-normal">(optional)</span></label>
@@ -2161,6 +2271,7 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Content Type Needed</label>
             <select id="camp-content" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+              <option value="" disabled selected class="text-gray-400">Select content type</option>
               <option>Short Form Video (Reels/TikTok)</option>
               <option>Long Form Video (YouTube)</option>
               <option>UGC Content</option>
@@ -2170,16 +2281,22 @@
             </select>
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Target Audience</label>
             <select id="camp-audience" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+              <option value="" disabled selected>Select audience</option>
               <option>Recreational Players</option>
               <option>Competitive Players</option>
               <option>Beginners</option>
               <option>All Levels</option>
               <option>Fitness Enthusiasts</option>
             </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Creators Needed</label>
+            <input type="number" id="camp-creators-needed" min="1" max="100" placeholder="e.g. 3"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
@@ -2221,8 +2338,87 @@
           </label>
           <ul id="camp-attachment-list" class="mt-3 space-y-2"></ul>
         </div>
-        <button type="submit" class="w-full bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 transition">Post Campaign</button>
+        <button type="submit" class="w-full bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 transition flex items-center justify-center gap-2">
+          Next
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+        </button>
       </form>
+      </div><!-- /camp-step-1 -->
+
+      <!-- Step 2: Contract Selection -->
+      <div id="camp-step-2" class="hidden">
+        <p class="text-sm text-gray-500 mb-5">Choose the contract type for this campaign. Creators will receive this when their application is accepted.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+
+          <!-- CourtCollab Template -->
+          <div id="camp-contract-opt-template" onclick="selectCampContract('template')"
+               class="flex flex-col p-4 border-2 border-lime-400 bg-lime-50 rounded-xl cursor-pointer transition">
+            <div class="w-10 h-10 bg-lime-100 rounded-xl flex items-center justify-center mb-3">
+              <svg class="w-5 h-5 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <p class="font-bold text-sm text-gray-900">CourtCollab Contract</p>
+              <span class="text-xs bg-lime-200 text-lime-800 font-semibold px-2 py-0.5 rounded-full">Recommended</span>
+            </div>
+            <p class="text-xs text-gray-500 mb-3 flex-1">Our standard creator partnership agreement. Auto-filled with deal details, sent via e-signature.</p>
+            <ul class="space-y-1">
+              <li class="flex items-center gap-1.5 text-xs text-gray-600"><svg class="w-3.5 h-3.5 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Ready-to-use template</li>
+              <li class="flex items-center gap-1.5 text-xs text-gray-600"><svg class="w-3.5 h-3.5 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>E-signature via SignWell</li>
+              <li class="flex items-center gap-1.5 text-xs text-gray-600"><svg class="w-3.5 h-3.5 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Auto-filled with deal details</li>
+            </ul>
+            <div id="camp-contract-check-template" class="mt-3 flex items-center gap-1.5 text-xs font-semibold text-lime-700">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Selected
+            </div>
+          </div>
+
+          <!-- Upload Own -->
+          <div id="camp-contract-opt-custom" onclick="selectCampContract('custom')"
+               class="flex flex-col p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-gray-300 transition">
+            <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
+              <svg class="w-5 h-5 text-[#1E6EA6]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            </div>
+            <p class="font-bold text-sm text-gray-900 mb-1">Upload Your Own</p>
+            <p class="text-xs text-gray-500 mb-3 flex-1">Upload a PDF or Word document to use as the contract for this campaign.</p>
+            <ul class="space-y-1 mb-3">
+              <li class="flex items-center gap-1.5 text-xs text-gray-600"><svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>PDF, DOC, or DOCX</li>
+              <li class="flex items-center gap-1.5 text-xs text-gray-600"><svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Full custom terms</li>
+            </ul>
+            <label class="flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-50 transition">
+              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+              <span id="camp-contract-file-label" class="text-xs text-gray-500 truncate">Choose file</span>
+              <input type="file" id="camp-contract-file" accept=".pdf,.doc,.docx" class="hidden" onchange="updateCampContractFileLabel(this)">
+            </label>
+            <div id="camp-contract-check-custom" class="hidden mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#1E6EA6]">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Selected
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <button type="button" onclick="campaignBackStep()" class="flex items-center gap-2 border border-gray-300 text-gray-600 px-5 py-3 rounded-xl font-medium hover:bg-gray-50 transition text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            Back
+          </button>
+          <button type="button" onclick="campaignGoToReview()" class="flex-1 bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 transition flex items-center justify-center gap-2">
+            Next
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div><!-- /camp-step-2 -->
+
+      <!-- Step 3: Review -->
+      <div id="camp-step-3" class="hidden">
+        <p class="text-sm text-gray-500 mb-5">Review your campaign before posting. You can go back to make changes.</p>
+        <div id="camp-review-body" class="space-y-4 mb-6"></div>
+        <div class="flex gap-3">
+          <button type="button" onclick="campaignBackToContract()" class="flex items-center gap-2 border border-gray-300 text-gray-600 px-5 py-3 rounded-xl font-medium hover:bg-gray-50 transition text-sm flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            Back
+          </button>
+          <button type="button" onclick="postCampaign('draft')" class="border border-gray-300 text-gray-700 px-5 py-3 rounded-xl font-medium hover:bg-gray-50 transition text-sm whitespace-nowrap">Save as Draft</button>
+          <button type="button" id="camp-post-btn" onclick="postCampaign('open')" class="flex-1 bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 transition">Post Campaign</button>
+        </div>
+      </div><!-- /camp-step-3 -->
     </div>
   </div>
 
@@ -2311,6 +2507,15 @@
           <p class="text-gray-500 mt-1">Track your payouts and manage your payout method</p>
         </div>
 
+        <!-- Fee breakdown info banner -->
+        <div class="rounded-2xl p-4 mb-6 flex items-start gap-3" style="background:#f0fdb0;border:1px solid #C8F135;">
+          <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color:#0B1F4A" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div>
+            <p class="text-sm font-semibold" style="color:#0B1F4A">You keep 85% of every deal</p>
+            <p class="text-xs mt-0.5" style="color:#3a5a0a">CourtCollab collects a 15% agency fee from each payment to cover platform, contracts, and support. Your payout is calculated automatically before funds are released.</p>
+          </div>
+        </div>
+
         <!-- Stripe Connect Payout Setup -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-6">
           <h2 class="text-lg font-bold mb-3">Payout Method</h2>
@@ -2335,6 +2540,64 @@
     </div>
   </div>
 
+  <!-- Payment Success Page -->
+  <div id="page-payment-success" class="page bg-gray-50 min-h-screen">
+    <div class="max-w-lg mx-auto px-4 py-20 text-center">
+      <!-- Success icon -->
+      <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+           style="background:linear-gradient(135deg,#C8F135,#acd120);">
+        <svg class="w-10 h-10 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+
+      <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Payment Confirmed!</h1>
+      <p class="text-gray-500 mb-8">Your payment was processed successfully. Here's a summary of your deal.</p>
+
+      <!-- Deal summary card -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-left mb-6" id="payment-success-card">
+        <div class="space-y-3">
+          <div class="flex justify-between items-center py-2 border-b border-gray-50">
+            <span class="text-sm text-gray-500 font-medium">Deal</span>
+            <span class="text-sm font-semibold text-gray-900" id="psc-deal-name">—</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-gray-50">
+            <span class="text-sm text-gray-500 font-medium">Creator</span>
+            <span class="text-sm font-semibold text-gray-900" id="psc-creator-name">—</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-gray-50">
+            <span class="text-sm text-gray-500 font-medium">Amount paid</span>
+            <span class="text-sm font-bold text-gray-900" id="psc-amount">—</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-gray-50">
+            <span class="text-sm text-gray-500 font-medium">Expected delivery</span>
+            <span class="text-sm font-semibold text-gray-900" id="psc-deadline">—</span>
+          </div>
+          <div class="flex justify-between items-center py-2">
+            <span class="text-sm text-gray-500 font-medium">Status</span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+              ✅ Paid
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-400 mb-8">A confirmation email has been sent to you and the creator. Funds are held securely until you confirm delivery.</p>
+
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <button onclick="navigate('brand-portal')"
+                class="px-6 py-3 rounded-xl font-semibold text-sm transition"
+                style="background:#0B1F4A;color:white;">
+          ← Back to Dashboard
+        </button>
+        <button onclick="navigate('messages')"
+                class="px-6 py-3 rounded-xl font-semibold text-sm border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition">
+          View Messages
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Contact Page -->
   <div id="page-contact" class="page">
     <div class="gradient-bg text-white py-16">
@@ -2354,7 +2617,7 @@
       <!-- Contact Form -->
       <div class="bg-white rounded-2xl p-8 border border-gray-100 card-hover mb-10">
         <h2 class="text-2xl font-bold mb-6">Send Us a Message</h2>
-        <form id="contact-form" class="space-y-5" onsubmit="submitContact(event)">
+        <form id="contact-form" class="space-y-5" onsubmit="submitContact(event)" novalidate>
           <div class="grid md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -2362,7 +2625,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" id="contact-email" class="w-full border border-gray-300 rounded-lg px-3 py-2.5" placeholder="you@example.com" required>
+              <input type="text" inputmode="email" autocapitalize="none" autocorrect="off" id="contact-email" class="w-full border border-gray-300 rounded-lg px-3 py-2.5" placeholder="you@example.com">
             </div>
           </div>
           <div class="grid md:grid-cols-2 gap-4">
@@ -2432,12 +2695,12 @@
           <h1 class="text-2xl font-bold text-gray-900" id="brand-portal-greeting">Welcome back</h1>
           <p class="text-gray-500 mt-0.5 text-sm">Here's what's happening with your campaigns</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-3 flex-wrap">
           <button onclick="navigate('signed-contracts')" class="flex items-center gap-2 border border-gray-300 bg-white text-gray-700 px-4 py-2 rounded-xl font-medium hover:bg-gray-50 transition text-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             My Contracts
           </button>
-          <button onclick="openModal('campaign-modal')" class="bg-pickle-700 text-white px-4 py-2 rounded-xl font-medium hover:bg-pickle-800 transition flex items-center gap-2 text-sm">
+<button onclick="openModal('campaign-modal')" class="bg-pickle-700 text-white px-4 py-2 rounded-xl font-medium hover:bg-pickle-800 transition flex items-center gap-2 text-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Create Campaign
           </button>
@@ -2492,6 +2755,69 @@
       <div id="signed-contracts-list">
         <div class="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400">
           Loading contracts…
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Contract Page -->
+  <div id="page-new-contract" class="page bg-gray-50 min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">New Contract</h1>
+          <p class="text-gray-500 mt-0.5 text-sm">Choose how you'd like to create a contract for your creator partnership</p>
+        </div>
+        <button onclick="navigateDashboard()" class="flex items-center gap-2 border border-gray-300 bg-white text-gray-700 px-4 py-2 rounded-xl font-medium hover:bg-gray-50 transition text-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+          Back to Dashboard
+        </button>
+      </div>
+
+      <!-- Two option cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- CourtCollab Template -->
+        <div class="bg-white rounded-2xl border-2 border-lime-400 p-6 flex flex-col">
+          <div class="w-12 h-12 bg-lime-100 rounded-xl flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div class="mb-1 flex items-center gap-2">
+            <h2 class="text-lg font-bold text-gray-900">CourtCollab Contract</h2>
+            <span class="text-xs bg-lime-100 text-lime-700 font-semibold px-2 py-0.5 rounded-full">Recommended</span>
+          </div>
+          <p class="text-sm text-gray-500 mb-5 flex-1">Use our standard creator partnership agreement. Fill in deal details and we'll generate a professional contract ready for e-signature.</p>
+          <ul class="space-y-2 mb-6">
+            <li class="flex items-center gap-2 text-sm text-gray-600"><svg class="w-4 h-4 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Ready-to-use template</li>
+            <li class="flex items-center gap-2 text-sm text-gray-600"><svg class="w-4 h-4 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>E-signature via SignWell</li>
+            <li class="flex items-center gap-2 text-sm text-gray-600"><svg class="w-4 h-4 text-lime-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Auto-filled with deal details</li>
+          </ul>
+          <button onclick="openNewContractTemplateModal()" class="w-full bg-lime-400 text-gray-900 py-3 rounded-xl font-bold hover:bg-lime-500 transition text-sm">Use CourtCollab Contract</button>
+        </div>
+
+        <!-- Upload Own -->
+        <div class="bg-white rounded-2xl border-2 border-gray-200 p-6 flex flex-col">
+          <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-[#1E6EA6]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          </div>
+          <h2 class="text-lg font-bold text-gray-900 mb-1">Upload Your Own Contract</h2>
+          <p class="text-sm text-gray-500 mb-5 flex-1">Already have a contract? Upload your own PDF or Word document and we'll send it to the creator for review and signature.</p>
+          <ul class="space-y-2 mb-6">
+            <li class="flex items-center gap-2 text-sm text-gray-600"><svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Upload PDF or DOCX</li>
+            <li class="flex items-center gap-2 text-sm text-gray-600"><svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Send to creator for review</li>
+            <li class="flex items-center gap-2 text-sm text-gray-600"><svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Full custom terms</li>
+          </ul>
+          <!-- File upload -->
+          <div class="mb-4">
+            <label class="flex flex-col items-center gap-2 border-2 border-dashed border-gray-300 rounded-xl px-4 py-5 cursor-pointer hover:bg-gray-50 transition text-center">
+              <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+              <span id="new-contract-file-label" class="text-sm text-gray-500">Click to choose file</span>
+              <span class="text-xs text-gray-400">PDF, DOC, or DOCX</span>
+              <input type="file" id="new-contract-file" accept=".pdf,.doc,.docx" class="hidden" onchange="updateNewContractFileLabel(this)">
+            </label>
+          </div>
+          <button onclick="submitCustomContract()" class="w-full bg-[#1E6EA6] text-white py-3 rounded-xl font-bold hover:bg-[#185d8e] transition text-sm">Upload &amp; Send Contract</button>
         </div>
       </div>
     </div>
@@ -2977,7 +3303,7 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
       <!-- Navy logo header -->
       <div style="background:linear-gradient(135deg,#0B1F4A 0%,#163a70 60%,#0d2a60 100%);padding:1.25rem 2rem;display:flex;align-items:center;justify-content:center;">
         <div style="display:flex;align-items:center;gap:0.5rem;">
-          <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:36px;width:auto;flex-shrink:0;">
+          <img src="/logo-paddles.png?v=3" alt="" aria-hidden="true" style="height:36px;width:auto;flex-shrink:0;">
           <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:1.375rem;letter-spacing:-0.02em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
         </div>
       </div>
@@ -3042,32 +3368,27 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
           <!-- Brand fields -->
           <div id="onboard-brand-fields" class="hidden space-y-5">
             <div>
-              <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Company Name</label>
-              <input type="text" id="onboard-company-name" placeholder="Your brand or company name"
-                class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
-            </div>
-            <div>
               <p class="text-sm font-semibold text-gray-700 mb-2">Industry</p>
               <div class="flex flex-wrap gap-2" id="onboard-industry-pills"></div>
             </div>
             <div>
-              <p class="text-sm font-semibold text-gray-700 mb-2">Campaign Budget Range <span class="font-normal text-gray-400 text-xs">(per campaign)</span></p>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-xs text-gray-500 mb-1 block">Min ($)</label>
-                  <input type="number" id="onboard-budget-min" placeholder="e.g. 500"
-                    class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+              <p class="text-sm font-semibold text-gray-700 mb-2">Social Handles <span class="font-normal text-gray-400 text-xs">(optional)</span></p>
+              <div class="space-y-2.5">
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#E1306C]">IG</span>
+                  <input type="text" id="onboard-brand-ig" placeholder="@yourbrand"
+                    class="w-full border border-gray-300 rounded-xl pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
                 </div>
-                <div>
-                  <label class="text-xs text-gray-500 mb-1 block">Max ($)</label>
-                  <input type="number" id="onboard-budget-max" placeholder="e.g. 5000"
-                    class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#69C9D0]">TT</span>
+                  <input type="text" id="onboard-brand-tt" placeholder="@yourbrand"
+                    class="w-full border border-gray-300 rounded-xl pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
                 </div>
               </div>
             </div>
             <div>
               <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Website <span class="font-normal text-gray-400">(optional)</span></label>
-              <input type="url" id="onboard-website" placeholder="https://yourbrand.com"
+              <input type="text" inputmode="url" id="onboard-website" placeholder="https://yourbrand.com"
                 class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
             </div>
             <div>
@@ -3090,30 +3411,46 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
 
           <div class="space-y-5">
             <div>
-              <p class="text-sm font-semibold text-gray-700 mb-2">Audience Size</p>
-              <div class="grid grid-cols-3 gap-3">
-                <div class="relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">IG</span>
-                  <input type="number" id="onboard-ig" placeholder="Followers"
-                    class="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+              <p class="text-sm font-semibold text-gray-700 mb-1">Audience Size &amp; Engagement Rate</p>
+              <p class="text-xs text-gray-400 mb-3">Followers · Engagement % — fill in the platforms you use</p>
+              <div class="space-y-2.5">
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#E1306C]">IG</span>
+                    <input type="number" id="onboard-ig" placeholder="Followers"
+                      class="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                  </div>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                    <input type="number" step="0.1" id="onboard-ig-eng" placeholder="Eng. rate"
+                      class="w-full border border-gray-300 rounded-xl pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                  </div>
                 </div>
-                <div class="relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">TT</span>
-                  <input type="number" id="onboard-tt" placeholder="Followers"
-                    class="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-800">TT</span>
+                    <input type="number" id="onboard-tt" placeholder="Followers"
+                      class="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                  </div>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                    <input type="number" step="0.1" id="onboard-tt-eng" placeholder="Eng. rate"
+                      class="w-full border border-gray-300 rounded-xl pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                  </div>
                 </div>
-                <div class="relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">YT</span>
-                  <input type="number" id="onboard-yt" placeholder="Subs"
-                    class="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-red-500">YT</span>
+                    <input type="number" id="onboard-yt" placeholder="Subscribers"
+                      class="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                  </div>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                    <input type="number" step="0.1" id="onboard-yt-eng" placeholder="Eng. rate"
+                      class="w-full border border-gray-300 rounded-xl pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
+                  </div>
                 </div>
               </div>
-              <p class="text-xs text-gray-400 mt-1.5">Instagram · TikTok · YouTube</p>
-            </div>
-            <div>
-              <label class="text-sm font-semibold text-gray-700 mb-1.5 block">Avg Engagement Rate <span class="font-normal text-gray-400">(%)</span></label>
-              <input type="number" step="0.1" id="onboard-engagement" placeholder="e.g. 4.5"
-                class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400">
             </div>
             <div>
               <p class="text-sm font-semibold text-gray-700 mb-2">Audience Demographics <span class="font-normal text-gray-400 text-xs">(optional)</span></p>
@@ -3220,7 +3557,7 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
         <!-- Brand -->
         <div class="col-span-2 md:col-span-1">
           <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-            <img src="logo-paddles.png" alt="" aria-hidden="true" style="height:32px;width:auto;flex-shrink:0;">
+            <img src="/logo-paddles.png?v=3" alt="" aria-hidden="true" style="height:32px;width:auto;flex-shrink:0;">
             <span style="font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:1.25rem;letter-spacing:-0.02em;line-height:1;"><span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span></span>
           </div>
           <p style="color:rgba(255,255,255,0.5);" class="text-sm leading-relaxed">The 1st marketplace for connecting pickleball creators with top brands.</p>
@@ -3311,6 +3648,54 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     <span id="toast-text"></span>
   </div>
 
+  <!-- Accept Application — Set Deal Terms Modal -->
+  <div id="accept-deal-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('accept-deal-modal')">
+    <div class="modal-content max-w-md">
+      <div class="flex justify-between items-center mb-5">
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Accept Application</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Accepting <span id="accept-deal-creator-name" class="font-semibold text-gray-700"></span></p>
+        </div>
+        <button onclick="closeModal('accept-deal-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <p class="text-sm text-gray-600 mb-4">Choose how you'd like to send the contract to this creator:</p>
+      <div class="space-y-3">
+        <!-- Option 1: CourtCollab Template -->
+        <label id="contract-opt-template" class="flex items-start gap-3 p-4 border-2 border-lime-400 rounded-xl cursor-pointer bg-lime-50 transition" onclick="selectContractType('template')">
+          <div class="mt-0.5 w-5 h-5 rounded-full border-2 border-lime-500 flex items-center justify-center flex-shrink-0">
+            <div id="contract-dot-template" class="w-2.5 h-2.5 rounded-full bg-lime-500"></div>
+          </div>
+          <div>
+            <p class="font-semibold text-sm text-gray-900">Use CourtCollab Standard Contract</p>
+            <p class="text-xs text-gray-500 mt-0.5">We'll generate a standard creator partnership agreement and send it to the creator for e-signature.</p>
+          </div>
+        </label>
+        <!-- Option 2: Upload own -->
+        <label id="contract-opt-custom" class="flex items-start gap-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-gray-300 transition" onclick="selectContractType('custom')">
+          <div class="mt-0.5 w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center flex-shrink-0">
+            <div id="contract-dot-custom" class="w-2.5 h-2.5 rounded-full bg-transparent"></div>
+          </div>
+          <div class="flex-1">
+            <p class="font-semibold text-sm text-gray-900">Upload Your Own Contract</p>
+            <p class="text-xs text-gray-500 mt-0.5">Upload a PDF or Word document. The creator will be notified to review and sign.</p>
+            <div id="accept-deal-file-wrap" class="hidden mt-3">
+              <label class="flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-4 py-3 cursor-pointer hover:bg-gray-50 transition">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                <span id="accept-deal-file-label" class="text-sm text-gray-500">Choose file (PDF, DOC, DOCX)</span>
+                <input type="file" id="accept-deal-contract" accept=".pdf,.doc,.docx" class="hidden" onchange="updateContractFileLabel(this)">
+              </label>
+            </div>
+          </div>
+        </label>
+      </div>
+      <p class="text-xs text-gray-400 mt-4">The creator will receive a message notifying them to review and sign the contract.</p>
+      <div class="flex gap-3 mt-5">
+        <button onclick="closeModal('accept-deal-modal')" class="flex-1 border border-gray-300 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Cancel</button>
+        <button id="accept-deal-submit-btn" onclick="submitAcceptDeal()" class="flex-1 bg-lime-400 text-gray-900 py-3 rounded-xl font-bold hover:bg-lime-500 transition text-sm">Accept & Send Contract</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Deal Summary Confirmation Modal -->
   <div id="deal-summary-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" role="dialog" aria-modal="true">
     <!-- Backdrop -->
@@ -3346,6 +3731,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div>
   </div>
 
-  <script src="app.js?v=138"></script>
+  <script src="app.js?v=156"></script>
 </body>
 </html>

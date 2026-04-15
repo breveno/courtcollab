@@ -1,12 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 60" fill="none">
-  <!-- Blue paddle (left, behind) -->
-  <g transform="translate(23,29) rotate(-32)">
-    <rect x="-12" y="-34" width="24" height="34" rx="10" fill="#3D7FC2"/>
-    <rect x="-4.5" y="1" width="9" height="23" rx="3.5" fill="#1a3a6e"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 96" fill="none">
+  <!-- Blue paddle (left, behind) — head upper-left, handle lower-right -->
+  <g transform="translate(50,47) rotate(-42)">
+    <!-- Head -->
+    <rect x="-18" y="-52" width="36" height="42" rx="14" fill="#1E6EA6"/>
+    <!-- Handle -->
+    <rect x="-6.5" y="-10" width="13" height="40" rx="4.5" fill="#0d2f5e"/>
+    <!-- Grip lines -->
+    <line x1="-5" y1="0"  x2="5" y2="0"  stroke="#3a7ab8" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-5" y1="8"  x2="5" y2="8"  stroke="#3a7ab8" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-5" y1="16" x2="5" y2="16" stroke="#3a7ab8" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-5" y1="24" x2="5" y2="24" stroke="#3a7ab8" stroke-width="2" stroke-linecap="round"/>
   </g>
-  <!-- Green paddle (right, front) -->
-  <g transform="translate(47,29) rotate(32)">
-    <rect x="-12" y="-34" width="24" height="34" rx="10" fill="#7DC433"/>
-    <rect x="-4.5" y="1" width="9" height="23" rx="3.5" fill="#2d5c0a"/>
+  <!-- Lime paddle (right, front) — head upper-right, handle lower-left -->
+  <g transform="translate(50,47) rotate(42)">
+    <!-- Head -->
+    <rect x="-18" y="-52" width="36" height="42" rx="14" fill="#C8F135"/>
+    <!-- Handle -->
+    <rect x="-6.5" y="-10" width="13" height="40" rx="4.5" fill="#2d5c0a"/>
+    <!-- Grip lines -->
+    <line x1="-5" y1="0"  x2="5" y2="0"  stroke="#6aaa20" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-5" y1="8"  x2="5" y2="8"  stroke="#6aaa20" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-5" y1="16" x2="5" y2="16" stroke="#6aaa20" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-5" y1="24" x2="5" y2="24" stroke="#6aaa20" stroke-width="2" stroke-linecap="round"/>
   </g>
 </svg>

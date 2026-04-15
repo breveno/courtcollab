@@ -38,21 +38,50 @@ function declineCookies() {
 document.addEventListener('DOMContentLoaded', initCookieBanner);
 
 // --- Auth & API Helpers ---
-const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'https://courtcollab-production.up.railway.app'
-  : '';
+const API = 'https://courtcollab-production.up.railway.app';
 // --- Real-time messaging via polling ---
 let _msgPollTimer  = null;
+let _convListPollTimer = null;   // polls conversation list for new threads
 let _lastMsgId     = 0;
 let _typingTimer   = null;
 let _typingHideTimer = null;
 
 function _connectWS() { _startMsgPolling(); }   // alias kept for onAuthSuccess
-function _disconnectWS() { _stopMsgPolling(); }  // alias kept for handleLogout
+function _disconnectWS() { _stopMsgPolling(); _stopConvListPolling(); }  // alias kept for handleLogout
 
 function _startMsgPolling() {
   if (_msgPollTimer) return;
   _msgPollTimer = setInterval(_pollMessages, 2000);
+}
+
+// Polls the conversation list every 4 s while the messages page is open.
+// Detects new threads and updated last-messages without requiring an active conversation.
+function _startConvListPolling() {
+  if (_convListPollTimer) return;
+  _convListPollTimer = setInterval(async () => {
+    if (!getToken()) return;
+    try {
+      const convs = await apiGet('/api/conversations');
+      if (!convs || !convs.length) return;
+      const changed = !_convCache
+        || _convCache.length !== convs.length
+        || convs.some((c, i) => {
+            const old = _convCache[i];
+            if (!old || old.partner.id !== c.partner.id) return true;
+            const newLast = c.last_message?.id ?? null;
+            const oldLast = old.last_message?.id ?? null;
+            return newLast !== oldLast;
+          });
+      if (changed) {
+        _convCache = convs;
+        _renderConvList(convs);
+      }
+    } catch (_) {}
+  }, 4000);
+}
+
+function _stopConvListPolling() {
+  if (_convListPollTimer) { clearInterval(_convListPollTimer); _convListPollTimer = null; }
 }
 
 function _stopMsgPolling() {
@@ -330,10 +359,20 @@ function hideAuthGate() {
   if (gate) gate.classList.add('hidden');
   document.body.classList.remove('no-scroll');
   document.documentElement.classList.remove('gate-open');
-  // Snap any residual horizontal scroll back to 0
-  window.scrollTo(0, window.scrollY);
-  document.documentElement.scrollLeft = 0;
-  document.body.scrollLeft = 0;
+  // Restore theme-color for app pages (light background)
+  const tc = document.getElementById('meta-theme-color');
+  if (tc) tc.setAttribute('content', '#ffffff');
+  _resetViewportZoom();
+  // Snap scroll back to top — defer so iOS processes the layout change before scrolling
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollTop = 0;
+      document.body.scrollLeft = 0;
+    });
+  });
 }
 
 function togglePassword(inputId, btn) {
@@ -761,6 +800,13 @@ document.addEventListener('click', e => {
 function toggleMobileMenu() {
   const menu = document.getElementById('mobile-menu-dropdown');
   menu.classList.toggle('open');
+  // Defer blur so it fires after iOS finishes processing the touch event
+  // (immediate .blur() doesn't always clear :active/:focus on double-tap)
+  const btn = document.getElementById('hamburger-btn');
+  if (btn) {
+    btn.blur();
+    setTimeout(() => btn.blur(), 0);
+  }
 }
 function closeMobileMenu() {
   const menu = document.getElementById('mobile-menu-dropdown');
@@ -977,7 +1023,10 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
         history.pushState({ page }, '', page === 'landing' ? '/' : '/' + page);
       }
     } else {
-      document.getElementById('page-404')?.classList.add('active');
+      // Unknown page — fall back to landing instead of showing 404
+      history.replaceState({ page: 'landing' }, '', '/');
+      const landing = document.getElementById('page-landing');
+      if (landing) landing.classList.add('active');
       return;
     }
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -993,7 +1042,13 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
     if (page === 'creators')  { loadSavedCreatorIds().then(() => renderCreators()); }
     if (page === 'campaigns') renderCampaigns();
     if (page === 'matching')  runMatching();
-    if (page === 'messages')  { renderConversations(); document.getElementById('nav-messages-dot')?.classList.add('hidden'); }
+    if (page === 'messages')  {
+      renderConversations();
+      _startConvListPolling();   // keep list live while on messages page
+      document.getElementById('nav-messages-dot')?.classList.add('hidden');
+    } else {
+      _stopConvListPolling();    // leave messages page — stop the poller
+    }
     if (page === 'payments')  { renderPayments(); document.getElementById('nav-payments-dot')?.classList.add('hidden'); }
     const msgDot = document.getElementById('nav-messages-dot');
     const payDot = document.getElementById('nav-payments-dot');
@@ -1055,6 +1110,7 @@ function showToast(text, type = 'default') {
   document.getElementById('toast-text').textContent = displayText;
   if (type === 'success') toast.style.background = '#16a34a';
   else if (type === 'error') toast.style.background = '#264226';
+  else if (type === 'info') toast.style.background = '#1e40af';
   else toast.style.background = '';
   toast.classList.remove('hidden', 'opacity-0', 'translate-y-2');
   toast.classList.add('opacity-100', 'translate-y-0');
@@ -1072,8 +1128,10 @@ function closeModal(id) {
     document.getElementById('admin-detail-meta')?.classList.add('hidden');
   }
   if (id === 'campaign-modal') {
-    const submitBtn = document.querySelector('#campaign-modal button[type="submit"], #campaign-modal button[onclick*="postCampaign"]');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Post Campaign'; }
+    // Always reset to step 1 when modal closes
+    campaignBackStep();
+    const postBtn = document.getElementById('camp-post-btn');
+    if (postBtn) { postBtn.disabled = false; postBtn.textContent = 'Post Campaign'; }
     const input = document.getElementById('camp-attachments');
     const list  = document.getElementById('camp-attachment-list');
     if (input) input.value = '';
@@ -1084,6 +1142,8 @@ function closeModal(id) {
     if (coverPreview) coverPreview.innerHTML = `<svg class="w-6 h-6 text-white opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`;
     const qList = document.getElementById('camp-questions-list');
     if (qList) qList.innerHTML = '';
+    const contractFile = document.getElementById('camp-contract-file');
+    if (contractFile) { contractFile.value = ''; updateCampContractFileLabel({ files: [] }); }
   }
 }
 
@@ -1510,6 +1570,12 @@ async function renderCreatorDashboard() {
     localStorage.setItem(visitKey, '1');
     greetEl.textContent = returning ? `Welcome back, ${first}` : `Welcome, ${first}`;
   }
+
+  // Load pending invitations for creators
+  renderCreatorInvitations();
+
+  // Load bank account / Stripe Connect status
+  loadStripeConnectStatus();
 
   try {
     const [payments, deals] = await Promise.all([
@@ -2377,7 +2443,12 @@ async function renderCreators() {
             ${fitScoreBadgeHtml(c)}
             <div class="flex items-center justify-between pt-3 border-t border-gray-100 mt-3">
               <span class="text-sm text-gray-500">From <span class="font-semibold text-gray-900">${minRate !== '—' ? '$' + minRate : '—'}</span>/post</span>
-              <span class="text-sm font-medium text-pickle-600 hover:text-pickle-700">View Profile →</span>
+              ${state.role === 'brand'
+                ? `<button onclick="event.stopPropagation();openInviteModal(${c.user_id})" class="flex items-center gap-1 text-xs font-semibold text-white bg-[#1E6EA6] hover:bg-[#185d8e] px-3 py-1.5 rounded-lg transition">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    Invite
+                  </button>`
+                : `<span class="text-sm font-medium text-pickle-600 hover:text-pickle-700">View Profile →</span>`}
             </div>
           </div>
         </div>
@@ -2399,6 +2470,123 @@ function clearCreatorFilters() {
       if (el) el.value = '';
     });
   renderCreators();
+}
+
+// ---------------------------------------------------------------------------
+// Campaign Invitations — Brand sends, Creator responds
+// ---------------------------------------------------------------------------
+
+let _inviteTargetCreatorId = null;
+
+async function openInviteModal(creatorId) {
+  _inviteTargetCreatorId = creatorId;
+  openModal('invite-modal');
+
+  // Set creator name in modal
+  const nameEl = document.getElementById('invite-creator-name');
+  const sel    = document.getElementById('invite-campaign-select');
+  const msgEl  = document.getElementById('invite-message');
+  if (msgEl) msgEl.value = '';
+
+  // Try to use cached name from the creator card or detail state
+  if (nameEl) {
+    const cached = state.selectedCreator?.user_id === creatorId ? state.selectedCreator?.name : null;
+    nameEl.textContent = cached || 'this creator';
+  }
+
+  // Load brand's open campaigns into the select
+  if (sel) {
+    sel.innerHTML = '<option value="">Loading…</option>';
+    try {
+      const campaigns = await apiGet('/api/campaigns');
+      const open = campaigns.filter(c => c.status === 'open');
+      if (open.length === 0) {
+        sel.innerHTML = '<option value="">No open campaigns — create one first</option>';
+      } else {
+        sel.innerHTML = '<option value="">Select a campaign…</option>' +
+          open.map(c => `<option value="${c.id}">${escHtml(c.title)}</option>`).join('');
+      }
+    } catch (err) {
+      sel.innerHTML = '<option value="">Failed to load campaigns</option>';
+    }
+  }
+}
+
+async function submitInvite() {
+  const campaignId = document.getElementById('invite-campaign-select')?.value;
+  const message    = (document.getElementById('invite-message')?.value || '').trim();
+  const btn        = document.getElementById('invite-submit-btn');
+
+  if (!campaignId) { showToast('Please select a campaign first.', 'error'); return; }
+  if (!_inviteTargetCreatorId) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    await apiPost(`/api/campaigns/${campaignId}/invite/${_inviteTargetCreatorId}`,
+                  { message: message || null });
+    closeModal('invite-modal');
+    showToast('Invite sent! The creator will be notified.', 'success');
+  } catch (err) {
+    showToast(err.message || 'Failed to send invite', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Invite'; }
+  }
+}
+
+async function renderCreatorInvitations() {
+  const el = document.getElementById('creator-dash-invitations');
+  if (!el) return;
+  try {
+    const invites = await apiGet('/api/invitations');
+    const pending = invites.filter(i => i.status === 'pending');
+    if (pending.length === 0) { el.innerHTML = ''; return; }
+
+    el.innerHTML = `
+      <div class="bg-white rounded-2xl border border-[#1E6EA6] overflow-hidden">
+        <div class="flex items-center gap-2 px-6 py-4 border-b border-gray-100 bg-blue-50">
+          <svg class="w-5 h-5 text-[#1E6EA6]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <h2 class="font-semibold text-[#1E6EA6]">Campaign Invitations</h2>
+          <span class="ml-auto bg-[#1E6EA6] text-white text-xs font-bold px-2 py-0.5 rounded-full">${pending.length}</span>
+        </div>
+        <div class="divide-y divide-gray-50">
+          ${pending.map(inv => `
+            <div class="px-6 py-4" id="invite-row-${inv.id}">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="font-semibold text-gray-900 truncate">${escHtml(inv.campaign_title)}</p>
+                  <p class="text-sm text-gray-500 mt-0.5">${escHtml(inv.company_name || inv.brand_name || 'Brand')}${inv.campaign_niche ? ' · ' + escHtml(inv.campaign_niche) : ''}${inv.budget ? ' · $' + inv.budget.toLocaleString() + ' budget' : ''}</p>
+                  ${inv.invite_message ? `<p class="text-sm text-gray-600 italic mt-1.5">"${escHtml(inv.invite_message)}"</p>` : ''}
+                </div>
+              </div>
+              <div class="flex gap-2 mt-3">
+                <button onclick="respondToInvite(${inv.id}, 'accept', this)" class="bg-[#C8F135] text-[#0B1F4A] text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-lime-400 transition">Accept</button>
+                <button onclick="respondToInvite(${inv.id}, 'decline', this)" class="border border-gray-200 text-gray-500 text-sm px-4 py-1.5 rounded-lg hover:bg-gray-50 transition">Decline</button>
+                <button onclick="navigate('campaigns')" class="text-sm text-[#1E6EA6] px-3 py-1.5 hover:underline">View Campaign</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+  } catch (_) { el.innerHTML = ''; }
+}
+
+async function respondToInvite(applicationId, action, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = action === 'accept' ? 'Accepting…' : 'Declining…'; }
+  try {
+    await apiPost(`/api/invitations/${applicationId}/respond`, { action });
+    const row = document.getElementById(`invite-row-${applicationId}`);
+    if (row) {
+      row.innerHTML = `<p class="text-sm py-1 ${action === 'accept' ? 'text-green-600 font-medium' : 'text-gray-400'}">
+        ${action === 'accept' ? '✓ Accepted — check your campaigns for next steps.' : 'Declined'}
+      </p>`;
+    }
+    // Re-render to update the count badge
+    setTimeout(renderCreatorInvitations, 600);
+    if (action === 'accept') showToast('Invitation accepted!', 'success');
+  } catch (err) {
+    showToast(err.message || 'Failed to respond', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = action === 'accept' ? 'Accept' : 'Decline'; }
+  }
 }
 
 // --- Creator Detail ---
@@ -2465,16 +2653,7 @@ async function adminViewUser(userId) {
           <div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Primary Age</div><div class="font-semibold">${c.demo_age||'—'}</div></div>
           <div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Gender Split</div><div class="font-semibold">${c.demo_gender||'—'}</div></div>
           <div class="p-3 bg-gray-50 rounded-xl col-span-2"><div class="text-xs text-gray-500 mb-1">Top Locations</div><div class="font-semibold">${c.demo_locations||'—'}</div></div>
-          <div class="p-3 bg-gray-50 rounded-xl col-span-2"><div class="text-xs text-gray-500 mb-1">Audience Interests</div><div class="font-semibold">${c.demo_interests||'—'}</div></div>
         </div>
-        <h3 class="font-bold mb-3">Rates</h3>
-        <div class="grid grid-cols-2 gap-3 mb-3">
-          <div class="p-3 bg-pickle-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Instagram Post/Reel</div><div class="font-bold text-pickle-700">${c.rate_ig?'$'+c.rate_ig.toLocaleString():'—'}</div></div>
-          <div class="p-3 bg-pickle-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">TikTok</div><div class="font-bold text-pickle-700">${c.rate_tiktok?'$'+c.rate_tiktok.toLocaleString():'—'}</div></div>
-          <div class="p-3 bg-pickle-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">YouTube Video</div><div class="font-bold text-pickle-700">${c.rate_yt?'$'+c.rate_yt.toLocaleString():'—'}</div></div>
-          <div class="p-3 bg-pickle-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">UGC (per piece)</div><div class="font-bold text-pickle-700">${c.rate_ugc?'$'+c.rate_ugc.toLocaleString():'—'}</div></div>
-        </div>
-        ${c.rate_notes?`<p class="text-sm text-gray-500 italic mb-6">${c.rate_notes}</p>`:''}
       `;
     } catch (err) {
       // Profile not filled out yet — show what we know from the admin user record
@@ -2531,21 +2710,33 @@ async function showCreatorDetail(userId) {
   const modal = document.getElementById('creator-detail-modal');
   if (!modal) return;
   _detailCreatorId = userId;
-  // Show loading state inside modal first
-  document.getElementById('detail-name').textContent = 'Loading…';
-  document.getElementById('detail-location').textContent = '';
-  document.getElementById('detail-content').innerHTML = '';
-  // Hide save button during load
-  const saveBtnEl = document.getElementById('detail-save-btn');
-  if (saveBtnEl) saveBtnEl.classList.add('hidden');
-  openModal('creator-detail-modal');
+
+  // Fetch data BEFORE opening the modal so there is zero loading flash.
+  // The modal only appears once all content is ready.
+  let c;
+  try {
+    c = await apiGet('/api/creators/' + userId);
+  } catch (err) {
+    // If fetch fails, open the modal and show the error inline
+    document.getElementById('detail-name').textContent = 'Creator';
+    document.getElementById('detail-location').textContent = '';
+    document.getElementById('detail-content').innerHTML =
+      `<p class="text-red-500">${err.message}</p>`;
+    const saveBtnEl2  = document.getElementById('detail-save-btn');
+    const inviteBtnEl3 = document.getElementById('detail-invite-btn');
+    if (saveBtnEl2)   saveBtnEl2.classList.add('hidden');
+    if (inviteBtnEl3) inviteBtnEl3.classList.add('hidden');
+    openModal('creator-detail-modal');
+    return;
+  }
 
   try {
-    const c = await apiGet('/api/creators/' + userId);
     state.selectedCreator = c;
 
-    const initials = c.initials || (c.name || 'CC').slice(0, 2).toUpperCase();
-    const skills   = Array.isArray(c.skills) ? c.skills : [];
+    const initials    = c.initials || (c.name || 'CC').slice(0, 2).toUpperCase();
+    const skills      = Array.isArray(c.skills) ? c.skills : [];
+    const saveBtnEl   = document.getElementById('detail-save-btn');
+    const inviteBtnEl = document.getElementById('detail-invite-btn');
 
     document.getElementById('detail-avatar').textContent = initials;
     document.getElementById('detail-name').innerHTML =
@@ -2553,11 +2744,13 @@ async function showCreatorDetail(userId) {
     document.getElementById('detail-location').textContent =
       [c.location, c.niche, c.skill_level].filter(Boolean).join(' · ');
 
-    // Show save button for brands
-    if (saveBtnEl && state.role === 'brand') {
-      saveBtnEl.classList.remove('hidden');
-      saveBtnEl.classList.add('inline-flex');
-      _syncDetailSaveBtn(_savedCreatorIds.has(c.user_id));
+    // Show save + invite buttons for brands only
+    if (state.role === 'brand') {
+      if (saveBtnEl)   { saveBtnEl.classList.remove('hidden'); saveBtnEl.classList.add('inline-flex'); _syncDetailSaveBtn(_savedCreatorIds.has(c.user_id)); }
+      if (inviteBtnEl) { inviteBtnEl.classList.remove('hidden'); inviteBtnEl.classList.add('inline-flex'); }
+    } else {
+      if (saveBtnEl)   saveBtnEl.classList.add('hidden');
+      if (inviteBtnEl) inviteBtnEl.classList.add('hidden');
     }
 
     document.getElementById('detail-content').innerHTML = `
@@ -2610,46 +2803,13 @@ async function showCreatorDetail(userId) {
           <div class="text-xs text-gray-500 mb-1">Top Locations</div>
           <div class="font-semibold">${c.demo_locations || '—'}</div>
         </div>
-        <div class="p-3 bg-gray-50 rounded-xl col-span-2">
-          <div class="text-xs text-gray-500 mb-1">Audience Interests</div>
-          <div class="font-semibold">${c.demo_interests || '—'}</div>
-        </div>
       </div>
-
-      <h3 class="font-bold mb-3">Rates</h3>
-      <div class="grid grid-cols-2 gap-3 mb-3">
-        <div class="p-3 bg-pickle-50 rounded-xl">
-          <div class="text-xs text-gray-500 mb-1">Instagram Post/Reel</div>
-          <div class="font-bold text-pickle-700">${c.rate_ig ? '$' + c.rate_ig.toLocaleString() : '—'}</div>
-        </div>
-        <div class="p-3 bg-pickle-50 rounded-xl">
-          <div class="text-xs text-gray-500 mb-1">TikTok</div>
-          <div class="font-bold text-pickle-700">${c.rate_tiktok ? '$' + c.rate_tiktok.toLocaleString() : '—'}</div>
-        </div>
-        <div class="p-3 bg-pickle-50 rounded-xl">
-          <div class="text-xs text-gray-500 mb-1">YouTube Video</div>
-          <div class="font-bold text-pickle-700">${c.rate_yt ? '$' + c.rate_yt.toLocaleString() : '—'}</div>
-        </div>
-        <div class="p-3 bg-pickle-50 rounded-xl">
-          <div class="text-xs text-gray-500 mb-1">UGC (per piece)</div>
-          <div class="font-bold text-pickle-700">${c.rate_ugc ? '$' + c.rate_ugc.toLocaleString() : '—'}</div>
-        </div>
-      </div>
-      ${c.rate_notes ? `<p class="text-sm text-gray-500 italic mb-4">${c.rate_notes}</p>` : ''}
 
       <h3 class="font-bold mb-3">Track Record</h3>
-      <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="grid grid-cols-1 gap-3 mb-4">
         <div class="p-3 bg-gray-50 rounded-xl text-center">
           <div class="text-xs text-gray-500 mb-1">Deals Completed</div>
           <div class="font-bold text-2xl text-pickle-700">${c.deals_completed || 0}</div>
-        </div>
-        <div class="p-3 bg-gray-50 rounded-xl text-center">
-          <div class="text-xs text-gray-500 mb-1">Avg Rating</div>
-          <div class="font-bold text-lg mt-0.5">
-            ${c.avg_rating
-              ? renderStars(c.avg_rating) + `<span class="text-sm font-normal text-gray-500 ml-1">${c.avg_rating} (${c.rating_count})</span>`
-              : '<span class="text-sm text-gray-400 font-normal">No ratings yet</span>'}
-          </div>
         </div>
       </div>
 
@@ -2671,9 +2831,13 @@ async function showCreatorDetail(userId) {
         </div>
       ` : ''}
     `;
+
+    // Open the modal only NOW — after all content is populated — so there is no flash
+    openModal('creator-detail-modal');
   } catch (err) {
     document.getElementById('detail-content').innerHTML =
       `<p class="text-red-500">${err.message}</p>`;
+    openModal('creator-detail-modal');
   }
 }
 
@@ -2790,6 +2954,13 @@ async function renderCampaigns() {
   try {
     const campaigns = await apiGet('/api/campaigns');
 
+    // Seed the applied-set from the has_applied flag the server already joined in
+    if (state.role === 'creator') {
+      _appliedCampaignIds = new Set(
+        campaigns.filter(c => c.has_applied).map(c => c.id)
+      );
+    }
+
     if (campaigns.length === 0) {
       list.innerHTML = state.role === 'brand'
         ? `<div class="flex flex-col items-center py-16 text-center">
@@ -2840,8 +3011,9 @@ async function renderCampaigns() {
               </div>
               <p class="text-brand-600 font-medium">${brandLabel}</p>
             </div>
-            <div class="flex items-center gap-4 text-sm text-gray-500">
+            <div class="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
               <span>Rate: <strong class="text-gray-900">${budget}</strong></span>
+              ${c.creators_needed ? `<span>👥 <strong class="text-gray-900">${c.creators_needed}</strong> creator${c.creators_needed > 1 ? 's' : ''} needed</span>` : ''}
               ${c.deadline ? `<span>Deadline: <strong class="text-gray-900">${c.deadline}</strong></span>` : ''}
             </div>
           </div>
@@ -2853,8 +3025,13 @@ async function renderCampaigns() {
           <div class="flex items-center justify-between pt-4 border-t border-gray-100">
             <span class="text-sm text-gray-400">${postedDate ? 'Posted ' + postedDate : ''}</span>
             ${state.role === 'creator'
-              ? `<button onclick="openApplyModal(${c.id})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Apply Now</button>`
-              : `<button onclick="openApplicationsModal(${c.id}, ${JSON.stringify(escHtml(c.title))})" class="bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">View Applications</button>`
+              ? (_appliedCampaignIds.has(c.id)
+                  ? `<span id="apply-badge-${c.id}" class="inline-flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 px-4 py-2 rounded-lg text-sm font-medium">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                       Applied
+                     </span>`
+                  : `<button id="apply-btn-${c.id}" onclick="openApplyModal(${c.id})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Apply Now</button>`)
+              : `<button data-cid="${c.id}" data-title="${escHtml(c.title)}" onclick="openApplicationsModal(+this.dataset.cid, this.dataset.title)" class="bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">View Applications</button>`
             }
           </div>
         </div>
@@ -2868,8 +3045,11 @@ async function renderCampaigns() {
 // --- Apply to Campaign (Creator) ---
 let _applyingCampaignId = null;
 let _campaignMap = {};
+let _appliedCampaignIds = new Set(); // campaign IDs this creator has already applied to
 
 function openApplyModal(campaignId) {
+  // Guard: never open the modal if already applied
+  if (_appliedCampaignIds.has(campaignId)) return;
   _applyingCampaignId = campaignId;
   const c = _campaignMap[campaignId] || {};
   const title = c.title || '';
@@ -2910,8 +3090,34 @@ async function submitApplication() {
     await apiPost(`/api/campaigns/${_applyingCampaignId}/apply`, { answers, message });
     closeModal('apply-modal');
     showToast('Application submitted! The brand will review it shortly.', 'success');
+    // Mark as applied and swap the button to the Applied badge in-place
+    const cid = _applyingCampaignId;
+    _appliedCampaignIds.add(cid);
+    const applyBtn = document.getElementById(`apply-btn-${cid}`);
+    if (applyBtn) {
+      applyBtn.outerHTML = `<span id="apply-badge-${cid}" class="inline-flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 px-4 py-2 rounded-lg text-sm font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        Applied
+      </span>`;
+    }
   } catch (err) {
-    showToast(err.message || 'Could not submit application', 'error');
+    const alreadyApplied = (err.message || '').toLowerCase().includes('already applied');
+    if (alreadyApplied) {
+      // Server confirmed duplicate — mark locally and swap button to badge
+      const cid = _applyingCampaignId;
+      _appliedCampaignIds.add(cid);
+      closeModal('apply-modal');
+      const applyBtn = document.getElementById(`apply-btn-${cid}`);
+      if (applyBtn) {
+        applyBtn.outerHTML = `<span id="apply-badge-${cid}" class="inline-flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 px-4 py-2 rounded-lg text-sm font-medium">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          Applied
+        </span>`;
+      }
+      showToast('You have already applied to this campaign.', 'info');
+    } else {
+      showToast(err.message || 'Could not submit application', 'error');
+    }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Submit Application'; }
   }
@@ -2943,8 +3149,10 @@ async function openApplicationsModal(campaignId, title) {
       const initials = (a.creator_initials || a.creator_name || '?').slice(0, 2).toUpperCase();
       const totalFollowers = (a.followers_ig || 0) + (a.followers_tt || 0) + (a.followers_yt || 0);
       const fmtF = n => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? Math.round(n/1000)+'K' : n;
-      const statusColors = { pending: 'bg-yellow-100 text-yellow-700', accepted: 'bg-green-100 text-green-700', declined: 'bg-red-100 text-red-700' };
-      const sc = statusColors[a.status] || statusColors.pending;
+      const isInvite = a.source === 'invite';
+      const statusLabel = isInvite && a.status === 'pending' ? 'Invited' : a.status;
+      const statusColors = { pending: 'bg-yellow-100 text-yellow-700', accepted: 'bg-green-100 text-green-700', declined: 'bg-red-100 text-red-700', Invited: 'bg-blue-100 text-blue-700' };
+      const sc = statusColors[statusLabel] || statusColors.pending;
       const answersHtml = Array.isArray(a.answers) && a.answers.length
         ? a.answers.map((ans, i) => `<p class="text-xs text-gray-500 mt-1"><span class="font-medium text-gray-700">Q${i+1}:</span> ${escHtml(ans || '—')}</p>`).join('')
         : '';
@@ -2956,18 +3164,22 @@ async function openApplicationsModal(campaignId, title) {
               <div class="flex items-center gap-2 flex-wrap mb-1">
                 <span class="font-semibold text-sm">${escHtml(a.creator_name || 'Creator')}</span>
                 ${a.niche ? `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">${escHtml(a.niche)}</span>` : ''}
-                <span class="text-xs ${sc} px-2 py-0.5 rounded-full capitalize ml-auto">${a.status}</span>
+                <span class="text-xs ${sc} px-2 py-0.5 rounded-full capitalize ml-auto">${statusLabel}</span>
+                ${isInvite ? `<span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Invited</span>` : ''}
               </div>
               ${totalFollowers ? `<p class="text-xs text-gray-400 mb-1">${fmtF(totalFollowers)} followers${a.engagement_rate ? ' · ' + parseFloat(a.engagement_rate).toFixed(1) + '% engagement' : ''}</p>` : ''}
               ${a.message ? `<p class="text-sm text-gray-600 mb-2 italic">"${escHtml(a.message)}"</p>` : ''}
+              ${a.invite_message ? `<p class="text-sm text-blue-600 mb-2 italic">Your invite: "${escHtml(a.invite_message)}"</p>` : ''}
               ${answersHtml}
             </div>
           </div>
           <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
-            <button onclick="showCreatorDetail(${a.creator_id})" class="text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">View Profile</button>
-            ${a.status === 'pending' ? `
-              <button onclick="updateApplicationStatus(${a.id}, 'accepted', this, ${campaignId}, ${JSON.stringify(escHtml(title))})" class="text-xs bg-lime-400 text-gray-900 px-3 py-1.5 rounded-lg font-medium hover:bg-lime-300 transition">Accept</button>
-              <button onclick="updateApplicationStatus(${a.id}, 'declined', this, ${campaignId}, ${JSON.stringify(escHtml(title))})" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition">Decline</button>
+            <button onclick="closeModal('applications-modal');showCreatorDetail(${a.creator_id})" class="text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">View Profile</button>
+            ${a.status === 'pending' && !isInvite ? `
+              <button data-aid="${a.id}" data-cid="${campaignId}" data-creator="${a.creator_id}" data-name="${escHtml(a.creator_name||'Creator')}" onclick="openAcceptDealModal(+this.dataset.aid,+this.dataset.creator,this.dataset.name,+this.dataset.cid)" class="text-xs bg-lime-400 text-gray-900 px-3 py-1.5 rounded-lg font-medium hover:bg-lime-300 transition">Accept</button>
+              <button data-aid="${a.id}" data-cid="${campaignId}" data-title="${escHtml(title)}" onclick="updateApplicationStatus(+this.dataset.aid,'declined',this,+this.dataset.cid,this.dataset.title)" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition">Decline</button>
+            ` : isInvite && a.status === 'pending' ? `
+              <span class="text-xs text-gray-400 italic">Awaiting creator response</span>
             ` : ''}
           </div>
         </div>
@@ -2986,6 +3198,111 @@ async function updateApplicationStatus(appId, status, btn, campaignId, title) {
   } catch (err) {
     showToast(err.message || 'Could not update application', 'error');
   }
+}
+
+let _acceptAppId = null;
+let _acceptCampaignId = null;
+let _acceptCreatorId = null;
+
+let _acceptContractType = 'template'; // 'template' | 'custom'
+
+function selectContractType(type) {
+  _acceptContractType = type;
+  const templateCard = document.getElementById('contract-opt-template');
+  const customCard   = document.getElementById('contract-opt-custom');
+  const templateDot  = document.getElementById('contract-dot-template');
+  const customDot    = document.getElementById('contract-dot-custom');
+  const fileWrap     = document.getElementById('accept-deal-file-wrap');
+
+  if (type === 'template') {
+    templateCard?.classList.add('border-lime-400', 'bg-lime-50');
+    templateCard?.classList.remove('border-gray-200');
+    customCard?.classList.remove('border-[#1E6EA6]', 'bg-blue-50');
+    customCard?.classList.add('border-gray-200');
+    if (templateDot) { templateDot.classList.remove('bg-transparent'); templateDot.classList.add('bg-lime-500'); }
+    if (customDot)   { customDot.classList.add('bg-transparent'); customDot.classList.remove('bg-[#1E6EA6]'); }
+    fileWrap?.classList.add('hidden');
+  } else {
+    customCard?.classList.add('border-[#1E6EA6]', 'bg-blue-50');
+    customCard?.classList.remove('border-gray-200');
+    templateCard?.classList.remove('border-lime-400', 'bg-lime-50');
+    templateCard?.classList.add('border-gray-200');
+    if (customDot)   { customDot.classList.remove('bg-transparent'); customDot.classList.add('bg-[#1E6EA6]'); }
+    if (templateDot) { templateDot.classList.add('bg-transparent'); templateDot.classList.remove('bg-lime-500'); }
+    fileWrap?.classList.remove('hidden');
+  }
+}
+
+function updateContractFileLabel(input) {
+  const label = document.getElementById('accept-deal-file-label');
+  if (label) label.textContent = input.files[0]?.name || 'Choose file (PDF, DOC, DOCX)';
+}
+
+function updateNewContractFileLabel(input) {
+  const label = document.getElementById('new-contract-file-label');
+  if (label) label.textContent = input.files[0]?.name || 'Click to choose file';
+}
+
+function openAcceptDealModal(appId, creatorId, creatorName, campaignId) {
+  _acceptAppId      = appId;
+  _acceptCampaignId = campaignId;
+  _acceptCreatorId  = creatorId;
+  document.getElementById('accept-deal-creator-name').textContent = creatorName;
+  // Reset to template option
+  selectContractType('template');
+  const fileInput = document.getElementById('accept-deal-contract');
+  if (fileInput) fileInput.value = '';
+  updateContractFileLabel({ files: [] });
+  const btn = document.getElementById('accept-deal-submit-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Accept & Send Contract'; }
+  openModal('accept-deal-modal');
+}
+
+async function submitAcceptDeal() {
+  if (_acceptContractType === 'custom') {
+    const file = document.getElementById('accept-deal-contract')?.files[0];
+    if (!file) { showToast('Please attach a contract file', 'error'); return; }
+  }
+  const btn = document.getElementById('accept-deal-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Accepting…'; }
+  try {
+    await apiPatch(`/api/applications/${_acceptAppId}/status`, { status: 'accepted' });
+    const deal = await apiPost('/api/deals', {
+      campaign_id:   _acceptCampaignId,
+      creator_id:    _acceptCreatorId,
+      amount:        0,
+      contract_type: _acceptContractType,
+    });
+    // Creator already applied (expressed interest) and brand accepted — activate the deal
+    // immediately so both parties can proceed straight to contract terms confirmation.
+    await apiPatch(`/api/deals/${deal.id}/status`, { status: 'active' }).catch(() => {});
+    // Notify the creator with an auto-message
+    await apiPost('/api/messages', {
+      receiver_id: _acceptCreatorId,
+      body: "🎉 You've been accepted! Please review and sign the contract.",
+    }).catch(() => {});  // best-effort — don't fail the whole flow
+    closeModal('accept-deal-modal');
+    closeModal('applications-modal');
+    showToast('Application accepted! The creator has been notified.', 'success');
+    openDealSummaryModal(deal.id);
+  } catch (err) {
+    showToast(err.message || 'Could not accept application', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Accept & Send Contract'; }
+  }
+}
+
+// --- New Contract Page (Brand Dashboard) ---
+function openNewContractTemplateModal() {
+  // Navigate to campaigns page so brand can select a deal and send contract
+  navigate('campaigns');
+  showToast('Select a campaign to generate a CourtCollab contract for a creator.', 'info');
+}
+
+function submitCustomContract() {
+  const file = document.getElementById('new-contract-file')?.files[0];
+  if (!file) { showToast('Please select a contract file to upload', 'error'); return; }
+  showToast('Contract uploaded! Go to Messages to send it to a creator.', 'success');
+  // Future: integrate with file storage + deal selection flow
 }
 
 // --- Campaign Question Builder (Brand) ---
@@ -3031,27 +3348,162 @@ function removeCampAttachment(index) {
 }
 
 // --- Post Campaign ---
-async function postCampaign(e) {
+let _campContractType = 'template'; // 'template' | 'custom'
+
+function selectCampContract(type) {
+  _campContractType = type;
+  const templateOpt   = document.getElementById('camp-contract-opt-template');
+  const customOpt     = document.getElementById('camp-contract-opt-custom');
+  const templateCheck = document.getElementById('camp-contract-check-template');
+  const customCheck   = document.getElementById('camp-contract-check-custom');
+
+  if (type === 'template') {
+    templateOpt?.classList.add('border-lime-400', 'bg-lime-50');
+    templateOpt?.classList.remove('border-gray-200', 'bg-white');
+    customOpt?.classList.remove('border-[#1E6EA6]', 'bg-blue-50');
+    customOpt?.classList.add('border-gray-200');
+    templateCheck?.classList.remove('hidden');
+    customCheck?.classList.add('hidden');
+  } else {
+    customOpt?.classList.add('border-[#1E6EA6]', 'bg-blue-50');
+    customOpt?.classList.remove('border-gray-200');
+    templateOpt?.classList.remove('border-lime-400', 'bg-lime-50');
+    templateOpt?.classList.add('border-gray-200');
+    customCheck?.classList.remove('hidden');
+    templateCheck?.classList.add('hidden');
+  }
+}
+
+function updateCampContractFileLabel(input) {
+  const label = document.getElementById('camp-contract-file-label');
+  if (label) label.textContent = input.files[0]?.name || 'Choose file';
+}
+
+// Shared helper — mark a step dot as "done" (green check) or "active" (blue) or "inactive" (grey)
+function _campSetDot(n, state) {
+  const dot   = document.getElementById(`camp-step-${n}-dot`);
+  const label = document.getElementById(`camp-step-${n}-label`);
+  if (!dot) return;
+  if (state === 'done') {
+    dot.classList.remove('bg-brand-600','text-white','bg-gray-200','text-gray-500');
+    dot.classList.add('bg-green-100','text-green-600');
+    dot.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>';
+    label?.classList.replace('text-gray-900','text-gray-400');
+    label?.classList.remove('font-semibold');
+  } else if (state === 'active') {
+    dot.classList.remove('bg-green-100','text-green-600','bg-gray-200','text-gray-500');
+    dot.classList.add('bg-brand-600','text-white');
+    dot.textContent = n;
+    label?.classList.replace('text-gray-400','text-gray-900');
+    label?.classList.add('font-semibold');
+  } else { // inactive
+    dot.classList.remove('bg-brand-600','text-white','bg-green-100','text-green-600');
+    dot.classList.add('bg-gray-200','text-gray-500');
+    dot.textContent = n;
+    label?.classList.replace('text-gray-900','text-gray-400');
+    label?.classList.remove('font-semibold');
+  }
+}
+
+function campaignNextStep(e) {
   e.preventDefault();
+  const title = document.getElementById('camp-title')?.value.trim();
+  const desc  = document.getElementById('camp-desc')?.value.trim();
+  if (!title) { showToast('Please enter a campaign title', 'error'); return; }
+  if (!desc)  { showToast('Please enter a campaign description', 'error'); return; }
+
+  document.getElementById('camp-step-1')?.classList.add('hidden');
+  document.getElementById('camp-step-2')?.classList.remove('hidden');
+  _campSetDot(1, 'done'); _campSetDot(2, 'active'); _campSetDot(3, 'inactive');
+  selectCampContract('template');
+}
+
+function campaignBackStep() {
+  // Reset fully to step 1 (called on close too)
+  document.getElementById('camp-step-2')?.classList.add('hidden');
+  document.getElementById('camp-step-3')?.classList.add('hidden');
+  document.getElementById('camp-step-1')?.classList.remove('hidden');
+  _campSetDot(1, 'active'); _campSetDot(2, 'inactive'); _campSetDot(3, 'inactive');
+}
+
+function campaignGoToReview() {
+  if (_campContractType === 'custom') {
+    const file = document.getElementById('camp-contract-file')?.files[0];
+    if (!file) { showToast('Please attach a contract file', 'error'); return; }
+  }
+
+  // Populate the review panel
+  const title      = document.getElementById('camp-title')?.value.trim() || '—';
+  const desc       = document.getElementById('camp-desc')?.value.trim() || '—';
+  const budget     = document.getElementById('camp-budget')?.value;
+  const content    = document.getElementById('camp-content')?.value || '—';
+  const audience   = document.getElementById('camp-audience')?.value || '—';
+  const needed     = document.getElementById('camp-creators-needed')?.value || '1';
+  const deadline   = document.getElementById('camp-deadline')?.value || '—';
+  const skills     = Array.from(document.querySelectorAll('#camp-skills input:checked')).map(i => i.value);
+  const contractLabel = _campContractType === 'template'
+    ? 'CourtCollab Standard Contract'
+    : `Custom Contract — ${document.getElementById('camp-contract-file')?.files[0]?.name || 'uploaded file'}`;
+
+  const row = (label, value) =>
+    `<div class="flex justify-between items-start gap-4 py-2.5 border-b border-gray-100 last:border-0">
+      <span class="text-sm text-gray-500 flex-shrink-0 w-36">${label}</span>
+      <span class="text-sm font-medium text-gray-900 text-right">${value}</span>
+    </div>`;
+
+  document.getElementById('camp-review-body').innerHTML = `
+    <div class="bg-gray-50 rounded-xl px-4 py-1 mb-2">
+      ${row('Title', escHtml(title))}
+      ${row('Description', escHtml(desc.length > 100 ? desc.slice(0,100)+'…' : desc))}
+      ${row('Rate', budget ? `$${Number(budget).toLocaleString()}` : 'Not set')}
+      ${row('Content Type', escHtml(content))}
+      ${row('Target Audience', escHtml(audience))}
+      ${row('Creators Needed', escHtml(needed))}
+      ${row('Deadline', deadline !== '—' ? deadline : 'Not set')}
+      ${skills.length ? row('Required Skills', skills.map(s => `<span class="inline-block bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full mr-1">${escHtml(s)}</span>`).join('')) : ''}
+    </div>
+    <div class="flex items-center gap-3 p-3 rounded-xl border-2 ${_campContractType === 'template' ? 'border-lime-300 bg-lime-50' : 'border-blue-200 bg-blue-50'}">
+      <svg class="w-5 h-5 ${_campContractType === 'template' ? 'text-lime-600' : 'text-[#1E6EA6]'} flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <div>
+        <p class="text-xs font-semibold text-gray-700">Contract</p>
+        <p class="text-xs text-gray-500">${escHtml(contractLabel)}</p>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('camp-step-2')?.classList.add('hidden');
+  document.getElementById('camp-step-3')?.classList.remove('hidden');
+  _campSetDot(1, 'done'); _campSetDot(2, 'done'); _campSetDot(3, 'active');
+}
+
+function campaignBackToContract() {
+  document.getElementById('camp-step-3')?.classList.add('hidden');
+  document.getElementById('camp-step-2')?.classList.remove('hidden');
+  _campSetDot(1, 'done'); _campSetDot(2, 'active'); _campSetDot(3, 'inactive');
+}
+
+async function postCampaign(status = 'open') {
   const skills = Array.from(document.querySelectorAll('#camp-skills input:checked')).map(i => i.value);
   const questions = Array.from(document.querySelectorAll('#camp-questions-list .camp-question-input'))
     .map(i => i.value.trim()).filter(Boolean);
   const coverInput = document.getElementById('camp-cover');
   const body = {
-    title:       document.getElementById('camp-title').value,
-    description: document.getElementById('camp-desc').value,
-    niche:       document.getElementById('camp-niche')?.value || null,
-    budget:      parseInt(document.getElementById('camp-budget').value) || 0,
-    deadline:    document.getElementById('camp-deadline').value,
+    title:            document.getElementById('camp-title').value,
+    description:      document.getElementById('camp-desc').value,
+    niche:            document.getElementById('camp-niche')?.value || null,
+    budget:           parseInt(document.getElementById('camp-budget').value) || 0,
+    deadline:         document.getElementById('camp-deadline').value,
+    creators_needed:  parseInt(document.getElementById('camp-creators-needed')?.value) || 1,
+    contract_type:    _campContractType,
+    status,
     skills,
     questions,
   };
-  // Disable submit button and show saving state
-  const submitBtn = document.querySelector('#campaign-modal button[type="submit"], #campaign-modal button[onclick*="postCampaign"]');
-  const origBtnText = submitBtn?.textContent || 'Post Campaign';
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
 
-  // Read cover image as base64 if provided
+  const postBtn = document.getElementById('camp-post-btn');
+  const isDraft = status === 'draft';
+  if (postBtn && !isDraft) { postBtn.disabled = true; postBtn.textContent = 'Posting…'; }
+
   const coverFile = coverInput?.files[0];
   const saveCover = (campaignId, dataUrl) => {
     if (dataUrl && campaignId) localStorage.setItem('camp_cover_' + campaignId, dataUrl);
@@ -3066,14 +3518,13 @@ async function postCampaign(e) {
     }
     const result = await apiPost('/api/campaigns', body);
     if (coverFile && body.cover_image) saveCover(result?.id || result?.campaign?.id, body.cover_image);
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origBtnText; }
     closeModal('campaign-modal');
-    showToast('Campaign brief posted!');
+    showToast(isDraft ? 'Campaign saved as draft!' : 'Campaign brief posted!', 'success');
     renderCampaigns();
     if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
     showToast(err.message || 'Something went wrong', 'error');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origBtnText; }
+    if (postBtn) { postBtn.disabled = false; postBtn.textContent = 'Post Campaign'; }
   }
 }
 
@@ -3433,10 +3884,16 @@ async function openConversation(partnerId, knownName = null) {
           if (btn) btn.innerHTML = `${badge} ${c.is_fully_signed ? 'Contract Signed' : c.i_have_signed ? 'Awaiting Co-Sign' : 'Sign Contract'}`;
         }).catch(() => {});
         const contractComplete = deal.contract_status === 'contract_complete';
-        const payBtn = contractComplete
-          ? `<button onclick="stripeCheckout(${deal.id})"
-               class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-1.5">
-               💳 Pay Now
+        const alreadyPaid = ['payment_received','completed','payment_released'].includes(deal.status);
+        const payBtn = alreadyPaid
+          ? `<span class="inline-flex items-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-lg font-medium">
+               ✅ Payment received
+             </span>`
+          : contractComplete
+          ? `<button onclick="stripeCheckout(${deal.id})" id="pay-btn-${deal.id}"
+               class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition"
+               style="background:#0B1F4A;color:white;">
+               💳 Pay Now — $${(deal.amount||0).toLocaleString()}
              </button>`
           : `<span class="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
                🔒 Complete contract signing to unlock payment
@@ -3549,7 +4006,11 @@ async function sendMessage() {
 
   try {
     await apiPost('/api/messages', { receiver_id: state.activePartner, body: text });
-    await openConversation(state.activePartner);
+    // Refresh chat messages and conversation list simultaneously
+    await Promise.all([
+      openConversation(state.activePartner),
+      renderConversations(),
+    ]);
   } catch (err) {
     showToast(err.message || 'Something went wrong', 'error');
     input.value = text;
@@ -3643,19 +4104,19 @@ async function updateDealStatus(dealId, status) {
 
 const _CREATOR_COMPLETION_FIELDS = [
   {
-    key: 'bio', label: 'Write a bio', icon: '✍️', pct: 15,
+    key: 'bio', label: 'Write a bio', icon: '✍️', pct: 20,
     tip: 'Brands read your bio first — make it count.',
     check: p => (p.bio || '').trim().length > 10,
     focusId: 'cp-bio',
   },
   {
-    key: 'niche', label: 'Choose a content niche', icon: '🎯', pct: 15,
+    key: 'niche', label: 'Choose a content niche', icon: '🎯', pct: 20,
     tip: 'Niche is the #1 filter brands use to find creators.',
     check: p => !!(p.niche || '').trim(),
     focusId: 'cp-niche',
   },
   {
-    key: 'followers', label: 'Add follower counts', icon: '📈', pct: 15,
+    key: 'followers', label: 'Add follower counts', icon: '📈', pct: 20,
     tip: 'Brands filter by audience size — add at least one platform.',
     check: p => (p.followers_ig || 0) + (p.followers_tt || 0) + (p.followers_yt || 0) > 0,
     focusId: 'cp-ig',
@@ -4144,58 +4605,241 @@ async function stripeConnectOnboard() {
   }
 }
 
+// Shared HTML builders for bank account status
+function _bankCardHtml(onboarded) {
+  if (onboarded) {
+    return `
+      <div class="bg-white rounded-2xl border border-gray-100 p-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-900 text-sm">Bank Account</p>
+              <p class="text-xs text-gray-400 mt-0.5">Payouts go directly to your connected bank</p>
+            </div>
+          </div>
+          <span class="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            Connected
+          </span>
+        </div>
+      </div>`;
+  }
+  return `
+    <div class="bg-white rounded-2xl border border-amber-200 p-6">
+      <div class="flex items-start gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+        </div>
+        <div class="flex-1">
+          <p class="font-semibold text-gray-900 text-sm">Bank Account</p>
+          <p class="text-xs text-gray-500 mt-0.5">Connect your bank account to receive deal payments directly.</p>
+        </div>
+        <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0">
+          Not Connected
+        </span>
+      </div>
+      <button id="stripe-connect-btn" onclick="stripeConnectOnboard()"
+        class="w-full bg-[#C8F135] text-[#0B1F4A] text-sm font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition flex items-center justify-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+        Connect Bank Account
+      </button>
+    </div>`;
+}
+
+function _bankBannerHtml(onboarded) {
+  if (onboarded) {
+    return `
+      <div class="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="font-medium text-sm">Your bank account is connected — earnings go directly to your bank.</span>
+      </div>`;
+  }
+  return `
+    <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+      <div class="flex items-center gap-2 text-amber-800 mb-3">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <span class="font-medium text-sm">Connect your bank account to receive deal payouts.</span>
+      </div>
+      <button id="stripe-connect-btn" onclick="stripeConnectOnboard()"
+        class="w-full bg-[#C8F135] text-[#0B1F4A] text-sm font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition">
+        Connect Bank Account
+      </button>
+    </div>`;
+}
+
 async function loadStripeConnectStatus() {
-  const banner = document.getElementById('stripe-connect-banner');
-  if (!banner) return;
+  const banner  = document.getElementById('stripe-connect-banner');
+  const card    = document.getElementById('creator-dash-bank');
+  if (!banner && !card) return;
   try {
     const status = await apiGet('/api/stripe/connect/status');
-    if (status.onboarded) {
-      banner.innerHTML = `
-        <div class="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          <span class="font-medium">Stripe payouts connected — you'll receive your earnings directly to your bank.</span>
-        </div>`;
-    } else {
-      banner.innerHTML = `
-        <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <div class="flex items-center gap-2 text-amber-800 mb-3">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-            <span class="font-medium text-sm">Connect your bank to receive deal payouts.</span>
-          </div>
-          <button id="stripe-connect-btn" onclick="stripeConnectOnboard()"
-            class="w-full bg-lime-400 text-gray-900 text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-lime-500 transition">
-            Connect Stripe Payouts
-          </button>
-        </div>`;
-    }
+    if (banner) banner.innerHTML = _bankBannerHtml(status.onboarded);
+    if (card)   card.innerHTML   = _bankCardHtml(status.onboarded);
   } catch {
-    banner.innerHTML = '';
+    // On any error (network, Stripe not configured, etc.) show the connect button
+    // so the creator can still attempt to link their bank account
+    if (banner) banner.innerHTML = _bankBannerHtml(false);
+    if (card)   card.innerHTML   = _bankCardHtml(false);
   }
 }
 
+// ─── Embedded Stripe Payment ─────────────────────────────────────────────────
+let _stripeInstance   = null;
+let _stripeElements   = null;
+let _paymentDealId    = null;
+let _paymentSuccessData = null;   // captured after successful payment — used by page-payment-success
+
+async function _ensureStripeJs() {
+  if (window.Stripe) return;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://js.stripe.com/v3/';
+    s.onload = res;
+    s.onerror = () => rej(new Error('Failed to load Stripe.js'));
+    document.head.appendChild(s);
+  });
+}
+
 async function stripeCheckout(dealId) {
+  _paymentDealId = dealId;
+  openModal('payment-modal');
+
+  // Reset UI
+  const errEl  = document.getElementById('payment-modal-error');
+  const submitBtn = document.getElementById('payment-modal-submit');
+  const mountEl   = document.getElementById('stripe-payment-element');
+  if (errEl)    { errEl.classList.add('hidden'); errEl.textContent = ''; }
+  if (submitBtn) submitBtn.disabled = true;
+  if (mountEl)  mountEl.innerHTML = `
+    <div class="flex items-center justify-center gap-2 text-gray-400 text-sm py-8">
+      <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+      Loading secure payment form…
+    </div>`;
+
   try {
-    const btn = document.getElementById(`pay-btn-${dealId}`);
-    if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to payment…'; }
-    const data = await apiPost(`/api/stripe/checkout/${dealId}`, {});
-    window.location.href = data.checkout_url;
+    // 1. Fetch publishable key + create PaymentIntent in parallel
+    const [config, intent] = await Promise.all([
+      fetch('/api/stripe/config').then(r => r.json()),
+      apiPost(`/api/stripe/payment-intent/${dealId}`, {}),
+    ]);
+
+    // 2. Update amounts in modal and cache data for the success page
+    const amtEl    = document.getElementById('payment-modal-amount');
+    const payoutEl = document.getElementById('payment-modal-payout');
+    const subEl    = document.getElementById('payment-modal-subtitle');
+    if (amtEl)    amtEl.textContent    = `$${intent.amount.toLocaleString()}`;
+    if (payoutEl) payoutEl.textContent = `Creator receives $${intent.creator_payout.toLocaleString()}`;
+    if (subEl)    subEl.textContent    = `Deal #${dealId} · Secured by Stripe`;
+
+    // Store payment data now so the success page can render without an extra fetch
+    _paymentSuccessData = {
+      dealId,
+      amount:        intent.amount,
+      creatorPayout: intent.creator_payout,
+    };
+
+    // 3. Init Stripe.js and mount Payment Element
+    await _ensureStripeJs();
+    _stripeInstance = window.Stripe(config.publishable_key);
+    _stripeElements = _stripeInstance.elements({ clientSecret: intent.client_secret });
+
+    const paymentEl = _stripeElements.create('payment', { layout: 'tabs' });
+    if (mountEl) mountEl.innerHTML = '';
+    paymentEl.mount('#stripe-payment-element');
+    paymentEl.on('ready', () => {
+      if (submitBtn) submitBtn.disabled = false;
+    });
+
   } catch (err) {
-    showToast(err.message || 'Payment failed', 'error');
-    const btn = document.getElementById(`pay-btn-${dealId}`);
-    if (btn) { btn.disabled = false; btn.textContent = 'Pay with Stripe'; }
+    closeModal('payment-modal');
+    showToast(err.message || 'Could not load payment form', 'error');
   }
+}
+
+async function submitStripePayment() {
+  const submitBtn = document.getElementById('payment-modal-submit');
+  const errEl     = document.getElementById('payment-modal-error');
+  if (!_stripeInstance || !_stripeElements) return;
+
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Processing…'; }
+  if (errEl)     { errEl.classList.add('hidden'); errEl.textContent = ''; }
+
+  const { error, paymentIntent } = await _stripeInstance.confirmPayment({
+    elements: _stripeElements,
+    redirect: 'if_required',   // stay on page for cards not needing 3-D Secure
+    confirmParams: {
+      return_url: `${window.location.origin}/?deal_id=${_paymentDealId}&payment=complete`,
+    },
+  });
+
+  if (error) {
+    if (errEl) { errEl.textContent = error.message; errEl.classList.remove('hidden'); }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Pay Now'; }
+    return;
+  }
+
+  // Payment confirmed on-page (no redirect needed)
+  if (paymentIntent && paymentIntent.status === 'succeeded') {
+    closeModal('payment-modal');
+    await _showPaymentSuccessPage(_paymentDealId);
+  } else {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Pay Now'; }
+  }
+}
+
+// ─── Payment Success Page ──────────────────────────────────────────────────
+
+/**
+ * Navigate to page-payment-success and populate the deal summary card.
+ * Fetches the deal from the API; falls back to any cached _paymentSuccessData.
+ */
+async function _showPaymentSuccessPage(dealId) {
+  navigate('payment-success');
+
+  // Attempt to enrich from API
+  let deal = null;
+  try {
+    deal = await apiGet(`/api/deals/${dealId}`);
+  } catch (_) {}
+
+  const cached = _paymentSuccessData || {};
+  const amount    = deal?.amount    ?? cached.amount    ?? 0;
+  const deadline  = deal?.deadline  ?? '';
+  const campaignTitle = deal?.campaign_title ?? deal?.title ?? `Deal #${dealId}`;
+  const creatorName   = deal?.creator_name ?? deal?.partner_name ?? '—';
+
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+  set('psc-deal-name',    campaignTitle);
+  set('psc-creator-name', creatorName);
+  set('psc-amount',       amount ? `$${Number(amount).toLocaleString()}` : '—');
+  set('psc-deadline',     deadline || 'As agreed in your contract');
 }
 
 // Handle Stripe return URLs
 function handleStripeReturn() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('stripe_onboard')) {
-    showToast('Bank account connected! You\'re all set to receive payouts.', 'success');
     history.replaceState({}, '', '/');
     navigate('creator-dashboard');
+    // Refresh the bank card immediately so it shows Connected
+    loadStripeConnectStatus();
+    showToast('Your bank account is connected and you are ready to receive payments.', 'success');
   }
+  // 3D Secure redirect return — payment_intent confirmed by Stripe before redirect back
+  if (params.get('payment') === 'complete' && params.get('deal_id')) {
+    const returnDealId = parseInt(params.get('deal_id'));
+    history.replaceState({}, '', '/');
+    await _showPaymentSuccessPage(returnDealId);
+  }
+  // Legacy checkout session return
   if (params.get('deal_id') && params.get('session_id')) {
-    showToast('💳 Payment complete! Funds are held in escrow until you confirm delivery.');
+    showToast('💳 Payment complete! Funds are held in escrow until you confirm delivery.', 'success');
     history.replaceState({}, '', window.location.pathname);
     navigate('messages');
   }
@@ -4467,7 +5111,7 @@ const _ONBOARD_INDUSTRIES = ['Paddles & Equipment','Apparel','Footwear','Trainin
 let _onboardUser         = null;
 let _onboardStep         = 1;
 let _onboardTotalSteps   = 3;
-let _onboardNiche        = '';
+let _onboardNiches       = [];
 let _onboardSkillLvl     = '';
 let _onboardSkills       = [];
 let _onboardIndustry     = '';
@@ -4477,11 +5121,14 @@ let _onboardDisplayName  = '';
 let _onboardLocation     = '';
 let _onboardBio          = '';
 
-function _onboardPills(containerId, items, type, multi = false) {
+function _onboardPills(containerId, items, type, multi = false, toggleFn = null) {
   const el = document.getElementById(containerId);
   if (!el) return;
   el.innerHTML = items.map(item => {
-    const fn = multi ? `onboardToggleSkill(this,'${item.replace(/'/g,"\\'")}')` : `onboardSelectPill(this,'${type}','${item.replace(/'/g,"\\'")}')`;
+    const escaped = item.replace(/'/g, "\\'");
+    const fn = multi
+      ? `${toggleFn || 'onboardToggleSkill'}(this,'${escaped}')`
+      : `onboardSelectPill(this,'${type}','${escaped}')`;
     return `<button type="button" onclick="${fn}"
       class="onboard-pill text-sm px-3 py-1.5 rounded-full border border-gray-300 text-gray-700 hover:border-pickle-500 hover:bg-pickle-50 transition-all">${item}</button>`;
   }).join('');
@@ -4494,7 +5141,7 @@ function startOnboarding(user) {
 
   _onboardUser        = user;
   _onboardStep        = 1;
-  _onboardNiche       = '';
+  _onboardNiches      = [];
   _onboardSkillLvl    = '';
   _onboardSkills      = [];
   _onboardIndustry    = '';
@@ -4543,7 +5190,7 @@ function startOnboarding(user) {
     if (s2Next)  s2Next.textContent  = 'Next →';
     if (creatorF) creatorF.classList.remove('hidden');
     if (brandF)   brandF.classList.add('hidden');
-    _onboardPills('onboard-niche-pills',  _ONBOARD_NICHES,     'niche');
+    _onboardPills('onboard-niche-pills',  _ONBOARD_NICHES,     'niche',  true, 'onboardToggleNiche');
     _onboardPills('onboard-skill-pills',  _ONBOARD_SKILLS_LVL, 'skill');
     _onboardPills('onboard-skills-pills', _ONBOARD_SKILLS,     'skills', true);
   } else {
@@ -4664,9 +5311,19 @@ function onboardSelectPill(btn, type, value) {
   // Single-select — reset siblings in same container
   btn.parentElement.querySelectorAll('.onboard-pill').forEach(p => p.classList.remove('onboard-pill-active'));
   btn.classList.add('onboard-pill-active');
-  if (type === 'niche')    _onboardNiche    = value;
   if (type === 'skill')    _onboardSkillLvl = value;
   if (type === 'industry') _onboardIndustry = value;
+}
+
+function onboardToggleNiche(btn, niche) {
+  const idx = _onboardNiches.indexOf(niche);
+  if (idx >= 0) {
+    _onboardNiches.splice(idx, 1);
+    btn.classList.remove('onboard-pill-active');
+  } else {
+    _onboardNiches.push(niche);
+    btn.classList.add('onboard-pill-active');
+  }
 }
 
 function onboardToggleSkill(btn, skill) {
@@ -4711,14 +5368,18 @@ async function onboardFinish() {
     const ig   = parseInt(document.getElementById('onboard-ig')?.value  || '0') || 0;
     const tt   = parseInt(document.getElementById('onboard-tt')?.value  || '0') || 0;
     const yt   = parseInt(document.getElementById('onboard-yt')?.value  || '0') || 0;
-    const eng  = parseFloat(document.getElementById('onboard-engagement')?.value || '0') || 0;
+    const igEng = parseFloat(document.getElementById('onboard-ig-eng')?.value || '0') || 0;
+    const ttEng = parseFloat(document.getElementById('onboard-tt-eng')?.value || '0') || 0;
+    const ytEng = parseFloat(document.getElementById('onboard-yt-eng')?.value || '0') || 0;
+    const engVals = [igEng, ttEng, ytEng].filter(v => v > 0);
+    const eng = engVals.length ? engVals.reduce((a, b) => a + b, 0) / engVals.length : 0;
     const demoAge       = document.getElementById('onboard-demo-age')?.value.trim()       || '';
     const demoGender    = document.getElementById('onboard-demo-gender')?.value.trim()    || '';
     const demoLocations = document.getElementById('onboard-demo-locations')?.value.trim() || '';
 
     const payload = {};
     // ── Step 2 fields (cached when user clicked Next) ──
-    if (_onboardNiche)        payload.niche       = _onboardNiche;
+    if (_onboardNiches.length) payload.niche       = _onboardNiches.join(', ');
     if (_onboardSkillLvl)     payload.skill_level = _onboardSkillLvl;
     if (_onboardSkills.length)payload.skills      = _onboardSkills;
     if (_onboardDisplayName)  payload.name        = _onboardDisplayName;
@@ -4745,6 +5406,8 @@ async function onboardFinish() {
     if (navBadge) navBadge.classList.toggle('hidden', pct < 100);
   }).catch(() => {});
 
+  // Reset any iOS zoom before advancing to next step
+  _resetViewportZoom();
   // Advance to Stripe connect step
   _onboardGoToStep(4);
 }
@@ -4771,6 +5434,32 @@ function onboardSkip() {
   _onboardClose(false);
 }
 
+function _resetViewportZoom() {
+  // Blur every focused element — iOS won't unzoom while any input has focus
+  if (document.activeElement && document.activeElement !== document.body) {
+    document.activeElement.blur();
+  }
+  // Also blur any inputs inside the onboarding overlay specifically
+  document.querySelectorAll('#onboarding-overlay input, #onboarding-overlay textarea, #onboarding-overlay select').forEach(el => el.blur());
+
+  const vp = document.querySelector('meta[name="viewport"]');
+  if (!vp) return;
+  // Hard-lock scale=1 — forces iOS to unzoom
+  vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+  // Scroll to top immediately while locked
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  // Longer delay (200ms) so iOS fully processes the layout before we release the lock
+  setTimeout(() => {
+    vp.setAttribute('content', 'width=device-width, initial-scale=1');
+    // Second scroll-to-top after releasing the lock
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, 200);
+}
+
 function _onboardClose(saved = false) {
   if (_onboardUser) localStorage.setItem(`onboarded_${_onboardUser.id}`, '1');
   const overlay = document.getElementById('onboarding-overlay');
@@ -4778,6 +5467,7 @@ function _onboardClose(saved = false) {
   document.body.classList.remove('no-scroll');
   document.body.style.overflow = '';
   document.documentElement.style.overflow = '';
+  _resetViewportZoom();
   // Scroll to top and clear any residual horizontal scroll
   window.scrollTo(0, 0);
   document.documentElement.scrollTop = 0;
@@ -4798,18 +5488,18 @@ function _onboardSaveCreatorStep2() {
 
 async function _onboardSaveBrand() {
   try {
-    const companyName = document.getElementById('onboard-company-name')?.value.trim() || '';
-    const website    = document.getElementById('onboard-website')?.value.trim() || '';
-    const budgetMin  = parseInt(document.getElementById('onboard-budget-min')?.value || '0') || 0;
-    const budgetMax  = parseInt(document.getElementById('onboard-budget-max')?.value || '0') || 0;
-    const desc       = document.getElementById('onboard-brand-desc')?.value.trim() || '';
+    const website = document.getElementById('onboard-website')?.value.trim() || '';
+    const desc    = document.getElementById('onboard-brand-desc')?.value.trim() || '';
+    const igHandle = document.getElementById('onboard-brand-ig')?.value.trim() || '';
+    const ttHandle = document.getElementById('onboard-brand-tt')?.value.trim() || '';
     const payload = {};
-    if (companyName)      payload.company_name = companyName;
     if (_onboardIndustry) payload.industry     = _onboardIndustry;
     if (website)          payload.website      = website;
-    if (budgetMin)        payload.budget_min   = budgetMin;
-    if (budgetMax)        payload.budget_max   = budgetMax;
     if (desc)             payload.description  = desc;
+    const handles = {};
+    if (igHandle) handles.instagram = igHandle;
+    if (ttHandle) handles.tiktok    = ttHandle;
+    if (Object.keys(handles).length) payload.social_handles = JSON.stringify(handles);
     if (Object.keys(payload).length) await apiPut('/api/brand/profile', payload);
   } catch (_) { /* best-effort */ }
 }
@@ -5210,6 +5900,7 @@ function _heroCardHtml(creator, colorIdx) {
   // Fallback row if no platforms filled in
   const platformSection = platformRows || `<div class="text-xs" style="color:rgba(255,255,255,0.45)">Profile in progress…</div>`;
 
+  const eng = parseFloat(creator.engagement_rate) || 0;
   const engDisplay = eng > 0 ? eng.toFixed(1) + '%' : '—';
 
   return `<div class="hero-card rounded-2xl p-5" style="background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(14px);">
@@ -5226,7 +5917,7 @@ function _heroCardHtml(creator, colorIdx) {
     <span class="text-xs" style="color:rgba(255,255,255,0.55)">Engagement Rate</span>
     <span class="text-xs font-bold" style="color:#C8F135">${engDisplay}</span>
   </div>
-  <button onclick="heroViewProfile(${creator.user_id})" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:rgba(255,255,255,0.13);color:white;border:1px solid rgba(255,255,255,0.22);" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.13)'">View Profile →</button>
+  <button onclick="heroViewProfile(${creator.user_id})" class="w-full py-2 rounded-xl text-xs font-semibold transition-all" style="background:#C8F135;color:#0B1F4A;" onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">View Profile →</button>
 </div>`;
 }
 
@@ -5294,12 +5985,25 @@ async function startHeroCarousel() {
   if (!track) return;
 
   try {
-    const creators = await fetch('/api/featured-creators').then(r => r.json());
-    if (!Array.isArray(creators) || creators.length === 0) { _heroStart(); return; }
+    const all = await fetch('/api/featured-creators').then(r => r.json());
+    if (!Array.isArray(all) || all.length === 0) { _heroStart(); return; }
 
-    track.innerHTML = creators.map((c, i) => _heroCardHtml(c, i)).join('');
+    // Sort by Brand Fit score; if all scores are 0 shuffle randomly
+    const scored = all.map(c => ({ ...c, _fit: calcBrandFitScore(c) }));
+    const allZero = scored.every(c => c._fit === 0);
+    if (allZero) {
+      for (let i = scored.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [scored[i], scored[j]] = [scored[j], scored[i]];
+      }
+    } else {
+      scored.sort((a, b) => b._fit - a._fit);
+    }
+
+    const carouselCreators = scored.slice(0, 3);
+    track.innerHTML = carouselCreators.map((c, i) => _heroCardHtml(c, i)).join('');
     if (dotsWrap) {
-      dotsWrap.innerHTML = creators.map((_, i) =>
+      dotsWrap.innerHTML = carouselCreators.map((_, i) =>
         `<div class="hero-dot${i === 0 ? ' active' : ''}" style="width:${i === 0 ? '22px' : '6px'}"></div>`
       ).join('');
     }
@@ -5502,9 +6206,23 @@ function updateEarningsCalc(val) {
 async function _loadBrandFeatStrip() {
   const strip = document.getElementById('brand-feat-strip');
   if (!strip) return;
-  let creators = [];
-  try { creators = await apiFetch('/api/featured-creators'); } catch(e) {}
-  if (!creators || !creators.length) return;
+  let all = [];
+  try { all = await fetch('/api/featured-creators').then(r => r.json()); } catch(e) {}
+  if (!Array.isArray(all) || !all.length) return;
+
+  // Sort by Brand Fit score; shuffle if all are 0
+  const scored = all.map(c => ({ ...c, _fit: calcBrandFitScore(c) }));
+  const allZero = scored.every(c => c._fit === 0);
+  if (allZero) {
+    for (let i = scored.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [scored[i], scored[j]] = [scored[j], scored[i]];
+    }
+  } else {
+    scored.sort((a, b) => b._fit - a._fit);
+  }
+  const creators = scored;
+
   const colors = ['#0B1F4A','#163a70','#1E6EA6','#4f8ec0'];
   strip.innerHTML = creators.map((c, i) => {
     const total = (c.followers_ig||0)+(c.followers_tt||0)+(c.followers_yt||0);
@@ -5530,15 +6248,17 @@ async function _loadCreatorFeatStrip() {
   let campaigns = [];
   try { campaigns = await apiGet('/api/campaigns?status=open'); } catch(e) {}
   if (!campaigns || !campaigns.length) return;
-  const dealColors = { Sponsored:'bg-blue-100 text-blue-700', UGC:'bg-purple-100 text-purple-700', Video:'bg-green-100 text-green-700', Ambassador:'bg-orange-100 text-orange-700' };
   strip.innerHTML = campaigns.slice(0,4).map(c => {
     const initials = (c.brand_name||'B').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const dc = dealColors[c.deal_type] || 'bg-gray-100 text-gray-600';
+    const rate = c.budget > 0 ? `$${Number(c.budget).toLocaleString()}`
+      : c.max_rate > 0 ? `Up to $${Number(c.max_rate).toLocaleString()}`
+      : null;
+    const desc = c.description ? escHtml(c.description.slice(0, 90)) + (c.description.length > 90 ? '…' : '') : '';
     return `<div class="feat-strip-card cursor-pointer" onclick="navigate('campaigns')">
       <div class="w-10 h-10 rounded-xl bg-pickle-600 flex items-center justify-center mb-3 text-white font-bold text-sm">${initials}</div>
-      <p class="font-semibold text-sm mb-0.5 truncate">${c.title||'Campaign'}</p>
-      <span class="inline-block text-xs ${dc} px-2 py-0.5 rounded-full mb-2">${c.deal_type||'Sponsored'}</span>
-      <p class="text-xs text-gray-400">${c.budget_min && c.budget_max ? '$'+c.budget_min+'–$'+c.budget_max : c.budget_min ? 'From $'+c.budget_min : 'TBD'}</p>
+      <p class="font-semibold text-sm mb-1 truncate">${escHtml(c.title||'Campaign')}</p>
+      ${rate ? `<p class="text-xs font-semibold text-pickle-600 mb-1.5">${rate}</p>` : ''}
+      ${desc ? `<p class="text-xs text-gray-400 leading-relaxed" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${desc}</p>` : ''}
     </div>`;
   }).join('');
 }
@@ -5617,9 +6337,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       onAuthSuccess(user);
       // Restore the page from the URL path (e.g. courtcollab.com/messages → messages)
       const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
-      if (path) navigate(path);
-    } catch {
-      clearToken();
+      if (path && document.getElementById('page-' + path)) {
+        navigate(path);
+      } else if (path) {
+        // Unknown path — clean the URL and stay on landing
+        history.replaceState({ page: 'landing' }, '', '/');
+      }
+    } catch (err) {
+      // Only wipe the token when the server explicitly rejects it (401).
+      // Network failures (TypeError "Failed to fetch", timeouts, etc.) should
+      // NOT sign the user out — the token is still valid, the connection is just bad.
+      const msg = (err?.message || '').toLowerCase();
+      const is401 = msg.includes('401') || msg.includes('expired') ||
+                    msg.includes('invalid or expired') || msg.includes('unauthorized') ||
+                    msg.includes('not authenticated');
+      const isNetworkError = (err instanceof TypeError) ||
+                             msg.includes('failed to fetch') ||
+                             msg.includes('networkerror') ||
+                             msg.includes('load failed');
+      if (is401 && !isNetworkError) {
+        clearToken();
+      }
+      // Always show auth gate so the user can sign in / retry
       showAuthGate();
     }
   } else {
