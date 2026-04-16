@@ -3639,15 +3639,15 @@ async function submitAcceptDeal() {
   if (btn) { btn.disabled = true; btn.textContent = 'Accepting…'; }
   try {
     await apiPatch(`/api/applications/${_acceptAppId}/status`, { status: 'accepted' });
+    // Creator already applied (expressed interest), so create the deal as 'active' directly —
+    // no separate pending→active step needed.
     const deal = await apiPost('/api/deals', {
       campaign_id:   _acceptCampaignId,
       creator_id:    _acceptCreatorId,
       amount:        0,
       contract_type: _acceptContractType,
+      status:        'active',
     });
-    // Creator already applied (expressed interest) and brand accepted — activate the deal
-    // immediately so both parties can proceed straight to contract terms confirmation.
-    await apiPatch(`/api/deals/${deal.id}/status`, { status: 'active' }).catch(() => {});
     // Notify the creator with an auto-message
     await apiPost('/api/messages', {
       receiver_id: _acceptCreatorId,

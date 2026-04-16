@@ -1713,6 +1713,7 @@ class DealIn(BaseModel):
     amount:        Optional[int] = Field(default=0, ge=0)
     terms:         Optional[str] = None
     contract_type: Optional[str] = None   # "template" | "custom"
+    status:        Optional[str] = 'pending'  # allow 'active' when brand accepts an application
 
 class DealStatusIn(BaseModel):
     status: str
@@ -1991,9 +1992,10 @@ async def create_deal(request: Request, body: DealIn, user: dict = Depends(curre
         if not creator:
             raise HTTPException(404, "Creator not found")
 
+        initial_status = body.status if body.status in ('pending', 'active') else 'pending'
         cur = conn.execute(
-            "INSERT INTO deals (campaign_id, creator_id, brand_id, amount, terms) VALUES (?,?,?,?,?)",
-            (body.campaign_id, body.creator_id, user["id"], body.amount, body.terms),
+            "INSERT INTO deals (campaign_id, creator_id, brand_id, amount, terms, status) VALUES (?,?,?,?,?,?)",
+            (body.campaign_id, body.creator_id, user["id"], body.amount, body.terms, initial_status),
         )
         conn.commit()
         did = cur.lastrowid
