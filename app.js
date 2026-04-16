@@ -190,22 +190,10 @@ window.fetch = function(...args) {
     _slowTimer = setTimeout(() => showLoading('Loading…'), 500);
   }
 
-  // Add a 12-second hard timeout to every API call so Railway cold-starts
-  // that keep the socket open (but never respond) don't hang forever.
-  let abortController = null;
-  let abortTimer      = null;
-  if (isOurApi && !args[1]?.signal) {
-    abortController = new AbortController();
-    abortTimer      = setTimeout(() => abortController.abort(), 12000);
-    args[1] = { ...(args[1] || {}), signal: abortController.signal };
-  }
-
   return _origFetch.apply(this, args).catch(err => {
-    // Re-throw so the calling function can show its own specific error message.
     throw err;
   }).finally(() => {
     if (_slowTimer) { clearTimeout(_slowTimer); _slowTimer = null; hideLoading(); }
-    if (abortTimer)  clearTimeout(abortTimer);
   });
 };
 
@@ -228,6 +216,8 @@ function clearToken() {
 
 async function apiPost(path, body, opts = {}) {
   if (opts.loading) showLoading(opts.msg || 'Please wait…');
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), 14000);
   try {
     const token = getToken();
     const res = await fetch(API + path, {
@@ -236,12 +226,16 @@ async function apiPost(path, body, opts = {}) {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': 'Bearer ' + token } : {})
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: controller.signal,
     });
-    const data = await res.json();
+    const data = await res.json();   // abort signal still active — covers body stalls too
     if (!res.ok) throw new Error(_extractDetail(data));
     return data;
-  } finally { if (opts.loading) hideLoading(); }
+  } finally {
+    clearTimeout(timeoutId);
+    if (opts.loading) hideLoading();
+  }
 }
 
 /**
@@ -264,10 +258,13 @@ async function apiFetch(path, opts = {}) {
 
 async function apiGet(path, opts = {}) {
   if (opts.loading) showLoading(opts.msg || 'Loading…');
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), 14000);
   try {
     const token = getToken();
     const res = await fetch(API + path, {
-      headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+      signal: controller.signal,
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');
@@ -277,7 +274,10 @@ async function apiGet(path, opts = {}) {
       throw new Error(msg === 'Request failed' ? `Request failed (${res.status})` : msg);
     }
     return res.json();
-  } finally { if (opts.loading) hideLoading(); }
+  } finally {
+    clearTimeout(timeoutId);
+    if (opts.loading) hideLoading();
+  }
 }
 
 async function apiPut(path, body, opts = {}) {
@@ -699,6 +699,9 @@ function onAuthSuccess(user) {
   }
   startNotifPolling();
   _connectWS();
+  // Proactively wake the Railway server so it's ready before the user tries
+  // to create a campaign or perform any other form submission.
+  setTimeout(() => apiGet('/api/campaigns').catch(() => {}), 500);
 }
 
 // --- Admin role view switcher ---
