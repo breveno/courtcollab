@@ -245,14 +245,15 @@ function _isStartupStatus(status) {
   return status === 500 || status === 502 || status === 503 || status === 504;
 }
 
-// Safe JSON parse: tries res.json(), falls back to res.text() so we never
-// surface a raw "Unexpected token" SyntaxError to the user.
+// Parse JSON safely, always preserving the ability to read text as fallback.
+// Returns { _text, _status } if JSON fails so callers can inspect the raw body.
 async function _safeJson(res) {
+  const clone = res.clone(); // clone first — body can only be read once
   try {
     return await _withTimeout(res.json());
   } catch (_) {
-    const text = await res.text().catch(() => '');
-    return { detail: text || `Request failed (${res.status})` };
+    const text = await clone.text().catch(() => '');
+    return { _text: text, _status: res.status, detail: text || `Request failed (${res.status})` };
   }
 }
 
@@ -268,13 +269,24 @@ async function apiPost(path, body, opts = {}) {
       },
       body: JSON.stringify(body),
     }));
-    // 5xx = server/proxy not ready (cold start or transient error) → retryable
+
+    // 502/503/504 = Netlify proxy couldn't reach Railway → retryable
     if (_isGatewayStatus(res.status)) {
       const e = new Error('Server is warming up, please wait…');
       e.name = 'GatewayError';
       throw e;
     }
+
     const data = await _safeJson(res);
+
+    // Non-JSON 5xx (plain-text "Internal Server Error" from Railway infra)
+    // means the app started but isn't fully ready → treat as retryable.
+    if (!res.ok && data._text !== undefined && res.status >= 500) {
+      const e = new Error('Server is warming up, please wait…');
+      e.name = 'GatewayError';
+      throw e;
+    }
+
     if (!res.ok) throw new Error(_extractDetail(data));
     return data;
   } finally {

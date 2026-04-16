@@ -1157,24 +1157,34 @@ async def _notify_campaign_matches(campaign: dict):
 @app.post("/api/campaigns", status_code=201)
 def create_campaign(body: CampaignIn, background_tasks: BackgroundTasks, user: dict = Depends(current_user)):
     require_role("brand", user)
-    with get_conn() as conn:
-        cur = conn.execute("""
-            INSERT INTO campaigns
-              (brand_id, title, description, budget, niche, skills,
-               target_age, min_followers, max_rate, questions, creators_needed, status)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (user["id"], body.title, body.description, body.budget,
-              body.niche, json.dumps(body.skills),
-              body.target_age, body.min_followers, body.max_rate,
-              json.dumps(body.questions or []),
-              body.creators_needed or 1,
-              body.status or 'open'))
-        conn.commit()
-        cid = cur.lastrowid
-    with get_conn() as conn:
-        row = _row(conn, "SELECT * FROM campaigns WHERE id = ?", (cid,))
+    try:
+        with get_conn() as conn:
+            cur = conn.execute("""
+                INSERT INTO campaigns
+                  (brand_id, title, description, budget, niche, skills,
+                   target_age, min_followers, max_rate, questions, creators_needed, status)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (user["id"], body.title, body.description, body.budget,
+                  body.niche, json.dumps(body.skills),
+                  body.target_age, body.min_followers, body.max_rate,
+                  json.dumps(body.questions or []),
+                  body.creators_needed or 1,
+                  body.status or 'open'))
+            conn.commit()
+            cid = cur.lastrowid
+        if not cid:
+            raise ValueError("INSERT returned no row ID")
+        with get_conn() as conn:
+            row = _row(conn, "SELECT * FROM campaigns WHERE id = ?", (cid,))
+        if row is None:
+            raise ValueError(f"Campaign id={cid} not found after INSERT")
         row["skills"]    = json.loads(row.get("skills")    or "[]")
         row["questions"] = json.loads(row.get("questions") or "[]")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.error("[create_campaign] %s: %s", type(exc).__name__, exc, exc_info=True)
+        raise HTTPException(500, detail=f"Could not save campaign: {type(exc).__name__}: {exc}")
     # Only notify creators on live campaigns, not drafts
     if body.status != 'draft':
         background_tasks.add_task(_notify_campaign_matches, row)
