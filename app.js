@@ -178,6 +178,7 @@ const _SILENT_PATHS = [
   '/api/stripe/connect/status',   // checked silently on creator login
   '/api/notifications',           // polled in background every 30s
   '/api/featured-creators',       // homepage background load
+  '/ping',                        // server wake probe — always silent
 ];
 const _origFetch = window.fetch;
 window.fetch = function(...args) {
@@ -701,12 +702,8 @@ function onAuthSuccess(user) {
   }
   startNotifPolling();
   _connectWS();
-  // Proactively wake the Railway server — use _origFetch directly so there
-  // is no timeout; it simply waits however long Railway needs to start up.
-  setTimeout(() => {
-    const t = getToken();
-    _origFetch(API + '/api/campaigns', { headers: t ? { Authorization: 'Bearer ' + t } : {} }).catch(() => {});
-  }, 500);
+  // Proactively wake the Railway server on login so it's ready for subsequent calls.
+  setTimeout(() => { _origFetch(API + '/ping').catch(() => {}); }, 500);
 }
 
 // --- Admin role view switcher ---
@@ -1153,7 +1150,7 @@ function openModal(id) {
   // Proactively ping the server when the campaign modal opens so it's awake
   // by the time the user finishes filling out the multi-step form
   if (id === 'campaign-modal') {
-    apiGet('/api/campaigns').catch(() => {});
+    _origFetch(API + '/ping').catch(() => {});
   }
 }
 function closeModal(id) {
@@ -3681,17 +3678,27 @@ function campaignBackToContract() {
 
 let _campRetryTimer = null;
 
-// Send a fire-and-forget request to wake Railway from sleep.
-// Resolves once the server responds (or after 40s cap), then the real
-// request fires into an already-awake server.
-function _wakeServer() {
-  const t = getToken();
-  return new Promise(resolve => {
-    const cap = setTimeout(resolve, 40000); // give up after 40s no matter what
-    _origFetch(API + '/api/campaigns', {
-      headers: t ? { Authorization: 'Bearer ' + t } : {}
-    }).finally(() => { clearTimeout(cap); resolve(); });
-  });
+// Ping the server repeatedly until it responds, covering Railway cold starts
+// where the container refuses connections while it's booting.
+// Uses /ping (no auth required) so it works even before the user is fully loaded.
+// Returns true when the server responds, false if we gave up after 90s.
+async function _wakeServer() {
+  const giveUp = Date.now() + 90000; // 90s — Railway cold starts can be slow
+
+  while (Date.now() < giveUp) {
+    try {
+      // 8-second window per attempt — generous enough for slow containers
+      await Promise.race([
+        _origFetch(API + '/ping'),
+        new Promise((_, r) => setTimeout(() => r(new Error('ping timeout')), 8000)),
+      ]);
+      return true; // got a response — server is up
+    } catch (_) {
+      // connection refused or timed out — wait 1.5s then retry
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+  return false; // 90s elapsed with no response
 }
 
 async function postCampaign(status = 'open') {
@@ -3720,8 +3727,12 @@ async function postCampaign(status = 'open') {
   if (!isDraft && postBtn) { postBtn.disabled  = true; postBtn.textContent  = 'Posting…'; }
 
   // Ensure the server is awake before sending the POST.
-  // _wakeServer() returns instantly if already up, or waits up to 40s on cold start.
-  await _wakeServer();
+  // _wakeServer() polls /ping until the server responds or 90s elapses.
+  const serverReady = await _wakeServer();
+  if (!serverReady) {
+    // Server didn't respond in 90s — still attempt the save; it might be up now
+    if (isDraft && draftBtn) draftBtn.textContent = 'Connecting…';
+  }
 
   const coverFile = coverInput?.files[0];
   const saveCover = (campaignId, dataUrl) => {
@@ -3735,7 +3746,27 @@ async function postCampaign(status = 'open') {
         reader.readAsDataURL(coverFile);
       });
     }
-    const result = await apiPost('/api/campaigns', body);
+
+    // Try the POST up to 3 times on network / timeout errors
+    let result, postErr;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        if (isDraft && draftBtn) draftBtn.textContent = `Retrying… (${attempt}/2)`;
+        if (!isDraft && postBtn) postBtn.textContent = 'Retrying…';
+        await new Promise(r => setTimeout(r, 3000)); // wait 3s between retries
+      }
+      try {
+        result = await apiPost('/api/campaigns', body);
+        postErr = null;
+        break; // success
+      } catch (err) {
+        postErr = err;
+        // Only retry on network-level errors (TypeError = Failed to fetch, TimeoutError)
+        const isNetErr = err.name === 'TypeError' || err.name === 'TimeoutError';
+        if (!isNetErr) break; // don't retry validation / server errors (4xx, 5xx)
+      }
+    }
+    if (postErr) throw postErr;
     if (coverFile && body.cover_image) saveCover(result?.id || result?.campaign?.id, body.cover_image);
 
     if (isDraft && draftBtn) {

@@ -592,6 +592,16 @@ class AuthOut(BaseModel):
     user:  UserOut
 
 # ---------------------------------------------------------------------------
+# Routes — Health
+# ---------------------------------------------------------------------------
+
+@app.get("/ping")
+def ping():
+    """Lightweight liveness check — no auth, used by frontend to wake Railway."""
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
 # Routes — Auth
 # ---------------------------------------------------------------------------
 
@@ -1161,7 +1171,9 @@ def create_campaign(body: CampaignIn, background_tasks: BackgroundTasks, user: d
         row = _row(conn, "SELECT * FROM campaigns WHERE id = ?", (cid,))
         row["skills"]    = json.loads(row.get("skills")    or "[]")
         row["questions"] = json.loads(row.get("questions") or "[]")
-    background_tasks.add_task(_notify_campaign_matches, row)
+    # Only notify creators on live campaigns, not drafts
+    if body.status != 'draft':
+        background_tasks.add_task(_notify_campaign_matches, row)
     return row
 
 
