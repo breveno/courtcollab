@@ -184,16 +184,28 @@ window.fetch = function(...args) {
   let _slowTimer = null;
   const url = typeof args[0] === 'string' ? args[0] : '';
   const isSilent = _SILENT_PATHS.some(p => url.includes(p));
-  // Only intercept our own API calls (not Stripe.js CDN etc.)
-  if (!isSilent && (url.includes('railway.app') || url.startsWith('/api'))) {
+  const isOurApi = url.includes('railway.app') || url.startsWith('/api');
+
+  if (!isSilent && isOurApi) {
     _slowTimer = setTimeout(() => showLoading('Loading…'), 500);
   }
+
+  // Add a 12-second hard timeout to every API call so Railway cold-starts
+  // that keep the socket open (but never respond) don't hang forever.
+  let abortController = null;
+  let abortTimer      = null;
+  if (isOurApi && !args[1]?.signal) {
+    abortController = new AbortController();
+    abortTimer      = setTimeout(() => abortController.abort(), 12000);
+    args[1] = { ...(args[1] || {}), signal: abortController.signal };
+  }
+
   return _origFetch.apply(this, args).catch(err => {
     // Re-throw so the calling function can show its own specific error message.
-    // (Do not show a generic toast here — each function handles network errors itself.)
     throw err;
   }).finally(() => {
     if (_slowTimer) { clearTimeout(_slowTimer); _slowTimer = null; hideLoading(); }
+    if (abortTimer)  clearTimeout(abortTimer);
   });
 };
 
@@ -3704,12 +3716,23 @@ async function postCampaign(status = 'open') {
     const result = await apiPost('/api/campaigns', body);
     _campSaveAttempt = 0;
     if (coverFile && body.cover_image) saveCover(result?.id || result?.campaign?.id, body.cover_image);
-    closeModal('campaign-modal');
-    showToast(isDraft ? 'Campaign saved as draft!' : 'Campaign brief posted!', 'success');
+
+    if (isDraft && draftBtn) {
+      // Show "✓ Saved!" in lime green briefly before closing
+      draftBtn.disabled    = true;
+      draftBtn.textContent = '✓ Saved!';
+      draftBtn.classList.add('bg-lime-400', 'text-gray-900', 'border-lime-400');
+      draftBtn.classList.remove('border-gray-300', 'text-gray-700');
+    }
+
     renderCampaigns();
+    await new Promise(r => setTimeout(r, 900));   // let "Saved!" show for a moment
+
+    closeModal('campaign-modal');
+    if (!isDraft) showToast('Campaign brief posted!', 'success');
+
     if (state.currentPage === 'brand-portal') {
       await renderBrandPortal();
-      // Auto-switch to Drafts tab so the user can see their saved draft
       if (isDraft) {
         const draftPill = Array.from(document.querySelectorAll('.portal-pill'))
           .find(b => b.textContent.trim() === 'Drafts');
@@ -3718,19 +3741,25 @@ async function postCampaign(status = 'open') {
     }
   } catch (err) {
     _campSaveAttempt++;
-    if (err instanceof TypeError && _campSaveAttempt < _CAMP_MAX_ATTEMPTS) {
+    const isNetworkErr = err instanceof TypeError || err.name === 'AbortError';
+    if (isNetworkErr && _campSaveAttempt < _CAMP_MAX_ATTEMPTS) {
       // Silent retry — no toast, button stays disabled, user sees nothing
       setTimeout(() => postCampaign(status), 8000);
       return;
     }
     // All retries exhausted or a real server error (4xx/5xx)
     _campSaveAttempt = 0;
-    showToast(err instanceof TypeError
+    showToast(isNetworkErr
       ? 'Could not reach the server. Please check your connection and try again.'
       : (err.message || 'Something went wrong. Please try again.'),
       'error');
     if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = 'Post Campaign'; }
-    if (draftBtn) { draftBtn.disabled = false; draftBtn.textContent = 'Save as Draft'; }
+    if (draftBtn) {
+      draftBtn.disabled = false;
+      draftBtn.textContent = 'Save as Draft';
+      draftBtn.classList.remove('bg-lime-400', 'text-gray-900', 'border-lime-400');
+      draftBtn.classList.add('border-gray-300', 'text-gray-700');
+    }
   }
 }
 
