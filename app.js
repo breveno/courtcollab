@@ -1572,7 +1572,7 @@ async function renderBrandPortal() {
       .map(d => d.id);
     _startContractPoller(pendingPoll, 'brand');
 
-    renderBrandPortalGrid(campaigns);
+    renderBrandPortalGrid(campaigns.filter(c => c.status !== 'draft'));
   } catch (err) {
     grid.innerHTML = `<div class="col-span-full text-center py-8 text-red-400">${err.message}</div>`;
   }
@@ -2153,7 +2153,12 @@ function renderBrandPortalGrid(campaigns) {
     return;
   }
   grid.innerHTML = campaigns.map(c => {
-    const isActive = (c.status || 'open') === 'open';
+    const isDraft  = c.status === 'draft';
+    const isActive = !isDraft && (c.status || 'open') === 'open';
+    const badgeCls = isDraft  ? 'bg-yellow-100 text-yellow-700'
+                   : isActive ? 'bg-green-100 text-green-700'
+                   :            'bg-gray-100 text-gray-600';
+    const badgeLabel = isDraft ? 'Draft' : isActive ? 'Active' : 'Closed';
     const cover = c.cover_image || localStorage.getItem('camp_cover_' + c.id) || null;
     const initials = (c.title || 'C').slice(0, 2).toUpperCase();
     return `
@@ -2165,7 +2170,7 @@ function renderBrandPortalGrid(campaigns) {
                  <span class="text-white text-2xl font-bold opacity-60">${initials}</span>
                </div>`
           }
-          <span class="absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${isActive ? 'Active' : 'Closed'}</span>
+          <span class="absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full ${badgeCls}">${badgeLabel}</span>
           <div class="absolute bottom-2 left-2 w-7 h-7 bg-white/90 backdrop-blur rounded-lg flex items-center justify-center shadow-sm">
             <svg class="w-3.5 h-3.5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
           </div>
@@ -2180,13 +2185,21 @@ function renderBrandPortalGrid(campaigns) {
 }
 
 function filterBrandPortal(filter, btn) {
+  // Reset all pills to inactive state
   document.querySelectorAll('.portal-pill').forEach(p => {
-    p.className = p.className.replace('bg-gray-900 text-white', 'bg-gray-100 text-gray-600');
+    p.classList.remove('bg-lime-400', 'text-gray-900', 'bg-gray-900', 'text-white');
+    p.classList.add('bg-gray-100', 'text-gray-600');
   });
-  if (btn) { btn.className = btn.className.replace('bg-gray-100 text-gray-600', 'bg-gray-900 text-white'); }
+  // Mark the clicked pill active
+  if (btn) {
+    btn.classList.remove('bg-gray-100', 'text-gray-600');
+    btn.classList.add('bg-lime-400', 'text-gray-900');
+  }
   let list = _brandPortalAllCampaigns;
+  if (filter === 'all')    list = list.filter(c => c.status !== 'draft');
   if (filter === 'active') list = list.filter(c => (c.status || 'open') === 'open');
   if (filter === 'closed') list = list.filter(c => c.status === 'closed');
+  if (filter === 'draft')  list = list.filter(c => c.status === 'draft');
   renderBrandPortalGrid(list);
 }
 
