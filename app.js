@@ -1165,9 +1165,7 @@ function closeModal(id) {
     document.getElementById('admin-detail-meta')?.classList.add('hidden');
   }
   if (id === 'campaign-modal') {
-    // Cancel any in-flight retry and reset counter
     if (_campRetryTimer) { clearTimeout(_campRetryTimer); _campRetryTimer = null; }
-    _campSaveAttempt = 0;
     // Always reset to step 1 when modal closes
     campaignBackStep();
     // Reset buttons
@@ -3681,9 +3679,20 @@ function campaignBackToContract() {
   _campSetDot(1, 'done'); _campSetDot(2, 'active'); _campSetDot(3, 'inactive');
 }
 
-let _campSaveAttempt  = 0;
-let _campRetryTimer   = null;
-const _CAMP_MAX_ATTEMPTS = 2;
+let _campRetryTimer = null;
+
+// Send a fire-and-forget request to wake Railway from sleep.
+// Resolves once the server responds (or after 40s cap), then the real
+// request fires into an already-awake server.
+function _wakeServer() {
+  const t = getToken();
+  return new Promise(resolve => {
+    const cap = setTimeout(resolve, 40000); // give up after 40s no matter what
+    _origFetch(API + '/api/campaigns', {
+      headers: t ? { Authorization: 'Bearer ' + t } : {}
+    }).finally(() => { clearTimeout(cap); resolve(); });
+  });
+}
 
 async function postCampaign(status = 'open') {
   const skills = Array.from(document.querySelectorAll('#camp-skills input:checked')).map(i => i.value);
@@ -3707,11 +3716,12 @@ async function postCampaign(status = 'open') {
   const draftBtn = document.getElementById('camp-draft-btn');
   const isDraft  = status === 'draft';
 
-  // First call resets attempt counter; retries increment it
-  if (_campSaveAttempt === 0) {
-    if (isDraft && draftBtn) { draftBtn.disabled = true; draftBtn.textContent = 'Saving…'; }
-    if (!isDraft && postBtn) { postBtn.disabled  = true; postBtn.textContent  = 'Posting…'; }
-  }
+  if (isDraft && draftBtn) { draftBtn.disabled = true; draftBtn.textContent = 'Saving…'; }
+  if (!isDraft && postBtn) { postBtn.disabled  = true; postBtn.textContent  = 'Posting…'; }
+
+  // Ensure the server is awake before sending the POST.
+  // _wakeServer() returns instantly if already up, or waits up to 40s on cold start.
+  await _wakeServer();
 
   const coverFile = coverInput?.files[0];
   const saveCover = (campaignId, dataUrl) => {
@@ -3726,7 +3736,6 @@ async function postCampaign(status = 'open') {
       });
     }
     const result = await apiPost('/api/campaigns', body);
-    _campSaveAttempt = 0;
     if (coverFile && body.cover_image) saveCover(result?.id || result?.campaign?.id, body.cover_image);
 
     if (isDraft && draftBtn) {
@@ -3752,20 +3761,7 @@ async function postCampaign(status = 'open') {
       }
     }
   } catch (err) {
-    _campSaveAttempt++;
-    const isNetworkErr = err instanceof TypeError || err.name === 'AbortError' || err.name === 'TimeoutError';
-    if (isNetworkErr && _campSaveAttempt < _CAMP_MAX_ATTEMPTS) {
-      // Silent retry once — button stays at "Saving…", user sees nothing
-      _campRetryTimer = setTimeout(() => postCampaign(status), 8000);
-      return;
-    }
-    // Exhausted or real server error
-    _campSaveAttempt = 0;
-    _campRetryTimer  = null;
-    showToast(isNetworkErr
-      ? 'Could not reach the server. Please check your connection and try again.'
-      : (err.message || 'Something went wrong. Please try again.'),
-      'error');
+    showToast(err.message || 'Something went wrong. Please try again.', 'error');
     if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = 'Post Campaign'; }
     if (draftBtn) {
       draftBtn.disabled = false;
