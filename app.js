@@ -38,7 +38,12 @@ function declineCookies() {
 document.addEventListener('DOMContentLoaded', initCookieBanner);
 
 // --- Auth & API Helpers ---
-const API = 'https://courtcollab-production.up.railway.app';
+// Route all API calls through Netlify's proxy (/api/* → Railway).
+// This means the browser always connects to Netlify (always up) and never
+// hits Railway's cold-start TCP refusals directly. Cold-start failures arrive
+// as HTTP 502/504 from Netlify, which we can detect and retry — instead of
+// the unretryable TypeError("Failed to fetch") from a direct TCP refusal.
+const API = '';
 // --- Real-time messaging via polling ---
 let _msgPollTimer  = null;
 let _convListPollTimer = null;   // polls conversation list for new threads
@@ -185,7 +190,9 @@ window.fetch = function(...args) {
   let _slowTimer = null;
   const url = typeof args[0] === 'string' ? args[0] : '';
   const isSilent = _SILENT_PATHS.some(p => url.includes(p));
-  const isOurApi = url.includes('railway.app') || url.startsWith('/api');
+  // With API='', requests are relative (/api/...) — match on /api prefix.
+  // Keep railway.app check as fallback in case API const is ever overridden.
+  const isOurApi = url.includes('railway.app') || url.startsWith('/api') || url.startsWith('/ping');
 
   if (!isSilent && isOurApi) {
     _slowTimer = setTimeout(() => showLoading('Loading…'), 500);
@@ -225,6 +232,10 @@ function _withTimeout(promise, ms = 15000) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
 }
 
+function _isGatewayStatus(status) {
+  return status === 502 || status === 503 || status === 504;
+}
+
 async function apiPost(path, body, opts = {}) {
   if (opts.loading) showLoading(opts.msg || 'Please wait…');
   try {
@@ -237,6 +248,13 @@ async function apiPost(path, body, opts = {}) {
       },
       body: JSON.stringify(body),
     }));
+    // 502/503/504 = Netlify proxy couldn't reach Railway (cold start).
+    // Throw a named GatewayError so the retry loop knows to try again.
+    if (_isGatewayStatus(res.status)) {
+      const e = new Error('Server is warming up, please wait…');
+      e.name = 'GatewayError';
+      throw e;
+    }
     const data = await _withTimeout(res.json());
     if (!res.ok) throw new Error(_extractDetail(data));
     return data;
@@ -3688,13 +3706,15 @@ async function _wakeServer() {
   while (Date.now() < giveUp) {
     try {
       // 8-second window per attempt — generous enough for slow containers
-      await Promise.race([
+      const res = await Promise.race([
         _origFetch(API + '/ping'),
         new Promise((_, r) => setTimeout(() => r(new Error('ping timeout')), 8000)),
       ]);
-      return true; // got a response — server is up
+      // 502/503/504 = Netlify couldn't reach Railway yet; keep waiting
+      if (_isGatewayStatus(res.status)) throw new Error('gateway');
+      return true; // server responded with a real status
     } catch (_) {
-      // connection refused or timed out — wait 1.5s then retry
+      // connection error, gateway error, or timeout — wait 1.5s then retry
       await new Promise(r => setTimeout(r, 1500));
     }
   }
@@ -3761,9 +3781,9 @@ async function postCampaign(status = 'open') {
         break; // success
       } catch (err) {
         postErr = err;
-        // Only retry on network-level errors (TypeError = Failed to fetch, TimeoutError)
-        const isNetErr = err.name === 'TypeError' || err.name === 'TimeoutError';
-        if (!isNetErr) break; // don't retry validation / server errors (4xx, 5xx)
+        // Only retry on network/gateway errors; don't retry validation errors (4xx)
+        const isNetErr = err.name === 'TypeError' || err.name === 'TimeoutError' || err.name === 'GatewayError';
+        if (!isNetErr) break;
       }
     }
     if (postErr) throw postErr;
