@@ -1130,6 +1130,11 @@ function showToast(text, type = 'default') {
 function openModal(id) {
   document.getElementById(id).classList.remove('hidden');
   document.documentElement.classList.add('no-scroll');
+  // Proactively ping the server when the campaign modal opens so it's awake
+  // by the time the user finishes filling out the multi-step form
+  if (id === 'campaign-modal') {
+    apiGet('/api/campaigns').catch(() => {});
+  }
 }
 function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
@@ -3653,7 +3658,8 @@ function campaignBackToContract() {
   _campSetDot(1, 'done'); _campSetDot(2, 'active'); _campSetDot(3, 'inactive');
 }
 
-let _campSaveRetrying = false;
+let _campSaveAttempt = 0;
+const _CAMP_MAX_ATTEMPTS = 3;
 
 async function postCampaign(status = 'open') {
   const skills = Array.from(document.querySelectorAll('#camp-skills input:checked')).map(i => i.value);
@@ -3676,8 +3682,12 @@ async function postCampaign(status = 'open') {
   const postBtn  = document.getElementById('camp-post-btn');
   const draftBtn = document.getElementById('camp-draft-btn');
   const isDraft  = status === 'draft';
-  if (isDraft && draftBtn) { draftBtn.disabled = true; draftBtn.textContent = _campSaveRetrying ? 'Retrying…' : 'Saving…'; }
-  if (!isDraft && postBtn) { postBtn.disabled  = true; postBtn.textContent  = _campSaveRetrying ? 'Retrying…' : 'Posting…'; }
+
+  // First call resets attempt counter; retries increment it
+  if (_campSaveAttempt === 0) {
+    if (isDraft && draftBtn) { draftBtn.disabled = true; draftBtn.textContent = 'Saving…'; }
+    if (!isDraft && postBtn) { postBtn.disabled  = true; postBtn.textContent  = 'Posting…'; }
+  }
 
   const coverFile = coverInput?.files[0];
   const saveCover = (campaignId, dataUrl) => {
@@ -3692,26 +3702,36 @@ async function postCampaign(status = 'open') {
       });
     }
     const result = await apiPost('/api/campaigns', body);
-    _campSaveRetrying = false;
+    _campSaveAttempt = 0;
     if (coverFile && body.cover_image) saveCover(result?.id || result?.campaign?.id, body.cover_image);
     closeModal('campaign-modal');
     showToast(isDraft ? 'Campaign saved as draft!' : 'Campaign brief posted!', 'success');
     renderCampaigns();
-    if (state.currentPage === 'brand-portal') renderBrandPortal();
+    if (state.currentPage === 'brand-portal') {
+      await renderBrandPortal();
+      // Auto-switch to Drafts tab so the user can see their saved draft
+      if (isDraft) {
+        const draftPill = Array.from(document.querySelectorAll('.portal-pill'))
+          .find(b => b.textContent.trim() === 'Drafts');
+        if (draftPill) filterBrandPortal('draft', draftPill);
+      }
+    }
   } catch (err) {
-    if (err instanceof TypeError && !_campSaveRetrying) {
-      // Cold start — auto-retry once after 4 seconds
-      _campSaveRetrying = true;
-      if (isDraft && draftBtn) draftBtn.textContent = 'Waking server…';
-      if (!isDraft && postBtn) postBtn.textContent  = 'Waking server…';
-      showToast('Server is starting up — retrying automatically…', 'info');
-      setTimeout(() => postCampaign(status), 4000);
+    _campSaveAttempt++;
+    if (err instanceof TypeError && _campSaveAttempt < _CAMP_MAX_ATTEMPTS) {
+      // Cold start — auto-retry with escalating delay
+      const delaySec = _campSaveAttempt * 8;
+      const attempt  = _campSaveAttempt + 1;
+      if (isDraft && draftBtn) draftBtn.textContent = `Connecting… (${attempt}/${_CAMP_MAX_ATTEMPTS})`;
+      if (!isDraft && postBtn) postBtn.textContent  = `Connecting… (${attempt}/${_CAMP_MAX_ATTEMPTS})`;
+      showToast(`Server waking up — retrying in ${delaySec}s… (${attempt}/${_CAMP_MAX_ATTEMPTS})`, 'info');
+      setTimeout(() => postCampaign(status), delaySec * 1000);
       return;
     }
-    // Second failure or non-network error
-    _campSaveRetrying = false;
+    // All attempts exhausted or non-network error
+    _campSaveAttempt = 0;
     showToast(err instanceof TypeError
-      ? 'Still connecting — please try again in a moment.'
+      ? 'Could not reach the server. Please check your connection and try again.'
       : (err.message || 'Something went wrong. Please try again.'),
       'error');
     if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = 'Post Campaign'; }
