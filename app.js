@@ -214,26 +214,32 @@ function clearToken() {
   sessionStorage.removeItem('cc_jwt');
 }
 
+function _withTimeout(promise, ms = 15000) {
+  let t;
+  const timeout = new Promise((_, reject) => {
+    t = setTimeout(() => {
+      const e = new Error('Request timed out'); e.name = 'TimeoutError'; reject(e);
+    }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
+}
+
 async function apiPost(path, body, opts = {}) {
   if (opts.loading) showLoading(opts.msg || 'Please wait…');
-  const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 14000);
   try {
     const token = getToken();
-    const res = await fetch(API + path, {
+    const res = await _withTimeout(fetch(API + path, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': 'Bearer ' + token } : {})
       },
       body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    const data = await res.json();   // abort signal still active — covers body stalls too
+    }));
+    const data = await _withTimeout(res.json());
     if (!res.ok) throw new Error(_extractDetail(data));
     return data;
   } finally {
-    clearTimeout(timeoutId);
     if (opts.loading) hideLoading();
   }
 }
@@ -258,14 +264,11 @@ async function apiFetch(path, opts = {}) {
 
 async function apiGet(path, opts = {}) {
   if (opts.loading) showLoading(opts.msg || 'Loading…');
-  const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 14000);
   try {
     const token = getToken();
-    const res = await fetch(API + path, {
+    const res = await _withTimeout(fetch(API + path, {
       headers: token ? { 'Authorization': 'Bearer ' + token } : {},
-      signal: controller.signal,
-    });
+    }));
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       let data = {};
@@ -273,9 +276,8 @@ async function apiGet(path, opts = {}) {
       const msg = _extractDetail(data);
       throw new Error(msg === 'Request failed' ? `Request failed (${res.status})` : msg);
     }
-    return res.json();
+    return _withTimeout(res.json());
   } finally {
-    clearTimeout(timeoutId);
     if (opts.loading) hideLoading();
   }
 }
@@ -699,9 +701,12 @@ function onAuthSuccess(user) {
   }
   startNotifPolling();
   _connectWS();
-  // Proactively wake the Railway server so it's ready before the user tries
-  // to create a campaign or perform any other form submission.
-  setTimeout(() => apiGet('/api/campaigns').catch(() => {}), 500);
+  // Proactively wake the Railway server — use _origFetch directly so there
+  // is no timeout; it simply waits however long Railway needs to start up.
+  setTimeout(() => {
+    const t = getToken();
+    _origFetch(API + '/api/campaigns', { headers: t ? { Authorization: 'Bearer ' + t } : {} }).catch(() => {});
+  }, 500);
 }
 
 // --- Admin role view switcher ---
@@ -1160,6 +1165,9 @@ function closeModal(id) {
     document.getElementById('admin-detail-meta')?.classList.add('hidden');
   }
   if (id === 'campaign-modal') {
+    // Cancel any in-flight retry and reset counter
+    if (_campRetryTimer) { clearTimeout(_campRetryTimer); _campRetryTimer = null; }
+    _campSaveAttempt = 0;
     // Always reset to step 1 when modal closes
     campaignBackStep();
     // Reset buttons
@@ -3673,8 +3681,9 @@ function campaignBackToContract() {
   _campSetDot(1, 'done'); _campSetDot(2, 'active'); _campSetDot(3, 'inactive');
 }
 
-let _campSaveAttempt = 0;
-const _CAMP_MAX_ATTEMPTS = 3;
+let _campSaveAttempt  = 0;
+let _campRetryTimer   = null;
+const _CAMP_MAX_ATTEMPTS = 2;
 
 async function postCampaign(status = 'open') {
   const skills = Array.from(document.querySelectorAll('#camp-skills input:checked')).map(i => i.value);
@@ -3744,14 +3753,15 @@ async function postCampaign(status = 'open') {
     }
   } catch (err) {
     _campSaveAttempt++;
-    const isNetworkErr = err instanceof TypeError || err.name === 'AbortError';
+    const isNetworkErr = err instanceof TypeError || err.name === 'AbortError' || err.name === 'TimeoutError';
     if (isNetworkErr && _campSaveAttempt < _CAMP_MAX_ATTEMPTS) {
-      // Silent retry — no toast, button stays disabled, user sees nothing
-      setTimeout(() => postCampaign(status), 8000);
+      // Silent retry once — button stays at "Saving…", user sees nothing
+      _campRetryTimer = setTimeout(() => postCampaign(status), 8000);
       return;
     }
-    // All retries exhausted or a real server error (4xx/5xx)
+    // Exhausted or real server error
     _campSaveAttempt = 0;
+    _campRetryTimer  = null;
     showToast(isNetworkErr
       ? 'Could not reach the server. Please check your connection and try again.'
       : (err.message || 'Something went wrong. Please try again.'),
