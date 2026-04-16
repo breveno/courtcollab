@@ -3653,6 +3653,8 @@ function campaignBackToContract() {
   _campSetDot(1, 'done'); _campSetDot(2, 'active'); _campSetDot(3, 'inactive');
 }
 
+let _campSaveRetrying = false;
+
 async function postCampaign(status = 'open') {
   const skills = Array.from(document.querySelectorAll('#camp-skills input:checked')).map(i => i.value);
   const questions = Array.from(document.querySelectorAll('#camp-questions-list .camp-question-input'))
@@ -3674,8 +3676,8 @@ async function postCampaign(status = 'open') {
   const postBtn  = document.getElementById('camp-post-btn');
   const draftBtn = document.getElementById('camp-draft-btn');
   const isDraft  = status === 'draft';
-  if (isDraft && draftBtn) { draftBtn.disabled = true; draftBtn.textContent = 'Saving…'; }
-  if (!isDraft && postBtn) { postBtn.disabled  = true; postBtn.textContent  = 'Posting…'; }
+  if (isDraft && draftBtn) { draftBtn.disabled = true; draftBtn.textContent = _campSaveRetrying ? 'Retrying…' : 'Saving…'; }
+  if (!isDraft && postBtn) { postBtn.disabled  = true; postBtn.textContent  = _campSaveRetrying ? 'Retrying…' : 'Posting…'; }
 
   const coverFile = coverInput?.files[0];
   const saveCover = (campaignId, dataUrl) => {
@@ -3690,18 +3692,28 @@ async function postCampaign(status = 'open') {
       });
     }
     const result = await apiPost('/api/campaigns', body);
+    _campSaveRetrying = false;
     if (coverFile && body.cover_image) saveCover(result?.id || result?.campaign?.id, body.cover_image);
     closeModal('campaign-modal');
     showToast(isDraft ? 'Campaign saved as draft!' : 'Campaign brief posted!', 'success');
     renderCampaigns();
     if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
-    if (err instanceof TypeError) {
-      // Network/cold-start error — show a single, friendlier message
-      showToast('Server is starting up — please try again in a moment.', 'error');
-    } else {
-      showToast(err.message || 'Something went wrong. Please try again.', 'error');
+    if (err instanceof TypeError && !_campSaveRetrying) {
+      // Cold start — auto-retry once after 4 seconds
+      _campSaveRetrying = true;
+      if (isDraft && draftBtn) draftBtn.textContent = 'Waking server…';
+      if (!isDraft && postBtn) postBtn.textContent  = 'Waking server…';
+      showToast('Server is starting up — retrying automatically…', 'info');
+      setTimeout(() => postCampaign(status), 4000);
+      return;
     }
+    // Second failure or non-network error
+    _campSaveRetrying = false;
+    showToast(err instanceof TypeError
+      ? 'Still connecting — please try again in a moment.'
+      : (err.message || 'Something went wrong. Please try again.'),
+      'error');
     if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = 'Post Campaign'; }
     if (draftBtn) { draftBtn.disabled = false; draftBtn.textContent = 'Save as Draft'; }
   }
