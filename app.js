@@ -2198,16 +2198,22 @@ async function _loadDealSummary(dealId) {
 
 async function confirmDealTerms() {
   const dealId = _dealSummaryCurrentDealId;
-  if (!dealId) return;
+  if (!dealId) {
+    showToast('Could not find deal — please close and reopen this window.', 'error');
+    return;
+  }
 
   const btn = document.getElementById('deal-summary-confirm-btn');
+  const resetBtn = () => {
+    if (btn) {
+      btn.disabled   = false;
+      btn.innerHTML  = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Confirm`;
+    }
+  };
   if (btn) { btn.disabled = true; btn.textContent = 'Confirming…'; }
 
   try {
-    const res  = await apiFetch(`/api/deals/${dealId}/confirm-terms`, { method: 'POST' });
-    const data = await res.json();
-
-    if (!res.ok) throw new Error(data.detail || 'Failed to confirm terms');
+    const data = await apiPost(`/api/deals/${dealId}/confirm-terms`, {});
 
     closeDealSummaryModal();
 
@@ -2223,8 +2229,8 @@ async function confirmDealTerms() {
     else renderBrandPortal();
 
   } catch (err) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Confirm and Proceed to Contract'; }
-    showToast(err.message, 'error');
+    resetBtn();
+    showToast(err.message || 'Could not confirm terms. Please try again.', 'error');
   }
 }
 
