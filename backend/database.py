@@ -216,7 +216,7 @@ def _init_pg():
                 max_rate         INTEGER DEFAULT 0,
                 creators_needed  INTEGER DEFAULT 1,
                 status        TEXT    NOT NULL DEFAULT 'open'
-                                  CHECK(status IN ('open','paused','closed')),
+                                  CHECK(status IN ('open','paused','closed','draft')),
                 created_at    TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS')
             )
         """)
@@ -467,6 +467,13 @@ def _init_pg():
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_terms_confirmed    INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS stripe_payment_intent_id  TEXT")
         conn.execute("ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS social_handles TEXT DEFAULT '{}'")
+
+        # Allow 'draft' status on campaigns (constraint originally only had open/paused/closed)
+        conn.execute("ALTER TABLE campaigns DROP CONSTRAINT IF EXISTS campaigns_status_check")
+        conn.execute("""
+            ALTER TABLE campaigns ADD CONSTRAINT campaigns_status_check
+            CHECK(status IN ('open','paused','closed','draft'))
+        """)
 
         conn.commit()
 
