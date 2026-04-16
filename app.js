@@ -2253,7 +2253,7 @@ function renderBrandPortalGrid(campaigns) {
     const cover = c.cover_image || localStorage.getItem('camp_cover_' + c.id) || null;
     const initials = (c.title || 'C').slice(0, 2).toUpperCase();
     return `
-      <div class="group rounded-2xl overflow-hidden border border-gray-100 cursor-pointer card-hover bg-white" onclick="${isDraft ? `openDraftForEditing(${c.id})` : `navigate('campaigns')`}">
+      <div class="group rounded-2xl overflow-hidden border border-gray-100 cursor-pointer card-hover bg-white" onclick="${isDraft ? `openDraftForEditing(${c.id})` : `openCampaignDetail(${c.id})`}">
         <div class="relative" style="aspect-ratio:4/3">
           ${cover
             ? `<img src="${cover}" class="w-full h-full object-cover" alt="${c.title}">`
@@ -2330,12 +2330,89 @@ function openDraftForEditing(campaignId) {
   _editingCampaignId = campaignId;
 
   // Update button labels to reflect edit mode
+  const isDraftCampaign = c.status === 'draft';
   const postBtn  = document.getElementById('camp-post-btn');
   const draftBtn = document.getElementById('camp-draft-btn');
-  if (postBtn)  postBtn.textContent  = 'Publish Campaign';
-  if (draftBtn) draftBtn.textContent = 'Update Draft';
+  if (postBtn)  postBtn.textContent  = isDraftCampaign ? 'Publish Campaign' : 'Save Changes';
+  if (draftBtn) draftBtn.textContent = isDraftCampaign ? 'Update Draft'     : 'Save as Draft';
 
   openModal('campaign-modal');
+}
+
+// --- Campaign Detail Modal (brand portal — My Campaigns) ---
+function openCampaignDetail(campaignId) {
+  const c = _brandPortalAllCampaigns.find(x => x.id === campaignId);
+  if (!c) return;
+
+  // Cover image or gradient banner
+  const cover  = c.cover_image || localStorage.getItem('camp_cover_' + c.id) || null;
+  const initials = (c.title || 'C').slice(0, 2).toUpperCase();
+  document.getElementById('cdm-cover').innerHTML = cover
+    ? `<img src="${cover}" class="w-full h-full object-cover" alt="${escHtml(c.title)}">`
+    : `<div class="w-full h-full bg-gradient-to-br from-pickle-400 to-brand-500 flex items-center justify-center" style="min-height:80px">
+         <span class="text-white text-3xl font-bold opacity-50">${initials}</span>
+       </div>`;
+
+  // Title + badge
+  document.getElementById('cdm-title').textContent = c.title || 'Untitled';
+  const isActive = (c.status || 'open') === 'open';
+  const badge    = document.getElementById('cdm-badge');
+  badge.textContent  = isActive ? 'Active' : 'Closed';
+  badge.className    = `text-xs font-medium px-2.5 py-0.5 rounded-full ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`;
+
+  // Posted date
+  const dateEl = document.getElementById('cdm-date');
+  if (c.created_at) {
+    const d = new Date(c.created_at.replace(' ', 'T') + 'Z');
+    if (!isNaN(d)) {
+      dateEl.textContent = 'Posted ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } else {
+      dateEl.textContent = '';
+    }
+  } else {
+    dateEl.textContent = '';
+  }
+
+  // Stats row
+  const stats = [];
+  if (c.budget)           stats.push(`<span class="text-gray-500">Budget: <strong class="text-gray-900">$${Number(c.budget).toLocaleString()}</strong></span>`);
+  if (c.creators_needed)  stats.push(`<span class="text-gray-500">Creators needed: <strong class="text-gray-900">${c.creators_needed}</strong></span>`);
+  if (c.min_followers)    stats.push(`<span class="text-gray-500">Min. followers: <strong class="text-gray-900">${Number(c.min_followers).toLocaleString()}</strong></span>`);
+  if (c.max_rate)         stats.push(`<span class="text-gray-500">Max rate: <strong class="text-gray-900">$${Number(c.max_rate).toLocaleString()}</strong></span>`);
+  document.getElementById('cdm-stats').innerHTML = stats.join('');
+
+  // Description
+  document.getElementById('cdm-desc').textContent = c.description || '';
+
+  // Niche + skill tags
+  const skills = Array.isArray(c.skills) ? c.skills : [];
+  const tags = [];
+  if (c.niche) tags.push(`<span class="tag bg-brand-100 text-brand-700">${escHtml(c.niche)}</span>`);
+  skills.forEach(s => tags.push(`<span class="tag bg-gray-100 text-gray-600">${escHtml(s)}</span>`));
+  document.getElementById('cdm-tags').innerHTML = tags.join('');
+
+  // Questions
+  const questions  = Array.isArray(c.questions) ? c.questions.filter(Boolean) : [];
+  const qWrap      = document.getElementById('cdm-questions-wrap');
+  const qList      = document.getElementById('cdm-questions');
+  if (questions.length) {
+    qList.innerHTML = questions.map(q => `<li>${escHtml(q)}</li>`).join('');
+    qWrap.classList.remove('hidden');
+  } else {
+    qWrap.classList.add('hidden');
+  }
+
+  // Action buttons
+  document.getElementById('cdm-apps-btn').onclick = () => {
+    closeModal('campaign-detail-modal');
+    openApplicationsModal(c.id, c.title);
+  };
+  document.getElementById('cdm-edit-btn').onclick = () => {
+    closeModal('campaign-detail-modal');
+    openDraftForEditing(campaignId);
+  };
+
+  openModal('campaign-detail-modal');
 }
 
 // --- Cover photo preview ---
@@ -3845,8 +3922,10 @@ async function postCampaign(status = 'open') {
       });
     }
 
-    // POST (new campaign) or PATCH (editing existing draft)
+    // POST (new campaign) or PATCH (editing existing draft/active campaign)
     const editId = _editingCampaignId;
+    const editingCampaign   = editId ? _brandPortalAllCampaigns.find(x => x.id === editId) : null;
+    const editingActiveCamp = !!(editingCampaign && editingCampaign.status !== 'draft');
     let result, postErr;
     for (let attempt = 0; attempt < 5; attempt++) {
       if (attempt > 0) {
@@ -3882,7 +3961,7 @@ async function postCampaign(status = 'open') {
     await new Promise(r => setTimeout(r, 900));
 
     closeModal('campaign-modal');
-    if (!isDraft) showToast(editId ? 'Campaign published!' : 'Campaign brief posted!', 'success');
+    if (!isDraft) showToast(editingActiveCamp ? 'Campaign updated!' : editId ? 'Campaign published!' : 'Campaign brief posted!', 'success');
 
     if (state.currentPage === 'brand-portal') {
       await renderBrandPortal();
@@ -3894,7 +3973,7 @@ async function postCampaign(status = 'open') {
     }
   } catch (err) {
     showToast(err.message || 'Something went wrong. Please try again.', 'error');
-    if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = _editingCampaignId ? 'Publish Campaign' : 'Post Campaign'; }
+    if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = editingActiveCamp ? 'Save Changes' : _editingCampaignId ? 'Publish Campaign' : 'Post Campaign'; }
     if (draftBtn) {
       draftBtn.disabled = false;
       draftBtn.textContent = _editingCampaignId ? 'Update Draft' : 'Save as Draft';

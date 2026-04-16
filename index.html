@@ -3645,6 +3645,42 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div>
   </div>
 
+  <!-- Campaign Detail Modal (brand portal — My Campaigns) -->
+  <div id="campaign-detail-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('campaign-detail-modal')">
+    <div class="modal-content" style="max-width:640px; max-height:90vh; overflow-y:auto;">
+      <!-- Cover image / gradient banner -->
+      <div id="cdm-cover" class="relative rounded-xl overflow-hidden mb-5" style="aspect-ratio:3/1;min-height:80px;"></div>
+      <!-- Title row -->
+      <div class="flex justify-between items-start mb-4">
+        <div class="flex-1 min-w-0 pr-4">
+          <div class="flex items-center gap-3 flex-wrap mb-0.5">
+            <h2 class="text-xl font-bold text-gray-900" id="cdm-title"></h2>
+            <span id="cdm-badge" class="text-xs font-medium px-2.5 py-0.5 rounded-full"></span>
+          </div>
+          <p class="text-xs text-gray-400" id="cdm-date"></p>
+        </div>
+        <button onclick="closeModal('campaign-detail-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none flex-shrink-0">&times;</button>
+      </div>
+      <!-- Stats row -->
+      <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm mb-4" id="cdm-stats"></div>
+      <!-- Description -->
+      <p class="text-gray-600 text-sm leading-relaxed mb-4" id="cdm-desc"></p>
+      <!-- Niche + skill tags -->
+      <div class="flex flex-wrap gap-2 mb-4" id="cdm-tags"></div>
+      <!-- Application questions -->
+      <div id="cdm-questions-wrap" class="hidden mb-4">
+        <p class="text-sm font-semibold text-gray-700 mb-2">Application Questions</p>
+        <ol id="cdm-questions" class="space-y-1 list-decimal list-inside text-sm text-gray-600"></ol>
+      </div>
+      <!-- Actions -->
+      <div class="flex flex-wrap gap-3 pt-5 border-t border-gray-100">
+        <button id="cdm-apps-btn" class="flex-1 bg-brand-600 text-white py-2.5 rounded-xl font-semibold hover:bg-brand-700 transition text-sm">View Applications</button>
+        <button id="cdm-edit-btn" class="border border-gray-300 text-gray-700 px-5 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Edit Campaign</button>
+        <button onclick="closeModal('campaign-detail-modal')" class="border border-gray-300 text-gray-500 px-5 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-6 right-6 bg-pickle-600 text-white px-6 py-3 rounded-xl shadow-lg hidden transition-all transform translate-y-2 opacity-0 z-50">
     <span id="toast-text"></span>
@@ -3733,6 +3769,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div>
   </div>
 
-  <script src="app.js?v=178"></script>
+  <script src="app.js?v=179"></script>
 </body>
 </html>
