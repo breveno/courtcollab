@@ -189,10 +189,8 @@ window.fetch = function(...args) {
     _slowTimer = setTimeout(() => showLoading('Loading…'), 500);
   }
   return _origFetch.apply(this, args).catch(err => {
-    // Only show the "connection failed" toast for user-triggered calls, not background polling
-    if (!isSilent && err instanceof TypeError && (url.includes('railway.app') || url.startsWith('/api'))) {
-      showToast('Connection failed. Please check your internet and try again.', 'error');
-    }
+    // Re-throw so the calling function can show its own specific error message.
+    // (Do not show a generic toast here — each function handles network errors itself.)
     throw err;
   }).finally(() => {
     if (_slowTimer) { clearTimeout(_slowTimer); _slowTimer = null; hideLoading(); }
@@ -1144,16 +1142,32 @@ function closeModal(id) {
   if (id === 'campaign-modal') {
     // Always reset to step 1 when modal closes
     campaignBackStep();
-    const postBtn = document.getElementById('camp-post-btn');
-    if (postBtn) { postBtn.disabled = false; postBtn.textContent = 'Post Campaign'; }
-    const input = document.getElementById('camp-attachments');
-    const list  = document.getElementById('camp-attachment-list');
-    if (input) input.value = '';
-    if (list)  list.innerHTML = '';
+    // Reset buttons
+    const postBtn  = document.getElementById('camp-post-btn');
+    const draftBtn = document.getElementById('camp-draft-btn');
+    if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = 'Post Campaign'; }
+    if (draftBtn) { draftBtn.disabled = false; draftBtn.textContent = 'Save as Draft'; }
+    // Clear all text / number / date / select fields
+    ['camp-title', 'camp-desc', 'camp-budget', 'camp-creators-needed', 'camp-deadline'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    ['camp-content', 'camp-audience', 'camp-niche'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.selectedIndex = 0;
+    });
+    // Uncheck all skill checkboxes
+    document.querySelectorAll('#camp-skills input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+    // Clear file inputs and previews
     const coverInput = document.getElementById('camp-cover');
     if (coverInput) coverInput.value = '';
     const coverPreview = document.getElementById('camp-cover-preview');
     if (coverPreview) coverPreview.innerHTML = `<svg class="w-6 h-6 text-white opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`;
+    const attachInput = document.getElementById('camp-attachments');
+    const attachList  = document.getElementById('camp-attachment-list');
+    if (attachInput) attachInput.value = '';
+    if (attachList)  attachList.innerHTML = '';
+    // Clear questions and contract
     const qList = document.getElementById('camp-questions-list');
     if (qList) qList.innerHTML = '';
     const contractFile = document.getElementById('camp-contract-file');
@@ -3657,9 +3671,11 @@ async function postCampaign(status = 'open') {
     questions,
   };
 
-  const postBtn = document.getElementById('camp-post-btn');
-  const isDraft = status === 'draft';
-  if (postBtn && !isDraft) { postBtn.disabled = true; postBtn.textContent = 'Posting…'; }
+  const postBtn  = document.getElementById('camp-post-btn');
+  const draftBtn = document.getElementById('camp-draft-btn');
+  const isDraft  = status === 'draft';
+  if (isDraft && draftBtn) { draftBtn.disabled = true; draftBtn.textContent = 'Saving…'; }
+  if (!isDraft && postBtn) { postBtn.disabled  = true; postBtn.textContent  = 'Posting…'; }
 
   const coverFile = coverInput?.files[0];
   const saveCover = (campaignId, dataUrl) => {
@@ -3680,11 +3696,14 @@ async function postCampaign(status = 'open') {
     renderCampaigns();
     if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
-    // TypeError = network/connection error — global fetch interceptor already showed a toast
-    if (!(err instanceof TypeError)) {
+    if (err instanceof TypeError) {
+      // Network/cold-start error — show a single, friendlier message
+      showToast('Server is starting up — please try again in a moment.', 'error');
+    } else {
       showToast(err.message || 'Something went wrong. Please try again.', 'error');
     }
-    if (postBtn) { postBtn.disabled = false; postBtn.textContent = 'Post Campaign'; }
+    if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = 'Post Campaign'; }
+    if (draftBtn) { draftBtn.disabled = false; draftBtn.textContent = 'Save as Draft'; }
   }
 }
 
