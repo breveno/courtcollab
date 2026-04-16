@@ -39,9 +39,9 @@
     .tag { display: inline-block; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; margin: 2px; }
     @keyframes modalFadeIn  { from { opacity: 0; } to { opacity: 1; } }
     @keyframes modalSlideIn { from { opacity: 0; transform: scale(0.94) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; animation: modalFadeIn 0.18s ease; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: center; justify-content: center; animation: modalFadeIn 0.18s ease; overflow: hidden; }
     .modal-overlay.hidden { display: none; animation: none; }
-    .modal-content { background: white; border-radius: 1rem; padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; animation: modalSlideIn 0.22s cubic-bezier(0.34,1.2,0.64,1); }
+    .modal-content { background: white; border-radius: 1rem; padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; animation: modalSlideIn 0.22s cubic-bezier(0.34,1.2,0.64,1); }
     .stat-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
     .stat-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #C8F135, #acd120); }
     .card-hover { transition: all 0.2s; }
@@ -3732,6 +3732,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div>
   </div>
 
-  <script src="app.js?v=161"></script>
+  <script src="app.js?v=162"></script>
 </body>
 </html>
