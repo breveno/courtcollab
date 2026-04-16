@@ -1131,11 +1131,13 @@ function showToast(text, type = 'default') {
 // --- Modal ---
 function openModal(id) {
   document.getElementById(id).classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
+  document.documentElement.classList.add('no-scroll');
 }
 function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
-  document.body.style.overflow = '';
+  // Only remove no-scroll if no other modals are still open
+  const anyOpen = document.querySelector('.modal-overlay:not(.hidden)');
+  if (!anyOpen) document.documentElement.classList.remove('no-scroll');
   if (id === 'creator-detail-modal') {
     document.getElementById('admin-detail-meta')?.classList.add('hidden');
   }
@@ -1959,7 +1961,7 @@ function openDealSummaryModal(dealId) {
   const body  = document.getElementById('deal-summary-body');
   if (!modal || !body) return;
   modal.classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
+  document.documentElement.classList.add('no-scroll');
   body.innerHTML = '<div class="text-center py-8 text-gray-400">Loading deal summary…</div>';
   _loadDealSummary(dealId);
 }
@@ -1967,7 +1969,8 @@ function openDealSummaryModal(dealId) {
 function closeDealSummaryModal() {
   const modal = document.getElementById('deal-summary-modal');
   if (modal) modal.classList.add('hidden');
-  document.body.style.overflow = '';
+  const anyOpen = document.querySelector('.modal-overlay:not(.hidden)');
+  if (!anyOpen) document.documentElement.classList.remove('no-scroll');
   _dealSummaryCurrentDealId = null;
 }
 
@@ -5128,6 +5131,7 @@ function openDisputeModal(dealId) {
   const ta = document.getElementById('dispute-reason');
   if (ta) ta.value = '';
   document.getElementById('dispute-modal').classList.remove('hidden');
+  document.documentElement.classList.add('no-scroll');
 }
 
 async function submitDispute() {

@@ -241,8 +241,9 @@
   /* Mobile hamburger menu */
   #mobile-menu-dropdown { display:none; }
   #mobile-menu-dropdown.open { display:block; }
-  /* Prevent background scroll when overlay is open */
-  body.no-scroll { overflow: hidden; touch-action: none; }
+  /* Prevent background scroll when any modal is open */
+  html.no-scroll,
+  html.no-scroll body { overflow: hidden !important; touch-action: none; }
   /* Onboarding directional slide animations */
   @keyframes onboardSlideFromRight { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }
   @keyframes onboardSlideFromLeft  { from { opacity:0; transform:translateX(-40px); } to { opacity:1; transform:translateX(0); } }
@@ -3732,6 +3733,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div>
   </div>
 
-  <script src="app.js?v=162"></script>
+  <script src="app.js?v=163"></script>
 </body>
 </html>
