@@ -1129,9 +1129,13 @@ function showToast(text, type = 'default') {
 }
 
 // --- Modal ---
-function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function openModal(id) {
+  document.getElementById(id).classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
 function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
+  document.body.style.overflow = '';
   if (id === 'creator-detail-modal') {
     document.getElementById('admin-detail-meta')?.classList.add('hidden');
   }
@@ -3660,7 +3664,10 @@ async function postCampaign(status = 'open') {
     renderCampaigns();
     if (state.currentPage === 'brand-portal') renderBrandPortal();
   } catch (err) {
-    showToast(err.message || 'Something went wrong', 'error');
+    // TypeError = network/connection error — global fetch interceptor already showed a toast
+    if (!(err instanceof TypeError)) {
+      showToast(err.message || 'Something went wrong. Please try again.', 'error');
+    }
     if (postBtn) { postBtn.disabled = false; postBtn.textContent = 'Post Campaign'; }
   }
 }
