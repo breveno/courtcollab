@@ -2187,6 +2187,158 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
     return deal
 
 
+@app.post("/api/deals/{deal_id}/mark-complete", status_code=200)
+async def mark_deal_complete(deal_id: int, user: dict = Depends(current_user)):
+    """
+    Either the brand or the creator marks the deal as complete.
+    When BOTH parties have marked it complete the deal moves to 'payout_complete'
+    and confirmation emails are sent to each party.
+    """
+    uid  = user["id"]
+    with get_conn() as conn:
+        deal = _row(conn, """
+            SELECT d.*,
+                   uc.email AS creator_email, uc.name AS creator_name,
+                   ub.email AS brand_email,   ub.name AS brand_name,
+                   c.title  AS campaign_title
+            FROM deals d
+            JOIN users uc ON uc.id = d.creator_id
+            JOIN users ub ON ub.id = d.brand_id
+            LEFT JOIN campaigns c ON c.id = d.campaign_id
+            WHERE d.id = ?
+        """, (deal_id,))
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if uid not in (deal["brand_id"], deal["creator_id"]):
+        raise HTTPException(403, "Not your deal")
+    if deal["status"] not in ("paid", "deal_complete"):
+        raise HTTPException(409, "Deal must be in 'paid' status before marking complete")
+
+    is_brand = uid == deal["brand_id"]
+
+    with get_conn() as conn:
+        if is_brand:
+            conn.execute(
+                "UPDATE deals SET brand_marked_complete = 1 WHERE id = ?", (deal_id,)
+            )
+        else:
+            conn.execute(
+                "UPDATE deals SET creator_marked_complete = 1 WHERE id = ?", (deal_id,)
+            )
+        # also flip to deal_complete so the other party knows one side has confirmed
+        conn.execute(
+            "UPDATE deals SET status = 'deal_complete', updated_at = datetime('now') WHERE id = ? AND status = 'paid'",
+            (deal_id,)
+        )
+        conn.commit()
+        deal = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+
+    brand_done   = bool(deal.get("brand_marked_complete"))
+    creator_done = bool(deal.get("creator_marked_complete"))
+    both_complete = brand_done and creator_done
+
+    if not both_complete:
+        # Notify the other party that this side has confirmed
+        if is_brand:
+            await _notify(
+                user_id    = deal["creator_id"],
+                notif_type = "deal_complete_pending",
+                title      = "Brand marked delivery complete",
+                body       = (f"{deal['brand_name']} has marked the deal "
+                              f"\"{deal['campaign_title']}\" as complete. "
+                              f"Please confirm on your end to release your payout."),
+                data       = {"deal_id": deal_id},
+                email      = deal["creator_email"],
+            )
+        else:
+            await _notify(
+                user_id    = deal["brand_id"],
+                notif_type = "deal_complete_pending",
+                title      = "Creator marked delivery complete",
+                body       = (f"{deal['creator_name']} has marked the deal "
+                              f"\"{deal['campaign_title']}\" as complete. "
+                              f"Please confirm on your end to finalise the deal."),
+                data       = {"deal_id": deal_id},
+                email      = deal["brand_email"],
+            )
+        return {
+            "ok": True,
+            "both_complete": False,
+            "brand_marked": brand_done,
+            "creator_marked": creator_done,
+        }
+
+    # ── Both parties confirmed ────────────────────────────────────────────────
+    amount          = float(deal.get("amount") or 0)
+    creator_payout  = round(amount * (1 - PLATFORM_FEE), 2)
+    campaign_title  = deal.get("campaign_title") or "your deal"
+
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE deals SET status = 'payout_complete', updated_at = datetime('now') WHERE id = ?",
+            (deal_id,)
+        )
+        conn.commit()
+
+    # Email to creator
+    asyncio.create_task(asyncio.to_thread(
+        _send_zoho_email,
+        [deal["creator_email"]],
+        "Your Payout Has Been Released — CourtCollab",
+        f"""Hi {deal['creator_name']},
+
+Great news! The deal "{campaign_title}" has been marked complete by both parties.
+
+Your payment of ${creator_payout:,.2f} has been released to your bank account and will arrive within 2–7 business days.
+
+Thank you for collaborating on CourtCollab!
+
+– The CourtCollab Team""",
+    ))
+
+    # Email to brand
+    asyncio.create_task(asyncio.to_thread(
+        _send_zoho_email,
+        [deal["brand_email"]],
+        "Deal Complete — Creator Has Been Paid — CourtCollab",
+        f"""Hi {deal['brand_name']},
+
+The deal "{campaign_title}" has been marked complete by both parties.
+
+The creator has been paid their portion (${creator_payout:,.2f}) and the deal is now closed.
+
+Thank you for using CourtCollab!
+
+– The CourtCollab Team""",
+    ))
+
+    # In-app notifications to both
+    asyncio.create_task(_notify(
+        user_id    = deal["creator_id"],
+        notif_type = "payout_complete",
+        title      = "Payout released!",
+        body       = (f"Your payout of ${creator_payout:,.2f} for \"{campaign_title}\" "
+                      f"has been released and will arrive within 2–7 business days."),
+        data       = {"deal_id": deal_id},
+        email      = None,
+    ))
+    asyncio.create_task(_notify(
+        user_id    = deal["brand_id"],
+        notif_type = "payout_complete",
+        title      = "Deal complete — creator paid",
+        body       = (f"The deal \"{campaign_title}\" is now closed. "
+                      f"The creator has been paid their payout of ${creator_payout:,.2f}."),
+        data       = {"deal_id": deal_id},
+        email      = None,
+    ))
+
+    return {
+        "ok": True,
+        "both_complete": True,
+        "payout": creator_payout,
+    }
+
+
 @app.post("/api/deals/{deal_id}/rate", status_code=201)
 def rate_deal(deal_id: int, body: RatingIn, user: dict = Depends(current_user)):
     """

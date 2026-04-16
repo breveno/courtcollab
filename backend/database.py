@@ -744,6 +744,8 @@ def _init_sqlite():
     _add_column_if_missing("deals",            "signed_contract_url",     "TEXT")
     _add_column_if_missing("deals",          "brand_terms_confirmed",   "INTEGER DEFAULT 0")
     _add_column_if_missing("deals",          "creator_terms_confirmed", "INTEGER DEFAULT 0")
+    _add_column_if_missing("deals",          "brand_marked_complete",   "INTEGER DEFAULT 0")
+    _add_column_if_missing("deals",          "creator_marked_complete", "INTEGER DEFAULT 0")
     _add_column_if_missing("brand_profiles", "social_handles",          "TEXT DEFAULT '{}'")
 
 

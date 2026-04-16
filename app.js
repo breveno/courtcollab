@@ -1552,6 +1552,17 @@ async function renderBrandPortal() {
     );
     _renderTermsConfirmationBanner('brand-portal-contracts', awaitingConfirmationBrand, 'brand');
 
+    // Mark-complete section — paid deals awaiting brand confirmation of delivery
+    const awaitingBrandComplete = (deals || []).filter(d =>
+      (d.status === 'paid' || d.status === 'deal_complete') &&
+      !d.brand_marked_complete
+    );
+    const alreadyBrandMarked = (deals || []).filter(d =>
+      (d.status === 'paid' || d.status === 'deal_complete') &&
+      d.brand_marked_complete && !d.creator_marked_complete
+    );
+    _renderMarkCompleteSection('brand-portal-contracts', [...awaitingBrandComplete, ...alreadyBrandMarked], 'brand');
+
     const pendingPoll = contractDeals
       .filter(d => d.contract_status !== 'contract_complete')
       .map(d => d.id);
@@ -1631,22 +1642,30 @@ async function renderCreatorDashboard() {
       const payment    = payments.find(p => p.deal_id === d.id);
       const payout     = payment ? payment.creator_payout : Math.round((d.amount || 0) * 0.85);
       const payStatus  = payment ? payment.status : null;
-      const statusColor = { pending:'bg-yellow-100 text-yellow-700', active:'bg-blue-100 text-blue-700', completed:'bg-green-100 text-green-700', declined:'bg-red-100 text-red-700' }[d.status] || 'bg-gray-100 text-gray-600';
+      const statusColor = {
+        pending:        'bg-yellow-100 text-yellow-700',
+        active:         'bg-blue-100 text-blue-700',
+        paid:           'bg-lime-100 text-lime-700',
+        deal_complete:  'bg-teal-100 text-teal-700',
+        payout_complete:'bg-green-100 text-green-700',
+        completed:      'bg-green-100 text-green-700',
+        declined:       'bg-red-100 text-red-700',
+      }[d.status] || 'bg-gray-100 text-gray-600';
       return `
         <div class="px-6 py-4 hover:bg-gray-50 transition cursor-pointer" onclick="openConversation(${d.id})">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <p class="font-semibold text-gray-900 truncate">${escHtml(d.campaign_title || d.title || 'Deal #' + d.id)}</p>
-                <span class="tag ${statusColor} text-xs">${d.status.charAt(0).toUpperCase() + d.status.slice(1)}</span>
+                <span class="tag ${statusColor} text-xs">${{pending:'Proposed',active:'In Progress',paid:'Paid',deal_complete:'Confirming',payout_complete:'Complete',completed:'Complete',declined:'Declined'}[d.status] || (d.status.charAt(0).toUpperCase() + d.status.slice(1))}</span>
               </div>
               <p class="text-sm text-gray-500 mt-0.5">${escHtml(d.brand_name || 'Brand')} · ${fmtDateUTC(d.created_at)}</p>
-              <div class="mt-2">${dealStepperMiniHtml(d)}</div>
+              <div class="mt-2">${dealStepperMiniHtml(d.status)}</div>
             </div>
             <div class="text-right shrink-0">
               <p class="font-bold text-gray-900">$${payout.toLocaleString()}</p>
-              <p class="text-xs mt-0.5 ${payStatus === 'released' ? 'text-green-600' : payStatus === 'held' ? 'text-yellow-600' : 'text-gray-400'}">
-                ${payStatus === 'released' ? '✓ Paid' : payStatus === 'held' ? 'In escrow' : 'Awaiting payment'}
+              <p class="text-xs mt-0.5 ${d.status === 'payout_complete' || payStatus === 'released' ? 'text-green-600' : (d.status === 'paid' || d.status === 'deal_complete' || payStatus === 'held') ? 'text-yellow-600' : 'text-gray-400'}">
+                ${d.status === 'payout_complete' ? '✓ Payout released' : payStatus === 'released' ? '✓ Paid' : (d.status === 'paid' || d.status === 'deal_complete') ? 'In escrow' : payStatus === 'held' ? 'In escrow' : 'Awaiting payment'}
               </p>
             </div>
           </div>
@@ -1667,6 +1686,17 @@ async function renderCreatorDashboard() {
       !d.creator_terms_confirmed
     );
     _renderTermsConfirmationBanner('creator-dash-contracts', awaitingConfirmation, 'creator');
+
+    // Mark-complete section — deals where payment is done but creator hasn't confirmed delivery
+    const awaitingCreatorComplete = deals.filter(d =>
+      (d.status === 'paid' || d.status === 'deal_complete') &&
+      !d.creator_marked_complete
+    );
+    const alreadyCreatorMarked = deals.filter(d =>
+      (d.status === 'paid' || d.status === 'deal_complete') &&
+      d.creator_marked_complete && !d.brand_marked_complete
+    );
+    _renderMarkCompleteSection('creator-dash-contracts', [...awaitingCreatorComplete, ...alreadyCreatorMarked], 'creator');
 
     // Start 30-second poller for any deals still awaiting signatures
     const pendingPoll = contractDeals
@@ -1812,6 +1842,101 @@ function _renderTermsConfirmationBanner(containerId, deals, role) {
       <div class="flex items-center gap-2 mb-4">
         <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
         <h2 class="font-bold text-gray-900">Action Required — Review Deal Terms</h2>
+      </div>
+      <div class="space-y-3">${cards}</div>
+    </div>
+  ` + existing;
+}
+
+// ---------------------------------------------------------------------------
+// Mark Deal Complete
+// ---------------------------------------------------------------------------
+
+async function markDealComplete(dealId, role) {
+  const btn = document.getElementById(`mark-complete-btn-${dealId}`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const res = await apiPost(`/api/deals/${dealId}/mark-complete`, {});
+    if (res.both_complete) {
+      showToast('🎉 Deal complete! Payout released to the creator.', 'success');
+    } else {
+      const other = role === 'brand' ? 'creator' : 'brand';
+      showToast(`Marked complete. Waiting for the ${other} to confirm.`, 'info');
+    }
+    // Refresh the relevant dashboard
+    if (role === 'brand') {
+      renderBrandPortal();
+    } else {
+      renderCreatorDashboard();
+    }
+  } catch (err) {
+    showToast(err.message || 'Could not mark deal complete.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Mark Delivery Complete'; }
+  }
+}
+
+function _renderMarkCompleteSection(containerId, deals, role) {
+  if (!deals || deals.length === 0) return;
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  const cards = deals.map(d => {
+    const amount     = d.amount ? `$${Number(d.amount).toLocaleString()}` : '';
+    const payout     = d.amount ? `$${Math.round(Number(d.amount) * 0.85).toLocaleString()}` : '';
+    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_name || 'Brand');
+
+    const myMarked    = role === 'brand' ? d.brand_marked_complete   : d.creator_marked_complete;
+    const otherMarked = role === 'brand' ? d.creator_marked_complete : d.brand_marked_complete;
+
+    if (myMarked) {
+      // This side already clicked — just show waiting state, no button
+      return `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-teal-50 border border-teal-200 rounded-xl">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span class="font-semibold text-sm text-gray-900">${escHtml(d.campaign_title || `Deal #${d.id}`)}</span>
+              ${amount ? `<span class="text-xs text-gray-500">${role === 'creator' ? payout : amount}</span>` : ''}
+            </div>
+            <p class="text-xs text-gray-500">With ${escHtml(otherParty)}</p>
+            <p class="text-xs text-teal-700 font-medium mt-1">✓ You've marked this complete — waiting for ${escHtml(otherParty)} to confirm</p>
+          </div>
+        </div>`;
+    }
+
+    const otherMsg = otherMarked
+      ? `<span class="text-xs text-green-600 font-medium">✓ ${escHtml(otherParty)} already confirmed — waiting for you</span>`
+      : `<span class="text-xs text-gray-400">Both parties must confirm to release the payout</span>`;
+
+    const amountLabel = role === 'creator'
+      ? (payout ? `Creator payout: <strong>${payout}</strong>` : '')
+      : (amount ? `Deal amount: <strong>${amount}</strong>` : '');
+
+    return `
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-lime-50 border border-lime-200 rounded-xl">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <svg class="w-4 h-4 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="font-semibold text-sm text-gray-900">${escHtml(d.campaign_title || `Deal #${d.id}`)}</span>
+            ${amountLabel ? `<span class="text-xs text-gray-500">${amountLabel}</span>` : ''}
+          </div>
+          <p class="text-xs text-gray-500">With ${escHtml(otherParty)} &nbsp;·&nbsp; Confirm delivery is complete to release payout</p>
+          <div class="mt-1">${otherMsg}</div>
+        </div>
+        <button id="mark-complete-btn-${d.id}" onclick="markDealComplete(${d.id}, '${role}')"
+          class="shrink-0 bg-lime-500 hover:bg-lime-600 text-white font-semibold text-sm px-4 py-2 rounded-xl transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Mark Delivery Complete
+        </button>
+      </div>`;
+  }).join('');
+
+  const existing = el.innerHTML;
+  el.innerHTML = `
+    <div class="bg-white rounded-2xl border border-lime-100 p-5 mb-4">
+      <div class="flex items-center gap-2 mb-4">
+        <svg class="w-5 h-5 text-lime-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <h2 class="font-bold text-gray-900">Action Required — Confirm Delivery Complete</h2>
       </div>
       <div class="space-y-3">${cards}</div>
     </div>
@@ -2095,9 +2220,10 @@ function creatorSkeletonHtml() {
 const _DEAL_STEPS = ['Proposed', 'Accepted', 'In Progress', 'Complete'];
 
 function _dealCurrentStep(status) {
-  if (status === 'pending')   return 0;
-  if (status === 'active')    return 2;
-  if (status === 'completed') return 3;
+  if (status === 'pending')                                  return 0;
+  if (status === 'active')                                   return 2;
+  if (status === 'paid' || status === 'deal_complete')       return 2;
+  if (status === 'completed' || status === 'payout_complete') return 3;
   return -1; // declined or unknown
 }
 
@@ -2181,7 +2307,10 @@ function dealStepperMiniHtml(status) {
   });
 
   const label = _DEAL_STEPS[step] || '';
-  const labelColor = status === 'completed' ? 'text-green-600' : status === 'active' ? 'text-yellow-700' : 'text-blue-600';
+  const labelColor = (status === 'completed' || status === 'payout_complete') ? 'text-green-600'
+                   : (status === 'paid' || status === 'deal_complete')        ? 'text-lime-700'
+                   : status === 'active'                                      ? 'text-yellow-700'
+                   : 'text-blue-600';
   return `<div class="flex items-center gap-0.5">${inner}</div><span class="text-xs font-medium ${labelColor} ml-1.5">${label}</span>`;
 }
 
