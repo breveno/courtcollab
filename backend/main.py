@@ -597,7 +597,11 @@ class AuthOut(BaseModel):
 
 @app.get("/ping")
 def ping():
-    """Lightweight liveness check — no auth, used by frontend to wake Railway."""
+    """Readiness probe — verifies both the app AND the database are ready.
+    Returns 200 only when a DB query succeeds, so the frontend knows it's
+    safe to send real requests. Returns 500 (auto-retried) while DB is warming."""
+    with get_conn() as conn:
+        conn.execute("SELECT 1")
     return {"ok": True}
 
 

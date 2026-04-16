@@ -232,8 +232,16 @@ function _withTimeout(promise, ms = 15000) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
 }
 
-// 5xx statuses that indicate the server/proxy isn't ready yet (retryable)
+// Proxy-level failures that mean "Railway isn't reachable yet" (retryable).
+// 500 is intentionally excluded — after /ping passes (which does a DB check)
+// a 500 on the actual endpoint is a real server error, not a cold-start issue.
 function _isGatewayStatus(status) {
+  return status === 502 || status === 503 || status === 504;
+}
+
+// Same check but includes 500, used only in _wakeServer where /ping returns
+// 500 while the DB pool is still initialising.
+function _isStartupStatus(status) {
   return status === 500 || status === 502 || status === 503 || status === 504;
 }
 
@@ -3719,8 +3727,8 @@ async function _wakeServer() {
         _origFetch(API + '/ping'),
         new Promise((_, r) => setTimeout(() => r(new Error('ping timeout')), 8000)),
       ]);
-      // 502/503/504 = Netlify couldn't reach Railway yet; keep waiting
-      if (_isGatewayStatus(res.status)) throw new Error('gateway');
+      // 5xx on /ping = app or DB still initialising; keep waiting
+      if (_isStartupStatus(res.status)) throw new Error('gateway');
       return true; // server responded with a real status
     } catch (_) {
       // connection error, gateway error, or timeout — wait 1.5s then retry
@@ -3776,13 +3784,15 @@ async function postCampaign(status = 'open') {
       });
     }
 
-    // Try the POST up to 3 times on network / timeout errors
+    // Try the POST up to 5 times on network/gateway errors (5s between each).
+    // _wakeServer already confirmed the server+DB are up, so failures here
+    // are short-lived transient issues — a few retries are enough.
     let result, postErr;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 5; attempt++) {
       if (attempt > 0) {
-        if (isDraft && draftBtn) draftBtn.textContent = `Retrying… (${attempt}/2)`;
-        if (!isDraft && postBtn) postBtn.textContent = 'Retrying…';
-        await new Promise(r => setTimeout(r, 3000)); // wait 3s between retries
+        if (isDraft && draftBtn) draftBtn.textContent = `Connecting… (${attempt}/4)`;
+        if (!isDraft && postBtn) postBtn.textContent  = 'Retrying…';
+        await new Promise(r => setTimeout(r, 5000)); // 5s between retries
       }
       try {
         result = await apiPost('/api/campaigns', body);
