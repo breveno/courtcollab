@@ -1104,6 +1104,7 @@ class CampaignUpdateIn(BaseModel):
     max_rate:         Optional[int]       = None
     questions:        Optional[List[str]] = None
     creators_needed:  Optional[int]       = None
+    status:           Optional[str]       = None   # allows publishing a draft → 'open'
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
@@ -1240,8 +1241,10 @@ def get_campaign(campaign_id: int, user: dict = Depends(current_user)):
 
 
 @app.patch("/api/campaigns/{campaign_id}")
-def update_campaign(campaign_id: int, body: CampaignUpdateIn, user: dict = Depends(current_user)):
-    """Update any campaign content field. Only the campaign's brand owner can do this."""
+async def update_campaign(campaign_id: int, body: CampaignUpdateIn,
+                          background_tasks: BackgroundTasks,
+                          user: dict = Depends(current_user)):
+    """Update any campaign content field. Also used to publish a draft (status='open')."""
     require_role("brand", user)
     with get_conn() as conn:
         row = _row(conn, "SELECT * FROM campaigns WHERE id = ? AND brand_id = ?",
@@ -1249,16 +1252,23 @@ def update_campaign(campaign_id: int, body: CampaignUpdateIn, user: dict = Depen
         if not row:
             raise HTTPException(404, "Campaign not found or not yours")
 
+        was_draft = row.get("status") == "draft"
+
         updates = {}
-        if body.title         is not None: updates["title"]         = body.title
-        if body.description   is not None: updates["description"]   = body.description
-        if body.budget        is not None: updates["budget"]        = body.budget
-        if body.niche         is not None: updates["niche"]         = body.niche
-        if body.skills        is not None: updates["skills"]        = json.dumps(body.skills)
-        if body.target_age    is not None: updates["target_age"]    = body.target_age
-        if body.min_followers is not None: updates["min_followers"] = body.min_followers
-        if body.max_rate      is not None: updates["max_rate"]      = body.max_rate
-        if body.questions     is not None: updates["questions"]     = json.dumps(body.questions)
+        if body.title           is not None: updates["title"]           = body.title
+        if body.description     is not None: updates["description"]     = body.description
+        if body.budget          is not None: updates["budget"]          = body.budget
+        if body.niche           is not None: updates["niche"]           = body.niche
+        if body.skills          is not None: updates["skills"]          = json.dumps(body.skills)
+        if body.target_age      is not None: updates["target_age"]      = body.target_age
+        if body.min_followers   is not None: updates["min_followers"]   = body.min_followers
+        if body.max_rate        is not None: updates["max_rate"]        = body.max_rate
+        if body.questions       is not None: updates["questions"]       = json.dumps(body.questions)
+        if body.creators_needed is not None: updates["creators_needed"] = body.creators_needed
+        if body.status          is not None:
+            if body.status not in ('open', 'paused', 'closed', 'draft'):
+                raise HTTPException(400, "Invalid status")
+            updates["status"] = body.status
 
         if not updates:
             raise HTTPException(400, "No fields to update")
@@ -1272,7 +1282,12 @@ def update_campaign(campaign_id: int, body: CampaignUpdateIn, user: dict = Depen
         updated = _row(conn, "SELECT * FROM campaigns WHERE id = ?", (campaign_id,))
         updated["skills"]    = json.loads(updated.get("skills")    or "[]")
         updated["questions"] = json.loads(updated.get("questions") or "[]")
-        return updated
+
+    # Notify matching creators when a draft is published for the first time
+    if was_draft and body.status == "open":
+        background_tasks.add_task(_notify_campaign_matches, updated)
+
+    return updated
 
 
 @app.patch("/api/campaigns/{campaign_id}/status")

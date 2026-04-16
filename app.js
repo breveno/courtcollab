@@ -1210,13 +1210,17 @@ function closeModal(id) {
   }
   if (id === 'campaign-modal') {
     if (_campRetryTimer) { clearTimeout(_campRetryTimer); _campRetryTimer = null; }
+    _editingCampaignId = null; // clear edit state whenever modal is dismissed
     // Always reset to step 1 when modal closes
     campaignBackStep();
-    // Reset buttons
+    // Reset buttons to their default labels
     const postBtn  = document.getElementById('camp-post-btn');
     const draftBtn = document.getElementById('camp-draft-btn');
     if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = 'Post Campaign'; }
-    if (draftBtn) { draftBtn.disabled = false; draftBtn.textContent = 'Save as Draft'; }
+    if (draftBtn) { draftBtn.disabled = false; draftBtn.textContent = 'Save as Draft'; draftBtn.classList.remove('bg-lime-400','text-gray-900','border-lime-400'); draftBtn.classList.add('border-gray-300','text-gray-700'); }
+    // Reset modal title
+    const modalTitle = document.querySelector('#campaign-modal h2, #campaign-modal .modal-title');
+    if (modalTitle) modalTitle.textContent = 'Create Campaign';
     // Clear all text / number / date / select fields
     ['camp-title', 'camp-desc', 'camp-budget', 'camp-creators-needed', 'camp-deadline'].forEach(id => {
       const el = document.getElementById(id);
@@ -2249,7 +2253,7 @@ function renderBrandPortalGrid(campaigns) {
     const cover = c.cover_image || localStorage.getItem('camp_cover_' + c.id) || null;
     const initials = (c.title || 'C').slice(0, 2).toUpperCase();
     return `
-      <div class="group rounded-2xl overflow-hidden border border-gray-100 cursor-pointer card-hover bg-white" onclick="navigate('campaigns')">
+      <div class="group rounded-2xl overflow-hidden border border-gray-100 cursor-pointer card-hover bg-white" onclick="${isDraft ? `openDraftForEditing(${c.id})` : `navigate('campaigns')`}">
         <div class="relative" style="aspect-ratio:4/3">
           ${cover
             ? `<img src="${cover}" class="w-full h-full object-cover" alt="${c.title}">`
@@ -2288,6 +2292,50 @@ function filterBrandPortal(filter, btn) {
   if (filter === 'closed') list = list.filter(c => c.status === 'closed');
   if (filter === 'draft')  list = list.filter(c => c.status === 'draft');
   renderBrandPortalGrid(list);
+}
+
+// --- Draft editing ---
+function openDraftForEditing(campaignId) {
+  const c = _brandPortalAllCampaigns.find(x => x.id === campaignId);
+  if (!c) return;
+
+  // Pre-fill every form field with saved draft data
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+  set('camp-title',           c.title       || '');
+  set('camp-desc',            c.description || '');
+  set('camp-budget',          c.budget      || '');
+  set('camp-creators-needed', c.creators_needed || 1);
+
+  // Selects
+  const nicheEl = document.getElementById('camp-niche');
+  if (nicheEl && c.niche) nicheEl.value = c.niche;
+
+  // Skill checkboxes
+  document.querySelectorAll('#camp-skills input[type="checkbox"]').forEach(cb => {
+    cb.checked = (c.skills || []).includes(cb.value);
+  });
+
+  // Questions — rebuild the dynamic list
+  const qList = document.getElementById('camp-questions-list');
+  if (qList) {
+    qList.innerHTML = '';
+    (c.questions || []).forEach(q => {
+      addCampQuestion();
+      const inputs = qList.querySelectorAll('.camp-question-input');
+      if (inputs.length) inputs[inputs.length - 1].value = q;
+    });
+  }
+
+  // Mark which campaign we're editing
+  _editingCampaignId = campaignId;
+
+  // Update button labels to reflect edit mode
+  const postBtn  = document.getElementById('camp-post-btn');
+  const draftBtn = document.getElementById('camp-draft-btn');
+  if (postBtn)  postBtn.textContent  = 'Publish Campaign';
+  if (draftBtn) draftBtn.textContent = 'Update Draft';
+
+  openModal('campaign-modal');
 }
 
 // --- Cover photo preview ---
@@ -3723,7 +3771,8 @@ function campaignBackToContract() {
   _campSetDot(1, 'done'); _campSetDot(2, 'active'); _campSetDot(3, 'inactive');
 }
 
-let _campRetryTimer = null;
+let _campRetryTimer    = null;
+let _editingCampaignId = null;  // set when editing an existing draft
 
 // Ping the server repeatedly until it responds, covering Railway cold starts
 // where the container refuses connections while it's booting.
@@ -3796,32 +3845,33 @@ async function postCampaign(status = 'open') {
       });
     }
 
-    // Try the POST up to 5 times on network/gateway errors (5s between each).
-    // _wakeServer already confirmed the server+DB are up, so failures here
-    // are short-lived transient issues — a few retries are enough.
+    // POST (new campaign) or PATCH (editing existing draft)
+    const editId = _editingCampaignId;
     let result, postErr;
     for (let attempt = 0; attempt < 5; attempt++) {
       if (attempt > 0) {
         if (isDraft && draftBtn) draftBtn.textContent = `Connecting… (${attempt}/4)`;
         if (!isDraft && postBtn) postBtn.textContent  = 'Retrying…';
-        await new Promise(r => setTimeout(r, 5000)); // 5s between retries
+        await new Promise(r => setTimeout(r, 5000));
       }
       try {
-        result = await apiPost('/api/campaigns', body);
+        result = editId
+          ? await apiPatch(`/api/campaigns/${editId}`, body)
+          : await apiPost('/api/campaigns', body);
         postErr = null;
-        break; // success
+        break;
       } catch (err) {
         postErr = err;
-        // Only retry on network/gateway errors; don't retry validation errors (4xx)
         const isNetErr = err.name === 'TypeError' || err.name === 'TimeoutError' || err.name === 'GatewayError';
         if (!isNetErr) break;
       }
     }
     if (postErr) throw postErr;
+
+    _editingCampaignId = null; // clear editing state on success
     if (coverFile && body.cover_image) saveCover(result?.id || result?.campaign?.id, body.cover_image);
 
     if (isDraft && draftBtn) {
-      // Show "✓ Saved!" in lime green briefly before closing
       draftBtn.disabled    = true;
       draftBtn.textContent = '✓ Saved!';
       draftBtn.classList.add('bg-lime-400', 'text-gray-900', 'border-lime-400');
@@ -3829,10 +3879,10 @@ async function postCampaign(status = 'open') {
     }
 
     renderCampaigns();
-    await new Promise(r => setTimeout(r, 900));   // let "Saved!" show for a moment
+    await new Promise(r => setTimeout(r, 900));
 
     closeModal('campaign-modal');
-    if (!isDraft) showToast('Campaign brief posted!', 'success');
+    if (!isDraft) showToast(editId ? 'Campaign published!' : 'Campaign brief posted!', 'success');
 
     if (state.currentPage === 'brand-portal') {
       await renderBrandPortal();
@@ -3844,10 +3894,10 @@ async function postCampaign(status = 'open') {
     }
   } catch (err) {
     showToast(err.message || 'Something went wrong. Please try again.', 'error');
-    if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = 'Post Campaign'; }
+    if (postBtn)  { postBtn.disabled  = false; postBtn.textContent  = _editingCampaignId ? 'Publish Campaign' : 'Post Campaign'; }
     if (draftBtn) {
       draftBtn.disabled = false;
-      draftBtn.textContent = 'Save as Draft';
+      draftBtn.textContent = _editingCampaignId ? 'Update Draft' : 'Save as Draft';
       draftBtn.classList.remove('bg-lime-400', 'text-gray-900', 'border-lime-400');
       draftBtn.classList.add('border-gray-300', 'text-gray-700');
     }
