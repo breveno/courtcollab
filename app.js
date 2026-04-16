@@ -232,8 +232,20 @@ function _withTimeout(promise, ms = 15000) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
 }
 
+// 5xx statuses that indicate the server/proxy isn't ready yet (retryable)
 function _isGatewayStatus(status) {
-  return status === 502 || status === 503 || status === 504;
+  return status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+// Safe JSON parse: tries res.json(), falls back to res.text() so we never
+// surface a raw "Unexpected token" SyntaxError to the user.
+async function _safeJson(res) {
+  try {
+    return await _withTimeout(res.json());
+  } catch (_) {
+    const text = await res.text().catch(() => '');
+    return { detail: text || `Request failed (${res.status})` };
+  }
 }
 
 async function apiPost(path, body, opts = {}) {
@@ -248,14 +260,13 @@ async function apiPost(path, body, opts = {}) {
       },
       body: JSON.stringify(body),
     }));
-    // 502/503/504 = Netlify proxy couldn't reach Railway (cold start).
-    // Throw a named GatewayError so the retry loop knows to try again.
+    // 5xx = server/proxy not ready (cold start or transient error) → retryable
     if (_isGatewayStatus(res.status)) {
       const e = new Error('Server is warming up, please wait…');
       e.name = 'GatewayError';
       throw e;
     }
-    const data = await _withTimeout(res.json());
+    const data = await _safeJson(res);
     if (!res.ok) throw new Error(_extractDetail(data));
     return data;
   } finally {
@@ -289,13 +300,11 @@ async function apiGet(path, opts = {}) {
       headers: token ? { 'Authorization': 'Bearer ' + token } : {},
     }));
     if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      let data = {};
-      try { data = JSON.parse(text); } catch (_) {}
+      const data = await _safeJson(res);
       const msg = _extractDetail(data);
       throw new Error(msg === 'Request failed' ? `Request failed (${res.status})` : msg);
     }
-    return _withTimeout(res.json());
+    return _safeJson(res);
   } finally {
     if (opts.loading) hideLoading();
   }
