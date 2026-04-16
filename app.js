@@ -3719,16 +3719,11 @@ async function postCampaign(status = 'open') {
   } catch (err) {
     _campSaveAttempt++;
     if (err instanceof TypeError && _campSaveAttempt < _CAMP_MAX_ATTEMPTS) {
-      // Cold start — auto-retry with escalating delay
-      const delaySec = _campSaveAttempt * 8;
-      const attempt  = _campSaveAttempt + 1;
-      if (isDraft && draftBtn) draftBtn.textContent = `Connecting… (${attempt}/${_CAMP_MAX_ATTEMPTS})`;
-      if (!isDraft && postBtn) postBtn.textContent  = `Connecting… (${attempt}/${_CAMP_MAX_ATTEMPTS})`;
-      showToast(`Server waking up — retrying in ${delaySec}s… (${attempt}/${_CAMP_MAX_ATTEMPTS})`, 'info');
-      setTimeout(() => postCampaign(status), delaySec * 1000);
+      // Silent retry — no toast, button stays disabled, user sees nothing
+      setTimeout(() => postCampaign(status), 8000);
       return;
     }
-    // All attempts exhausted or non-network error
+    // All retries exhausted or a real server error (4xx/5xx)
     _campSaveAttempt = 0;
     showToast(err instanceof TypeError
       ? 'Could not reach the server. Please check your connection and try again.'
