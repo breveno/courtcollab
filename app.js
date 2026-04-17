@@ -3301,6 +3301,13 @@ async function saveCreatorProfile(e) {
 function _showSavedBanner(msg, color) {
   const existing = document.getElementById('_saved-banner');
   if (existing) existing.remove();
+
+  // Swap the status-bar theme colour so the iOS notch/status-bar area
+  // turns the same colour as the banner instead of staying dark blue.
+  const themeTag  = document.getElementById('meta-theme-color');
+  const prevTheme = themeTag ? themeTag.content : null;
+  if (themeTag) themeTag.content = color;
+
   const banner = document.createElement('div');
   banner.id = '_saved-banner';
   // padding-top uses safe-area-inset-top so the text sits below the iOS status bar
@@ -3308,9 +3315,11 @@ function _showSavedBanner(msg, color) {
   banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:9999;background:${color};color:#fff;text-align:center;padding-top:max(14px,calc(env(safe-area-inset-top) + 8px));padding-bottom:14px;padding-left:20px;padding-right:20px;font-size:15px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:transform .3s ease-in;transform:translateY(0)`;
   banner.textContent = msg;
   document.body.appendChild(banner);
-  // Single clean slide-up exit — no opacity step
+
+  // Single clean slide-up exit — restore theme colour as it disappears
   setTimeout(() => {
     banner.style.transform = 'translateY(-110%)';
+    if (themeTag && prevTheme !== null) themeTag.content = prevTheme;
     setTimeout(() => banner.remove(), 320);
   }, 2500);
 }
