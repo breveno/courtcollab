@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0B1F4A" id="meta-theme-color">
   <title>CourtCollab — Creator & Brand Marketplace</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -290,6 +290,8 @@
   @keyframes splashFade { to { opacity: 0; pointer-events: none; } }
   @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)} }
   #app-splash svg.splash-logo { filter: drop-shadow(0 0 24px rgba(200,241,53,0.4)); }
+  /* Extend the sticky navbar below the iOS status bar when viewport-fit=cover is active */
+  #main-navbar { padding-top: env(safe-area-inset-top); }
   </style>
 </head>
 <body class="font-sans bg-gray-50 text-gray-900 min-h-screen">

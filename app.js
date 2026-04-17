@@ -3288,10 +3288,16 @@ function _showSavedBanner(msg, color) {
   if (existing) existing.remove();
   const banner = document.createElement('div');
   banner.id = '_saved-banner';
-  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:9999;background:${color};color:#fff;text-align:center;padding:14px 20px;font-size:15px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:opacity .4s`;
+  // padding-top uses safe-area-inset-top so the text sits below the iOS status bar
+  // while the background colour fills the full top edge (viewport-fit=cover)
+  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:9999;background:${color};color:#fff;text-align:center;padding-top:max(14px,calc(env(safe-area-inset-top) + 8px));padding-bottom:14px;padding-left:20px;padding-right:20px;font-size:15px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:transform .3s ease-in;transform:translateY(0)`;
   banner.textContent = msg;
   document.body.appendChild(banner);
-  setTimeout(() => { banner.style.opacity = '0'; setTimeout(() => banner.remove(), 400); }, 3000);
+  // Single clean slide-up exit — no opacity step
+  setTimeout(() => {
+    banner.style.transform = 'translateY(-110%)';
+    setTimeout(() => banner.remove(), 320);
+  }, 2500);
 }
 
 // --- Render Campaigns ---
