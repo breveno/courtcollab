@@ -1646,14 +1646,16 @@ async function renderBrandPortal() {
     );
     _renderTermsConfirmationBanner('brand-portal-contracts', awaitingConfirmationBrand, 'brand');
 
-    // Mark-complete section — paid deals awaiting brand confirmation of delivery
+    // Mark-complete section — deals with a held payment awaiting delivery confirmation
+    // Use the held-payment set (payment captured in escrow) rather than stale 'paid' status
+    const heldDealIdsBrand = new Set(
+      (payments || []).filter(p => p.status === 'held').map(p => p.deal_id)
+    );
     const awaitingBrandComplete = (deals || []).filter(d =>
-      (d.status === 'paid' || d.status === 'deal_complete') &&
-      !d.brand_marked_complete
+      heldDealIdsBrand.has(d.id) && !d.brand_marked_complete
     );
     const alreadyBrandMarked = (deals || []).filter(d =>
-      (d.status === 'paid' || d.status === 'deal_complete') &&
-      d.brand_marked_complete && !d.creator_marked_complete
+      heldDealIdsBrand.has(d.id) && d.brand_marked_complete && !d.creator_marked_complete
     );
     _renderMarkCompleteSection('brand-portal-contracts', [...awaitingBrandComplete, ...alreadyBrandMarked], 'brand');
 
@@ -1781,14 +1783,15 @@ async function renderCreatorDashboard() {
     );
     _renderTermsConfirmationBanner('creator-dash-contracts', awaitingConfirmation, 'creator');
 
-    // Mark-complete section — deals where payment is done but creator hasn't confirmed delivery
+    // Mark-complete section — deals with a held payment awaiting delivery confirmation
+    const heldDealIdsCreator = new Set(
+      (payments || []).filter(p => p.status === 'held').map(p => p.deal_id)
+    );
     const awaitingCreatorComplete = deals.filter(d =>
-      (d.status === 'paid' || d.status === 'deal_complete') &&
-      !d.creator_marked_complete
+      heldDealIdsCreator.has(d.id) && !d.creator_marked_complete
     );
     const alreadyCreatorMarked = deals.filter(d =>
-      (d.status === 'paid' || d.status === 'deal_complete') &&
-      d.creator_marked_complete && !d.brand_marked_complete
+      heldDealIdsCreator.has(d.id) && d.creator_marked_complete && !d.brand_marked_complete
     );
     _renderMarkCompleteSection('creator-dash-contracts', [...awaitingCreatorComplete, ...alreadyCreatorMarked], 'creator');
 

@@ -1,0 +1,30 @@
+{
+  "name": "pickle-connect",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test":         "playwright test",
+    "test:headed":  "playwright test --headed",
+    "test:ui":      "playwright test --ui",
+    "test:payment": "playwright test brand-payment",
+    "test:confirm":  "playwright test payment-confirmation",
+    "test:payout":   "playwright test creator-payout",
+    "test:debug":   "playwright test --debug"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/breveno/courtcollab.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/breveno/courtcollab/issues"
+  },
+  "homepage": "https://github.com/breveno/courtcollab#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}
