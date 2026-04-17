@@ -2254,8 +2254,8 @@ async def mark_deal_complete(deal_id: int, user: dict = Depends(current_user)):
         raise HTTPException(404, "Deal not found")
     if uid not in (deal["brand_id"], deal["creator_id"]):
         raise HTTPException(403, "Not your deal")
-    if deal["status"] not in ("paid", "deal_complete"):
-        raise HTTPException(409, "Deal must be in 'paid' status before marking complete")
+    if deal["status"] not in ("active", "completed"):
+        raise HTTPException(409, "Deal must be active before marking complete")
 
     is_brand = uid == deal["brand_id"]
 
@@ -2268,9 +2268,9 @@ async def mark_deal_complete(deal_id: int, user: dict = Depends(current_user)):
             conn.execute(
                 "UPDATE deals SET creator_marked_complete = 1 WHERE id = ?", (deal_id,)
             )
-        # also flip to deal_complete so the other party knows one side has confirmed
+        # Flip to completed once one party has confirmed — the other sees this state
         conn.execute(
-            "UPDATE deals SET status = 'deal_complete', updated_at = datetime('now') WHERE id = ? AND status = 'paid'",
+            "UPDATE deals SET status = 'completed', updated_at = datetime('now') WHERE id = ? AND status = 'active'",
             (deal_id,)
         )
         conn.commit()
@@ -2741,13 +2741,16 @@ def release_payment(payment_id: int, user: dict = Depends(current_user)):
             raise HTTPException(502, f"Stripe transfer failed: {exc.user_message}")
 
     with get_conn() as conn:
-        conn.execute("""
+        cur = conn.execute("""
             UPDATE payments
             SET status = 'released',
                 released_at = datetime('now'),
                 stripe_transfer_id = COALESCE(?, stripe_transfer_id)
-            WHERE id = ?
+            WHERE id = ? AND status = 'held'
         """, (stripe_transfer_id, payment_id))
+        if cur.rowcount == 0:
+            # Another request already released this payment
+            raise HTTPException(409, "Payment has already been released")
         # Mark deal complete
         conn.execute(
             "UPDATE deals SET status = 'completed', updated_at = datetime('now') WHERE id = ?",
@@ -2992,8 +2995,6 @@ def stripe_checkout(request: Request, deal_id: int, user: dict = Depends(current
         # Block duplicate payments
         existing = _row(conn,
             "SELECT id FROM payments WHERE deal_id = ? AND status NOT IN ('refunded')",
-            (body.deal_id,)) if False else _row(conn,
-            "SELECT id FROM payments WHERE deal_id = ? AND status NOT IN ('refunded')",
             (deal_id,))
         if existing:
             raise HTTPException(409, "Payment already initiated for this deal")
@@ -3137,12 +3138,13 @@ async def stripe_webhook(request: Request):
                 SET status = 'held'
                 WHERE stripe_payment_id = ?
             """, (payment_intent_id,))
-            # Advance deal status to 'paid' and record the PaymentIntent ID
+            # Record the PaymentIntent ID on the deal — deal status stays 'active'
+            # (funds are held in escrow; deal completes when brand releases payment)
             if deal_id:
                 conn.execute("""
                     UPDATE deals
-                    SET status = 'paid',
-                        stripe_payment_intent_id = ?
+                    SET stripe_payment_intent_id = ?,
+                        updated_at = datetime('now')
                     WHERE id = ?
                 """, (payment_intent_id, deal_id))
             conn.commit()
