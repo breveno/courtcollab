@@ -3497,8 +3497,30 @@ def reset_password(request: Request, body: ResetPasswordIn):
 
 
 # ---------------------------------------------------------------------------
-# Routes — Change Password (authenticated)
+# Routes — Change Email / Change Password (authenticated)
 # ---------------------------------------------------------------------------
+
+class ChangeEmailIn(BaseModel):
+    email: EmailStr
+
+@app.post("/api/change-email", status_code=200)
+@limiter.limit("10/minute")
+def change_email(request: Request, body: ChangeEmailIn, user: dict = Depends(current_user)):
+    new_email = str(body.email).lower().strip()
+    with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT id FROM users WHERE lower(email) = ? AND id != ?",
+            (new_email, user["id"]),
+        ).fetchone()
+        if existing:
+            raise HTTPException(400, "An account with that email already exists")
+        conn.execute(
+            "UPDATE users SET email = ? WHERE id = ?",
+            (new_email, user["id"]),
+        )
+        conn.commit()
+    return {"ok": True}
+
 
 class ChangePasswordIn(BaseModel):
     current_password: str = Field(min_length=1)

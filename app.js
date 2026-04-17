@@ -4817,6 +4817,9 @@ async function populateCreatorForm() {
     setVal('cp-name',       p.name);
     setVal('cp-location',   p.location);
     setVal('cp-bio',        p.bio);
+    // Sync bio display text (read mode)
+    const bioTextEl = document.getElementById('cp-bio-text');
+    if (bioTextEl) bioTextEl.textContent = (p.bio || '').trim() || 'Add a bio…';
     setSel('cp-niche',      p.niche);
     setSel('cp-skill-level', p.skill_level);
     setNum('cp-ig',         p.followers_ig);
@@ -4895,21 +4898,71 @@ function handleAvatarUpload(event) {
   reader.readAsDataURL(file);
 }
 
+function toggleBioEdit() {
+  const display  = document.getElementById('cp-bio-display');
+  const editor   = document.getElementById('cp-bio-editor');
+  const bioText  = document.getElementById('cp-bio-text');
+  const bioInput = document.getElementById('cp-bio');
+  if (!display || !editor) return;
+  const isEditing = !editor.classList.contains('hidden');
+  if (isEditing) {
+    // closing editor — sync display text from textarea
+    const val = (bioInput?.value || '').trim();
+    if (bioText) bioText.textContent = val || 'Add a bio…';
+    editor.classList.add('hidden');
+    display.classList.remove('hidden');
+  } else {
+    // opening editor — sync textarea from display text
+    if (bioInput && bioText) {
+      bioInput.value = bioText.textContent === 'Add a bio…' ? '' : (bioText.textContent || '');
+    }
+    editor.classList.remove('hidden');
+    display.classList.add('hidden');
+    if (bioInput) setTimeout(() => { bioInput.focus(); bioInput.setSelectionRange(bioInput.value.length, bioInput.value.length); }, 50);
+  }
+}
+
+function toggleEmailEdit() {
+  const el = document.getElementById('cp-email-editor');
+  if (el) el.classList.toggle('hidden');
+}
+
+async function changeEmail() {
+  const email = (document.getElementById('cp-new-email')?.value || '').trim();
+  if (!email) { showToast('Please enter a new email', 'error'); return; }
+  if (!/\S+@\S+\.\S+/.test(email)) { showToast('Please enter a valid email address', 'error'); return; }
+  try {
+    await apiPost('/api/change-email', { email });
+    if (state.currentUser) state.currentUser.email = email;
+    const emailEl = document.getElementById('cp-account-email');
+    if (emailEl) emailEl.textContent = email;
+    document.getElementById('cp-new-email').value = '';
+    document.getElementById('cp-email-editor').classList.add('hidden');
+    showToast('Email updated successfully', 'success');
+  } catch (err) {
+    showToast(err.message || 'Failed to update email', 'error');
+  }
+}
+
 function togglePasswordFields() {
   const el = document.getElementById('cp-password-fields');
   if (el) el.classList.toggle('hidden');
 }
 
 async function changePassword() {
-  const pw  = document.getElementById('cp-new-password')?.value || '';
-  const pw2 = document.getElementById('cp-confirm-password')?.value || '';
+  const current = document.getElementById('cp-current-password')?.value || '';
+  const pw      = document.getElementById('cp-new-password')?.value    || '';
+  const pw2     = document.getElementById('cp-confirm-password')?.value || '';
+  if (!current) { showToast('Please enter your current password', 'error'); return; }
   if (!pw) { showToast('Please enter a new password', 'error'); return; }
   if (pw.length < 8) { showToast('Password must be at least 8 characters', 'error'); return; }
   if (pw !== pw2) { showToast('Passwords do not match', 'error'); return; }
   try {
-    await apiPost('/api/change-password', { password: pw });
+    await apiPost('/api/change-password', { current_password: current, password: pw });
+    document.getElementById('cp-current-password').value = '';
     document.getElementById('cp-new-password').value = '';
     document.getElementById('cp-confirm-password').value = '';
+    document.getElementById('cp-password-fields').classList.add('hidden');
     showToast('Password updated successfully', 'success');
   } catch (err) {
     showToast(err.message || 'Failed to update password', 'error');
