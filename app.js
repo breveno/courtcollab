@@ -4819,7 +4819,13 @@ async function populateCreatorForm() {
     setVal('cp-bio',        p.bio);
     // Sync bio display text (read mode)
     const bioTextEl = document.getElementById('cp-bio-text');
-    if (bioTextEl) bioTextEl.textContent = (p.bio || '').trim() || 'Add a bio…';
+    if (bioTextEl) {
+      const bioVal = (p.bio || '').trim();
+      bioTextEl.textContent = bioVal || 'Add a bio…';
+      bioTextEl.classList.toggle('italic',        !bioVal);
+      bioTextEl.classList.toggle('text-gray-500',  !bioVal);
+      bioTextEl.classList.toggle('text-gray-700',   !!bioVal);
+    }
     setSel('cp-niche',      p.niche);
     setSel('cp-skill-level', p.skill_level);
     setNum('cp-ig',         p.followers_ig);
@@ -4908,11 +4914,17 @@ function toggleBioEdit() {
   if (isEditing) {
     // closing editor — sync display text from textarea
     const val = (bioInput?.value || '').trim();
-    if (bioText) bioText.textContent = val || 'Add a bio…';
+    if (bioText) {
+      bioText.textContent = val || 'Add a bio…';
+      // italic + muted when placeholder, normal when there's real text
+      bioText.classList.toggle('italic',       !val);
+      bioText.classList.toggle('text-gray-500', !val);
+      bioText.classList.toggle('text-gray-700',  !!val);
+    }
     editor.classList.add('hidden');
     display.classList.remove('hidden');
   } else {
-    // opening editor — sync textarea from display text
+    // opening editor — sync textarea from current display text
     if (bioInput && bioText) {
       bioInput.value = bioText.textContent === 'Add a bio…' ? '' : (bioText.textContent || '');
     }
