@@ -683,6 +683,9 @@ async function handleSignup(e) {
       try {
         const company = (document.getElementById('signup-company').value || '').trim();
         await apiPut('/api/brand/profile', { company_name: company });
+        // Patch company_name onto the user object so the nav shows it immediately
+        // (the signup endpoint returns the users table row which has no company_name)
+        if (company) user.company_name = company;
       } catch (_) { /* best-effort */ }
     }
     onAuthSuccess(user);
@@ -5052,6 +5055,12 @@ async function saveBrandProfileModal() {
     await apiPut('/api/brand/profile', body);
     closeModal('bp-edit-modal');
     showToast('Brand profile saved!', 'success');
+    // Update nav display name to new company name immediately
+    if (body.company_name) {
+      const navName = document.getElementById('nav-user-name');
+      if (navName) navName.textContent = body.company_name;
+      if (state.currentUser) state.currentUser.company_name = body.company_name;
+    }
     renderBrandPortal(); // re-renders completion bar + stats
   } catch (err) {
     showToast(err.message || 'Could not save profile', 'error');
