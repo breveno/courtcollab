@@ -2,6 +2,14 @@
 // CourtCollab — App Logic (API-connected, no mock data)
 // ============================================================
 
+// ── Mobile: blur buttons immediately after tap so they don't stay "highlighted" ──
+// iOS Safari keeps :focus (and sometimes :hover) on a button until another
+// element is tapped.  Blurring on touchend releases both states instantly.
+document.addEventListener('touchend', function(e) {
+  const btn = e.target.closest('button');
+  if (btn) btn.blur();
+}, { passive: true });
+
 // --- How It Works toggle ---
 function hiwToggle(type) {
   const creators = document.getElementById('hiw-creators');
