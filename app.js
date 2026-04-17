@@ -6791,6 +6791,11 @@ function _heroShowForRole(role) {
       creatorBtn.onclick = () => { showAuthGate(); showAuthTab('signup'); };
     }
   }
+  // Hide "Join" footer links when logged in
+  const fjBrand   = document.getElementById('footer-join-brand');
+  const fjCreator = document.getElementById('footer-join-creator');
+  if (fjBrand)   fjBrand.classList.toggle('hidden', loggedIn);
+  if (fjCreator) fjCreator.classList.toggle('hidden', loggedIn);
 }
 
 // --- Earnings Calculator ---
