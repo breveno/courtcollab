@@ -2593,6 +2593,11 @@ def list_conversations(user: dict = Depends(current_user)):
     Return one entry per unique conversation partner, ordered by most recent
     message.  Each entry includes partner info, last message preview, and
     unread count (messages sent TO the current user that have no read_at).
+
+    ADMIN NOTE: Admin users are explicitly scoped to their OWN conversations
+    only — the query filters by user["id"] and cannot return conversations
+    between other brands and creators.  Admins have no elevated visibility
+    into third-party message threads.
     """
     uid = user["id"]
     with get_conn() as conn:
@@ -2677,7 +2682,14 @@ async def send_message(request: Request, body: MessageIn, user: dict = Depends(c
 
 @app.get("/api/messages/{other_user_id}")
 def get_conversation(other_user_id: int, user: dict = Depends(current_user)):
-    """Fetch full thread and mark all incoming unread messages as read."""
+    """
+    Fetch full thread and mark all incoming unread messages as read.
+
+    ADMIN NOTE: Even for admin users the WHERE clause requires sender_id = uid
+    OR receiver_id = uid, so only messages the admin personally sent/received
+    with other_user_id are returned.  Admins cannot read threads between other
+    brands and creators they are not a participant in.
+    """
     uid = user["id"]
     with get_conn() as conn:
         rows = _rows(conn, """
@@ -3639,6 +3651,19 @@ def require_admin(user: dict = Depends(current_user)) -> dict:
     if user["email"] not in ADMIN_EMAILS:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
+
+
+@app.get("/api/admin/stats/messages")
+def admin_message_stats(admin: dict = Depends(require_admin)):
+    """
+    Admin-only: return the total number of messages sent on the platform.
+    Returns a COUNT only — no message content, sender/receiver IDs, or
+    conversation details are exposed.  Admins cannot read conversations
+    between brands and creators through this or any other endpoint.
+    """
+    with get_conn() as conn:
+        row = conn.execute("SELECT COUNT(*) AS cnt FROM messages").fetchone()
+    return {"count": int((row or {}).get("cnt", 0))}
 
 
 class AdminDeleteIn(BaseModel):

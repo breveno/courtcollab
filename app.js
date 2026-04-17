@@ -6183,7 +6183,7 @@ async function renderAdmin() {
     apiGet('/api/admin/users'),
     apiGet('/api/payments'),
     apiGet('/api/deals'),
-    apiGet('/api/messages'),
+    apiGet('/api/admin/stats/messages'),
     apiGet('/api/admin/disputes'),
   ]);
 
@@ -6248,8 +6248,10 @@ async function renderAdmin() {
   if (dealsDoneEl)   dealsDoneEl.textContent   = `${completedDeals} completed`;
 
   // ── Messages ──
-  const messages = messagesResult.status === 'fulfilled' ? (messagesResult.value || []) : [];
-  const msgCount = Array.isArray(messages) ? messages.length : 0;
+  // Uses /api/admin/stats/messages — returns a platform-wide COUNT only.
+  // Admins cannot access message content or conversations between other users.
+  const msgStats = messagesResult.status === 'fulfilled' ? (messagesResult.value || {}) : {};
+  const msgCount = typeof msgStats.count === 'number' ? msgStats.count : 0;
   const msgEl = document.getElementById('admin-stat-messages');
   if (msgEl) msgEl.textContent = msgCount.toLocaleString();
 
