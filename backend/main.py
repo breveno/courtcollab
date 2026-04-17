@@ -2312,18 +2312,78 @@ async def mark_deal_complete(deal_id: int, user: dict = Depends(current_user)):
         }
 
     # ── Both parties confirmed ────────────────────────────────────────────────
-    amount          = float(deal.get("amount") or 0)
-    creator_payout  = round(amount * (1 - PLATFORM_FEE), 2)
-    campaign_title  = deal.get("campaign_title") or "your deal"
+    campaign_title = deal.get("campaign_title") or "your deal"
 
+    # Look up any held payment for this deal
     with get_conn() as conn:
-        conn.execute(
-            "UPDATE deals SET status = 'payout_complete', updated_at = datetime('now') WHERE id = ?",
-            (deal_id,)
-        )
-        conn.commit()
+        held_payment = _row(conn, """
+            SELECT p.*, cp.stripe_account_id
+            FROM payments p
+            LEFT JOIN creator_profiles cp ON cp.user_id = p.creator_id
+            WHERE p.deal_id = ? AND p.status = 'held'
+        """, (deal_id,))
 
-    # Email to creator
+    stripe_transfer_id = None
+
+    if held_payment:
+        creator_payout       = float(held_payment["creator_payout"])
+        creator_payout_cents = int(held_payment["creator_payout"]) * 100
+
+        # Attempt Stripe Transfer to creator's Express account
+        if (stripe.api_key
+                and not stripe.api_key.startswith("sk_test_REPLACE")
+                and held_payment.get("stripe_account_id")
+                and held_payment.get("stripe_payment_id")):
+            try:
+                transfer = stripe.Transfer.create(
+                    amount      = creator_payout_cents,
+                    currency    = "usd",
+                    destination = held_payment["stripe_account_id"],
+                    source_transaction = held_payment["stripe_payment_id"],
+                    metadata    = {
+                        "deal_id":    str(deal_id),
+                        "payment_id": str(held_payment["id"]),
+                    },
+                )
+                stripe_transfer_id = transfer["id"]
+                logging.info(
+                    "[PAYOUT] Stripe transfer %s — $%s to %s for deal #%s",
+                    stripe_transfer_id, creator_payout,
+                    held_payment["stripe_account_id"], deal_id,
+                )
+            except stripe.error.StripeError as exc:
+                logging.error("[PAYOUT] Stripe transfer failed for deal #%s: %s", deal_id, exc)
+                raise HTTPException(502, f"Stripe payout failed: {exc.user_message}")
+
+        # Mark payment as released and deal as payout_complete atomically
+        with get_conn() as conn:
+            cur = conn.execute("""
+                UPDATE payments
+                SET status             = 'released',
+                    released_at        = datetime('now'),
+                    stripe_transfer_id = COALESCE(?, stripe_transfer_id)
+                WHERE id = ? AND status = 'held'
+            """, (stripe_transfer_id, held_payment["id"]))
+            if cur.rowcount == 0:
+                # Payment was already released by a concurrent request
+                logging.warning("[PAYOUT] Payment %s already released — skipping deal #%s", held_payment["id"], deal_id)
+            conn.execute(
+                "UPDATE deals SET status = 'payout_complete', updated_at = datetime('now') WHERE id = ?",
+                (deal_id,)
+            )
+            conn.commit()
+    else:
+        # No held Stripe payment (zero-amount deal or payment already released)
+        creator_payout = round(float(deal.get("amount") or 0) * (1 - PLATFORM_FEE), 2)
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE deals SET status = 'payout_complete', updated_at = datetime('now') WHERE id = ?",
+                (deal_id,)
+            )
+            conn.commit()
+
+    # ── Confirmation emails ───────────────────────────────────────────────────
+    # Creator: payout released
     asyncio.create_task(asyncio.to_thread(
         _send_zoho_email,
         [deal["creator_email"]],
@@ -2339,7 +2399,7 @@ Thank you for collaborating on CourtCollab!
 – The CourtCollab Team""",
     ))
 
-    # Email to brand
+    # Brand: deal closed, creator paid
     asyncio.create_task(asyncio.to_thread(
         _send_zoho_email,
         [deal["brand_email"]],
@@ -2348,14 +2408,14 @@ Thank you for collaborating on CourtCollab!
 
 The deal "{campaign_title}" has been marked complete by both parties.
 
-The creator has been paid their portion (${creator_payout:,.2f}) and the deal is now closed.
+The deal has been marked complete and the creator has been paid. The deal is now closed.
 
 Thank you for using CourtCollab!
 
 – The CourtCollab Team""",
     ))
 
-    # In-app notifications to both
+    # ── In-app notifications ──────────────────────────────────────────────────
     asyncio.create_task(_notify(
         user_id    = deal["creator_id"],
         notif_type = "payout_complete",
@@ -2376,9 +2436,10 @@ Thank you for using CourtCollab!
     ))
 
     return {
-        "ok": True,
-        "both_complete": True,
-        "payout": creator_payout,
+        "ok":             True,
+        "both_complete":  True,
+        "payout":         creator_payout,
+        "transfer_id":    stripe_transfer_id,
     }
 
 
@@ -2395,7 +2456,7 @@ def rate_deal(deal_id: int, body: RatingIn, user: dict = Depends(current_user)):
             raise HTTPException(404, "Deal not found")
         if user["id"] not in (deal["brand_id"], deal["creator_id"]):
             raise HTTPException(403, "Not your deal")
-        if deal["status"] != "completed":
+        if deal["status"] not in ("completed", "payout_complete"):
             raise HTTPException(400, "Can only rate a completed deal")
 
         # The person being rated is the other party

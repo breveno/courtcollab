@@ -475,6 +475,13 @@ def _init_pg():
             CHECK(status IN ('open','paused','closed','draft'))
         """)
 
+        # Allow 'payout_complete' on deals
+        conn.execute("ALTER TABLE deals DROP CONSTRAINT IF EXISTS deals_status_check")
+        conn.execute("""
+            ALTER TABLE deals ADD CONSTRAINT deals_status_check
+            CHECK(status IN ('pending','active','declined','completed','payout_complete'))
+        """)
+
         conn.commit()
 
 
@@ -724,6 +731,7 @@ def _init_sqlite():
         conn.commit()
 
     _migrate_deal_statuses()
+    _migrate_sqlite_payout_status()
     _add_column_if_missing("campaigns",        "target_age",           "TEXT")
     _add_column_if_missing("campaigns",        "min_followers",        "INTEGER DEFAULT 0")
     _add_column_if_missing("campaigns",        "max_rate",             "INTEGER DEFAULT 0")
@@ -793,6 +801,65 @@ def _migrate_deal_statuses():
         """)
         conn.execute("DROP TABLE deals")
         conn.execute("ALTER TABLE deals_v2 RENAME TO deals")
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.commit()
+
+
+def _migrate_sqlite_payout_status():
+    """
+    SQLite only — add 'payout_complete' to the deals.status CHECK constraint.
+    Recreates the table (SQLite cannot ALTER constraints in-place).
+    Safe to call multiple times — exits immediately if already migrated.
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='deals'"
+        ).fetchone()
+        if not row or "'payout_complete'" in row["sql"]:
+            return  # Already migrated or table doesn't exist yet
+
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS deals_v3 (
+                id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+                campaign_id              INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+                creator_id               INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+                brand_id                 INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+                status                   TEXT    NOT NULL DEFAULT 'pending'
+                    CHECK(status IN ('pending','active','declined','completed','payout_complete')),
+                amount                   INTEGER NOT NULL DEFAULT 0,
+                terms                    TEXT,
+                created_at               TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at               TEXT    NOT NULL DEFAULT (datetime('now')),
+                contract_document_id     TEXT,
+                contract_status          TEXT    DEFAULT 'none',
+                num_posts                INTEGER DEFAULT 1,
+                deadline                 TEXT,
+                usage_rights_duration    TEXT    DEFAULT '1 year',
+                exclusivity_terms        TEXT    DEFAULT 'None',
+                brand_signed             INTEGER DEFAULT 0,
+                brand_signed_at          TEXT,
+                creator_signed           INTEGER DEFAULT 0,
+                creator_signed_at        TEXT,
+                contract_completed_url   TEXT,
+                contract_sent_at         TEXT,
+                signed_contract_url      TEXT,
+                brand_terms_confirmed    INTEGER DEFAULT 0,
+                creator_terms_confirmed  INTEGER DEFAULT 0,
+                brand_marked_complete    INTEGER DEFAULT 0,
+                creator_marked_complete  INTEGER DEFAULT 0,
+                stripe_payment_intent_id TEXT
+            )
+        """)
+
+        # Copy only columns that exist in both old and new table (handles partial schemas)
+        old_cols = {r["name"] for r in conn.execute("PRAGMA table_info(deals)").fetchall()}
+        new_cols = {r["name"] for r in conn.execute("PRAGMA table_info(deals_v3)").fetchall()}
+        shared   = [c for c in old_cols if c in new_cols]
+        col_list = ", ".join(shared)
+        conn.execute(f"INSERT INTO deals_v3 ({col_list}) SELECT {col_list} FROM deals")
+        conn.execute("DROP TABLE deals")
+        conn.execute("ALTER TABLE deals_v3 RENAME TO deals")
         conn.execute("PRAGMA foreign_keys = ON")
         conn.commit()
 
