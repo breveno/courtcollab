@@ -3258,6 +3258,10 @@ async function saveCreatorProfile(e) {
     if (_tt) handles.tiktok    = _tt;
     if (_yt) handles.youtube   = _yt;
     body.social_handles = handles;
+    if (window._pendingAvatarUrl) {
+      body.avatar_url = window._pendingAvatarUrl;
+      window._pendingAvatarUrl = null;
+    }
 
     await apiPut('/api/creator/profile', body);
 
@@ -4844,6 +4848,18 @@ async function populateCreatorForm() {
     renderCreatorCompletion(p, true);
     _updateTotalFollowers();
     _attachProfileFormListeners();
+    // Load saved profile photo
+    const avatarImg = document.getElementById('cp-avatar-img');
+    const avatarPlaceholder = document.getElementById('cp-avatar-placeholder');
+    if (p.avatar_url && avatarImg) {
+      avatarImg.src = p.avatar_url;
+      avatarImg.classList.remove('hidden');
+      if (avatarPlaceholder) avatarPlaceholder.classList.add('hidden');
+    } else if (avatarImg) {
+      avatarImg.src = '';
+      avatarImg.classList.add('hidden');
+      if (avatarPlaceholder) avatarPlaceholder.classList.remove('hidden');
+    }
   } catch (err) {
     // Profile doesn't exist yet (new user) — show empty completion bar
     const emailEl = document.getElementById('cp-account-email');
@@ -4851,6 +4867,32 @@ async function populateCreatorForm() {
     renderCreatorCompletion({});
     _attachProfileFormListeners();
   }
+}
+
+function handleAvatarUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 160; canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2;
+      const sy = (img.height - side) / 2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, 160, 160);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      const imgEl = document.getElementById('cp-avatar-img');
+      const placeholder = document.getElementById('cp-avatar-placeholder');
+      if (imgEl) { imgEl.src = dataUrl; imgEl.classList.remove('hidden'); }
+      if (placeholder) placeholder.classList.add('hidden');
+      window._pendingAvatarUrl = dataUrl;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 function togglePasswordFields() {

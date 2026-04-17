@@ -730,6 +730,7 @@ class CreatorProfileIn(BaseModel):
     demo_locations:  Optional[str] = None
     demo_interests:  Optional[str] = None
     birthday:        Optional[str]  = None  # YYYY-MM-DD, private — never returned to other users
+    avatar_url:      Optional[str]  = None  # base64 data-URL, stored client-side resized to 160×160
 
 # ---------------------------------------------------------------------------
 # Routes — Creator Profiles
@@ -748,8 +749,8 @@ def upsert_creator_profile(body: CreatorProfileIn, user: dict = Depends(current_
                    rate_ig, rate_tiktok, rate_yt, rate_ugc, rate_notes,
                    skills, social_handles,
                    demo_age, demo_gender, demo_locations, demo_interests,
-                   birthday, updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+                   birthday, avatar_url, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
                 ON CONFLICT(user_id) DO UPDATE SET
                   name=excluded.name, niche=excluded.niche, bio=excluded.bio,
                   location=excluded.location, skill_level=excluded.skill_level,
@@ -762,6 +763,7 @@ def upsert_creator_profile(body: CreatorProfileIn, user: dict = Depends(current_
                   demo_age=excluded.demo_age, demo_gender=excluded.demo_gender,
                   demo_locations=excluded.demo_locations, demo_interests=excluded.demo_interests,
                   birthday=excluded.birthday,
+                  avatar_url=COALESCE(excluded.avatar_url, creator_profiles.avatar_url),
                   updated_at=datetime('now')
             """, (
                 user["id"], body.name, body.niche, body.bio, body.location, body.skill_level,
@@ -770,7 +772,7 @@ def upsert_creator_profile(body: CreatorProfileIn, user: dict = Depends(current_
                 body.rate_ig, body.rate_tiktok, body.rate_yt, body.rate_ugc, body.rate_notes,
                 json.dumps(body.skills), json.dumps(body.social_handles),
                 body.demo_age, body.demo_gender, body.demo_locations, body.demo_interests,
-                body.birthday
+                body.birthday, body.avatar_url
             ))
             conn.commit()
         return {"ok": True}

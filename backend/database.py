@@ -440,6 +440,7 @@ def _init_pg():
         conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS stripe_account_id TEXT")
         conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS stripe_onboarded  INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS birthday          TEXT")  # YYYY-MM-DD, private
+        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS avatar_url        TEXT")
 
         # campaigns
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS niche         TEXT")
@@ -754,6 +755,7 @@ def _init_sqlite():
     _add_column_if_missing("messages",         "read_at",              "TEXT")
     _add_column_if_missing("creator_profiles", "stripe_account_id",    "TEXT")
     _add_column_if_missing("creator_profiles", "stripe_onboarded",     "INTEGER DEFAULT 0")
+    _add_column_if_missing("creator_profiles", "avatar_url",           "TEXT")
     _add_column_if_missing("payments",         "checkout_session_id",  "TEXT")
     _add_column_if_missing("payments",         "stripe_transfer_id",   "TEXT")
     _add_column_if_missing("users",            "reset_token",          "TEXT")
