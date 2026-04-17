@@ -226,7 +226,7 @@ def startup():
 
 @app.on_event("startup")
 async def start_contract_poller():
-    """Start the SignWell status poller and daily reminder job as background asyncio tasks."""
+    """Start background asyncio tasks: SignWell poller, contract reminders, stale deal checker."""
     import asyncio as _asyncio
     try:
         from contractPoller import contract_poll_loop, contract_reminder_loop
@@ -236,6 +236,14 @@ async def start_contract_poller():
         print("[STARTUP] Contract poller + reminder tasks created.", flush=True)
     except Exception as exc:
         print(f"[STARTUP] Contract tasks failed to start: {exc}", flush=True)
+
+    try:
+        from staleDealsChecker import stale_deal_check_loop
+        loop = _asyncio.get_event_loop()
+        loop.create_task(stale_deal_check_loop(get_conn))
+        print("[STARTUP] Stale deal checker task created.", flush=True)
+    except Exception as exc:
+        print(f"[STARTUP] Stale deal checker failed to start: {exc}", flush=True)
 
 @app.get("/debug/version")
 def debug_version():

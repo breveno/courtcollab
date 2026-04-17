@@ -468,6 +468,11 @@ def _init_pg():
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS stripe_payment_intent_id  TEXT")
         conn.execute("ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS social_handles TEXT DEFAULT '{}'")
 
+        # Stale deal tracking
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS reminders_sent     INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS last_reminder_sent TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS needs_review       INTEGER DEFAULT 0")
+
         # Allow 'draft' status on campaigns (constraint originally only had open/paused/closed)
         conn.execute("ALTER TABLE campaigns DROP CONSTRAINT IF EXISTS campaigns_status_check")
         conn.execute("""
@@ -763,6 +768,9 @@ def _init_sqlite():
     _add_column_if_missing("deals",          "creator_marked_complete",  "INTEGER DEFAULT 0")
     _add_column_if_missing("deals",          "stripe_payment_intent_id", "TEXT")
     _add_column_if_missing("brand_profiles", "social_handles",           "TEXT DEFAULT '{}'")
+    _add_column_if_missing("deals",          "reminders_sent",           "INTEGER DEFAULT 0")
+    _add_column_if_missing("deals",          "last_reminder_sent",       "TEXT")
+    _add_column_if_missing("deals",          "needs_review",             "INTEGER DEFAULT 0")
 
 
 def _migrate_deal_statuses():
