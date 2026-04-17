@@ -743,8 +743,10 @@ function onAuthSuccess(user) {
       p.social_handles = (typeof p.social_handles === 'object' && p.social_handles) ? p.social_handles : {};
       p.skills = Array.isArray(p.skills) ? p.skills : [];
       const pct = _calcCompletion(p, _CREATOR_COMPLETION_FIELDS);
-      const navBadge = document.getElementById('nav-verified-badge');
-      if (navBadge) navBadge.classList.toggle('hidden', pct < 100);
+      const navBadge       = document.getElementById('nav-verified-badge');
+      const navBadgeMobile = document.getElementById('nav-verified-badge-mobile');
+      if (navBadge)       navBadge.classList.toggle('hidden', pct < 100);
+      if (navBadgeMobile) navBadgeMobile.classList.toggle('hidden', pct < 100);
     }).catch(() => {});
   }
   startNotifPolling();
@@ -4720,12 +4722,13 @@ function renderCreatorCompletion(profile, updateBadge = false) {
   if (!el) return;
   const missing = _CREATOR_COMPLETION_FIELDS.filter(f => !f.check(profile));
   const pct     = _calcCompletion(profile, _CREATOR_COMPLETION_FIELDS);
-  el.innerHTML  = _completionBarHtml(pct, missing, 'creator');
-  // Only update the verified badge when triggered by a real save or page load (not live typing)
-  if (updateBadge) {
-    const navBadge = document.getElementById('nav-verified-badge');
-    if (navBadge) navBadge.classList.toggle('hidden', pct < 100);
-  }
+  // Hide the bar entirely when profile is 100% complete; show it whenever a field is missing
+  el.innerHTML = pct >= 100 ? '' : _completionBarHtml(pct, missing, 'creator');
+  // Update both desktop and mobile verified badges on every call so live edits reflect immediately
+  const navBadge       = document.getElementById('nav-verified-badge');
+  const navBadgeMobile = document.getElementById('nav-verified-badge-mobile');
+  if (navBadge)       navBadge.classList.toggle('hidden', pct < 100);
+  if (navBadgeMobile) navBadgeMobile.classList.toggle('hidden', pct < 100);
 }
 
 // Build a profile-like object from the live form values (no API call needed)
@@ -5874,8 +5877,10 @@ async function onboardFinish() {
     p.social_handles = (typeof p.social_handles === 'object' && p.social_handles) ? p.social_handles : {};
     p.skills = Array.isArray(p.skills) ? p.skills : [];
     const pct = _calcCompletion(p, _CREATOR_COMPLETION_FIELDS);
-    const navBadge = document.getElementById('nav-verified-badge');
-    if (navBadge) navBadge.classList.toggle('hidden', pct < 100);
+    const navBadge       = document.getElementById('nav-verified-badge');
+    const navBadgeMobile = document.getElementById('nav-verified-badge-mobile');
+    if (navBadge)       navBadge.classList.toggle('hidden', pct < 100);
+    if (navBadgeMobile) navBadgeMobile.classList.toggle('hidden', pct < 100);
   }).catch(() => {});
 
   // Reset any iOS zoom before advancing to next step
