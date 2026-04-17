@@ -3308,11 +3308,15 @@ function _showSavedBanner(msg, color) {
   const prevTheme = themeTag ? themeTag.content : null;
   if (themeTag) themeTag.content = color;
 
+  // Must be at least as tall as the navbar so it fully covers the blue bar
+  const navH = document.getElementById('main-navbar')?.offsetHeight || 0;
+
   const banner = document.createElement('div');
   banner.id = '_saved-banner';
   // padding-top uses safe-area-inset-top so the text sits below the iOS status bar
-  // while the background colour fills the full top edge (viewport-fit=cover)
-  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:9999;background:${color};color:#fff;text-align:center;padding-top:max(14px,calc(env(safe-area-inset-top) + 8px));padding-bottom:14px;padding-left:20px;padding-right:20px;font-size:15px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:transform .3s ease-in;transform:translateY(0)`;
+  // while the background colour fills the full top edge (viewport-fit=cover).
+  // min-height matches the navbar so no blue sliver shows underneath.
+  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:9999;background:${color};color:#fff;text-align:center;padding-top:max(14px,calc(env(safe-area-inset-top) + 8px));padding-bottom:14px;padding-left:20px;padding-right:20px;font-size:15px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:transform .3s ease-in;transform:translateY(0);min-height:${navH}px;display:flex;align-items:center;justify-content:center;`;
   banner.textContent = msg;
   document.body.appendChild(banner);
 
