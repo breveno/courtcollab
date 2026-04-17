@@ -1130,8 +1130,11 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
     if (page === 'contact')           renderContact();
     if (page === 'admin')             renderAdmin();
     if (page === 'signed-contracts')  renderSignedContractsTab();
+    // Always clear the completion bar div first — either we're leaving the page, or we're
+    // re-entering it and want a clean slate while the async API call loads fresh data.
+    const _compEl = document.getElementById('creator-profile-completion');
+    if (_compEl) _compEl.innerHTML = '';
     if (page === 'creator-profile') { populateCreatorForm(); }
-    else { const el = document.getElementById('creator-profile-completion'); if (el) el.innerHTML = ''; }
     if (page === 'creator-dashboard') renderCreatorDashboard();
 
     // Restore scroll position for back/forward navigation
