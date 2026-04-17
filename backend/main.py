@@ -2058,12 +2058,14 @@ def list_deals(
                    ub.name        AS brand_name,
                    uc.name        AS creator_name,
                    uc.initials    AS creator_initials,
-                   r_mine.score   AS my_rating
+                   r_mine.score   AS my_rating,
+                   CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END AS payment_held
             FROM deals d
             JOIN campaigns c ON c.id  = d.campaign_id
             JOIN users ub    ON ub.id = d.brand_id
             JOIN users uc    ON uc.id = d.creator_id
             LEFT JOIN ratings r_mine ON r_mine.deal_id = d.id AND r_mine.reviewer_id = ?
+            LEFT JOIN payments p     ON p.deal_id = d.id AND p.status = 'held'
             WHERE d.{field} = ?
             ORDER BY d.updated_at DESC
         """, (uid, uid))
@@ -2572,6 +2574,316 @@ def sign_contract(deal_id: int, request: Request, user: dict = Depends(current_u
     contract["is_fully_signed"]   = contract["is_brand_signed"] and contract["is_creator_signed"]
     contract["i_have_signed"]     = True
     return contract
+
+
+# ---------------------------------------------------------------------------
+# Content Submissions — creator submits work, brand approves / rejects
+# ---------------------------------------------------------------------------
+
+class ContentSubmitIn(BaseModel):
+    content_url: str = Field(min_length=1, max_length=4000)
+    note:        Optional[str] = Field(None, max_length=2000)
+
+class SubmissionReviewIn(BaseModel):
+    action:   str            # 'approve' or 'reject'
+    feedback: Optional[str] = Field(None, max_length=2000)
+
+
+@app.post("/api/deals/{deal_id}/submit-content", status_code=201)
+@limiter.limit("20/minute")
+async def submit_content(
+    request: Request,
+    deal_id: int,
+    body:    ContentSubmitIn,
+    user:    dict = Depends(current_user),
+):
+    """
+    Creator submits their completed content (URL + optional note) for the brand
+    to review.  Requires the deal to be active, contract fully signed, and a
+    held payment in escrow.  Also marks the creator's side as 'delivery complete'
+    so that approval by the brand immediately triggers the payout.
+    """
+    uid = user["id"]
+    with get_conn() as conn:
+        deal = _row(conn, """
+            SELECT d.*,
+                   uc.email AS creator_email, uc.name AS creator_name,
+                   ub.email AS brand_email,   ub.name AS brand_name,
+                   c.title  AS campaign_title
+            FROM deals d
+            JOIN users uc ON uc.id = d.creator_id
+            JOIN users ub ON ub.id = d.brand_id
+            LEFT JOIN campaigns c ON c.id = d.campaign_id
+            WHERE d.id = ?
+        """, (deal_id,))
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if uid != deal["creator_id"]:
+        raise HTTPException(403, "Only the creator can submit content")
+    if deal["status"] != "active":
+        raise HTTPException(409, "Deal must be active to submit content")
+    if deal.get("contract_status") != "contract_complete":
+        raise HTTPException(409, "Contract must be fully signed before submitting content")
+
+    # Check a held payment exists
+    with get_conn() as conn:
+        held = _row(conn, "SELECT id FROM payments WHERE deal_id = ? AND status = 'held'", (deal_id,))
+    if not held:
+        raise HTTPException(409, "Payment must be in escrow before submitting content")
+
+    # Reject if there's already a pending submission (creator must wait for review)
+    with get_conn() as conn:
+        pending = _row(conn, """
+            SELECT id FROM content_submissions WHERE deal_id = ? AND status = 'pending'
+        """, (deal_id,))
+    if pending:
+        raise HTTPException(409, "There is already a submission under review")
+
+    with get_conn() as conn:
+        cur = conn.execute("""
+            INSERT INTO content_submissions (deal_id, creator_id, brand_id, content_url, note)
+            VALUES (?, ?, ?, ?, ?)
+        """, (deal_id, deal["creator_id"], deal["brand_id"], body.content_url.strip(), body.note))
+        sub_id = cur.lastrowid
+        # Mark creator's delivery as complete so brand approval triggers payout
+        conn.execute(
+            "UPDATE deals SET creator_marked_complete = 1 WHERE id = ?", (deal_id,)
+        )
+        conn.commit()
+        sub = _row(conn, "SELECT * FROM content_submissions WHERE id = ?", (sub_id,))
+
+    # Notify brand
+    await _notify(
+        user_id    = deal["brand_id"],
+        notif_type = "content_submitted",
+        title      = "Content submitted for review",
+        body       = (f"{deal['creator_name']} has submitted content for "
+                      f"\"{deal['campaign_title']}\". Log in to review and approve."),
+        data       = {"deal_id": deal_id},
+        email      = deal["brand_email"],
+    )
+    return sub
+
+
+@app.get("/api/deals/{deal_id}/submissions")
+def get_submissions(deal_id: int, user: dict = Depends(current_user)):
+    """Return all content submissions for a deal, newest first."""
+    uid = user["id"]
+    with get_conn() as conn:
+        deal = _row(conn, "SELECT creator_id, brand_id FROM deals WHERE id = ?", (deal_id,))
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if uid not in (deal["creator_id"], deal["brand_id"]):
+        raise HTTPException(403, "Not your deal")
+    with get_conn() as conn:
+        subs = _rows(conn, """
+            SELECT * FROM content_submissions
+            WHERE deal_id = ?
+            ORDER BY submitted_at DESC
+        """, (deal_id,))
+    return subs
+
+
+@app.patch("/api/submissions/{submission_id}/review", status_code=200)
+async def review_submission(
+    submission_id: int,
+    body:          SubmissionReviewIn,
+    user:          dict = Depends(current_user),
+):
+    """
+    Brand approves or rejects a content submission.
+    - approve: marks brand_marked_complete, triggers payout (reuses mark-complete logic)
+    - reject:  saves feedback message and notifies creator to resubmit
+    Feedback is required when action == 'reject'.
+    """
+    if body.action not in ("approve", "reject"):
+        raise HTTPException(400, "action must be 'approve' or 'reject'")
+    if body.action == "reject" and not (body.feedback or "").strip():
+        raise HTTPException(400, "Feedback is required when requesting a revision")
+
+    uid = user["id"]
+    with get_conn() as conn:
+        sub = _row(conn, "SELECT * FROM content_submissions WHERE id = ?", (submission_id,))
+    if not sub:
+        raise HTTPException(404, "Submission not found")
+    if uid != sub["brand_id"]:
+        raise HTTPException(403, "Only the brand can review submissions")
+    if sub["status"] != "pending":
+        raise HTTPException(409, "This submission has already been reviewed")
+
+    deal_id = sub["deal_id"]
+
+    # Fetch deal + user info
+    with get_conn() as conn:
+        deal = _row(conn, """
+            SELECT d.*,
+                   uc.email AS creator_email, uc.name AS creator_name,
+                   ub.email AS brand_email,   ub.name AS brand_name,
+                   c.title  AS campaign_title
+            FROM deals d
+            JOIN users uc ON uc.id = d.creator_id
+            JOIN users ub ON ub.id = d.brand_id
+            LEFT JOIN campaigns c ON c.id = d.campaign_id
+            WHERE d.id = ?
+        """, (deal_id,))
+
+    # ── Rejection ──────────────────────────────────────────────────────────────
+    if body.action == "reject":
+        with get_conn() as conn:
+            conn.execute("""
+                UPDATE content_submissions
+                SET status = 'rejected', feedback = ?, reviewed_at = datetime('now')
+                WHERE id = ?
+            """, (body.feedback.strip(), submission_id))
+            conn.commit()
+        await _notify(
+            user_id    = deal["creator_id"],
+            notif_type = "content_rejected",
+            title      = "Revision requested on your submission",
+            body       = (f"{deal['brand_name']} has reviewed your content for "
+                          f"\"{deal['campaign_title']}\" and requested changes: "
+                          f"{body.feedback.strip()[:200]}"),
+            data       = {"deal_id": deal_id},
+            email      = deal["creator_email"],
+        )
+        return {"ok": True, "action": "rejected"}
+
+    # ── Approval — mark both sides complete and trigger payout ─────────────────
+    with get_conn() as conn:
+        conn.execute("""
+            UPDATE content_submissions
+            SET status = 'approved', reviewed_at = datetime('now')
+            WHERE id = ?
+        """, (submission_id,))
+        conn.execute("""
+            UPDATE deals
+            SET brand_marked_complete   = 1,
+                creator_marked_complete = 1,
+                status = CASE WHEN status = 'active' THEN 'completed' ELSE status END,
+                updated_at = datetime('now')
+            WHERE id = ?
+        """, (deal_id,))
+        conn.commit()
+        deal = _row(conn, """
+            SELECT d.*,
+                   uc.email AS creator_email, uc.name AS creator_name,
+                   ub.email AS brand_email,   ub.name AS brand_name,
+                   c.title  AS campaign_title
+            FROM deals d
+            JOIN users uc ON uc.id = d.creator_id
+            JOIN users ub ON ub.id = d.brand_id
+            LEFT JOIN campaigns c ON c.id = d.campaign_id
+            WHERE d.id = ?
+        """, (deal_id,))
+
+    # Look up held payment and trigger Stripe transfer (mirrors mark-complete logic)
+    with get_conn() as conn:
+        held_payment = _row(conn, """
+            SELECT p.*, cp.stripe_account_id
+            FROM payments p
+            LEFT JOIN creator_profiles cp ON cp.user_id = p.creator_id
+            WHERE p.deal_id = ? AND p.status = 'held'
+        """, (deal_id,))
+
+    stripe_transfer_id = None
+    creator_payout     = round(float(deal.get("amount") or 0) * (1 - PLATFORM_FEE), 2)
+
+    if held_payment:
+        creator_payout       = float(held_payment["creator_payout"])
+        creator_payout_cents = int(held_payment["creator_payout"]) * 100
+        if (stripe.api_key
+                and not stripe.api_key.startswith("sk_test_REPLACE")
+                and held_payment.get("stripe_account_id")
+                and held_payment.get("stripe_payment_id")):
+            try:
+                transfer = stripe.Transfer.create(
+                    amount      = creator_payout_cents,
+                    currency    = "usd",
+                    destination = held_payment["stripe_account_id"],
+                    metadata    = {
+                        "deal_id":    str(deal_id),
+                        "payment_id": str(held_payment["id"]),
+                    },
+                )
+                stripe_transfer_id = transfer["id"]
+            except stripe.error.StripeError as exc:
+                logging.error("[PAYOUT] Stripe transfer failed for deal #%s: %s", deal_id, exc)
+                payout_error_msg = getattr(exc, "user_message", str(exc)) or str(exc)
+                for admin in ADMIN_EMAILS:
+                    _send_email(
+                        admin,
+                        f"[PAYOUT FAILED] Deal #{deal_id} — manual action required",
+                        (f"Stripe transfer failed on content approval for deal #{deal_id}.\n\n"
+                         f"  Creator acct : {held_payment.get('stripe_account_id')}\n"
+                         f"  Amount       : ${creator_payout:,.2f}\n"
+                         f"  Error        : {payout_error_msg}\n\n"
+                         f"Please manually trigger the payout via the Stripe dashboard.\n\n"
+                         f"— CourtCollab Platform"),
+                        event_type="payout_failed",
+                    )
+
+        with get_conn() as conn:
+            conn.execute("""
+                UPDATE payments
+                SET status = 'released', released_at = datetime('now'),
+                    stripe_transfer_id = COALESCE(?, stripe_transfer_id)
+                WHERE id = ? AND status = 'held'
+            """, (stripe_transfer_id, held_payment["id"]))
+            conn.execute(
+                "UPDATE deals SET status = 'payout_complete', updated_at = datetime('now') WHERE id = ?",
+                (deal_id,)
+            )
+            conn.commit()
+    else:
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE deals SET status = 'payout_complete', updated_at = datetime('now') WHERE id = ?",
+                (deal_id,)
+            )
+            conn.commit()
+
+    # Payout confirmation emails
+    campaign_title = deal.get("campaign_title") or "your deal"
+    asyncio.create_task(asyncio.to_thread(
+        _send_zoho_email,
+        [deal["creator_email"]],
+        "Your Content Was Approved — Payout Released 🎉",
+        f"""Hi {deal['creator_name']},
+
+{deal['brand_name']} has approved your submitted content for "{campaign_title}".
+
+Your payment of ${creator_payout:,.2f} has been released and will arrive within 2–7 business days.
+
+Thank you for creating great content!
+
+— CourtCollab
+""",
+    ))
+    asyncio.create_task(asyncio.to_thread(
+        _send_zoho_email,
+        [deal["brand_email"]],
+        f"Content Approved — Deal Complete: {campaign_title}",
+        f"""Hi {deal['brand_name']},
+
+You've approved the content submitted by {deal['creator_name']} for "{campaign_title}".
+
+The creator payout of ${creator_payout:,.2f} has been released from escrow.
+
+— CourtCollab
+""",
+    ))
+
+    await _notify(
+        user_id    = deal["creator_id"],
+        notif_type = "content_approved",
+        title      = "Your content was approved! 🎉",
+        body       = (f"{deal['brand_name']} approved your content for "
+                      f"\"{campaign_title}\". Your payout of ${creator_payout:,.2f} "
+                      f"has been released."),
+        data       = {"deal_id": deal_id},
+        email      = deal["creator_email"],
+    )
+    return {"ok": True, "action": "approved", "creator_payout": creator_payout}
 
 
 # ---------------------------------------------------------------------------

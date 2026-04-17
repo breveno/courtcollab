@@ -743,6 +743,23 @@ def _init_sqlite():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_deal_confirmations_deal ON deal_confirmations(deal_id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS content_submissions (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                deal_id      INTEGER NOT NULL REFERENCES deals(id)  ON DELETE CASCADE,
+                creator_id   INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                brand_id     INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                content_url  TEXT    NOT NULL,
+                note         TEXT,
+                status       TEXT    NOT NULL DEFAULT 'pending'
+                                 CHECK(status IN ('pending','approved','rejected')),
+                feedback     TEXT,
+                submitted_at TEXT    NOT NULL DEFAULT (datetime('now')),
+                reviewed_at  TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_cs_deal    ON content_submissions(deal_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_cs_creator ON content_submissions(creator_id)")
         conn.commit()
 
     _migrate_deal_statuses()

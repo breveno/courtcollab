@@ -1991,6 +1991,273 @@ async function markDealComplete(dealId, role) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Content Submission — creator submits work, brand reviews
+// ---------------------------------------------------------------------------
+
+let _submitDealId    = null;   // deal being submitted against
+let _reviewSubId     = null;   // submission being reviewed
+let _reviewDealId    = null;   // deal for the submission being reviewed
+
+async function loadContentSubmissionBar(deal) {
+  const bar = document.getElementById('content-submission-bar');
+  if (!bar) return;
+
+  // Only active deals with a fully-signed contract and payment in escrow
+  if (!deal
+      || deal.status !== 'active'
+      || deal.contract_status !== 'contract_complete'
+      || !deal.payment_held) {
+    bar.classList.add('hidden');
+    bar.innerHTML = '';
+    return;
+  }
+
+  let subs = [];
+  try { subs = await apiGet(`/api/deals/${deal.id}/submissions`); } catch (_) {}
+  const latest = subs[0] || null;   // newest first
+
+  bar.classList.remove('hidden');
+
+  if (state.role === 'creator') {
+    if (!latest || latest.status === 'rejected') {
+      const isRevision = latest && latest.status === 'rejected';
+      const fb = isRevision ? escHtml((latest.feedback || '').slice(0, 120)) : '';
+      bar.innerHTML = `
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-800">
+              ${isRevision ? '🔄 Revision Requested' : '📎 Ready to Submit Content'}
+            </p>
+            ${isRevision
+              ? `<p class="text-xs text-amber-700 mt-0.5 leading-snug">"${fb}"</p>`
+              : `<p class="text-xs text-gray-500 mt-0.5">Submit your completed work for brand review</p>`}
+          </div>
+          <button onclick="openSubmitContentModal(${deal.id})"
+            class="flex-shrink-0 ${isRevision ? 'bg-amber-400 hover:bg-amber-500' : 'bg-lime-400 hover:bg-lime-500'} text-gray-900 px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
+            ${isRevision ? '🔄 Resubmit' : 'Submit Content →'}
+          </button>
+        </div>`;
+    } else if (latest.status === 'pending') {
+      bar.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="text-xl flex-shrink-0">⏳</span>
+          <div>
+            <p class="text-sm font-semibold text-gray-800">Awaiting Brand Review</p>
+            <p class="text-xs text-gray-500">Your content has been submitted. You'll be notified once reviewed.</p>
+          </div>
+        </div>`;
+    } else {
+      bar.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="text-xl flex-shrink-0">✅</span>
+          <div>
+            <p class="text-sm font-semibold text-green-800">Content Approved — Payment Released!</p>
+            <p class="text-xs text-gray-500">Your payout is on its way.</p>
+          </div>
+        </div>`;
+    }
+
+  } else if (state.role === 'brand') {
+    if (latest && latest.status === 'pending') {
+      bar.innerHTML = `
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-800">📋 Content Ready for Review</p>
+            <p class="text-xs text-gray-500 mt-0.5">The creator has submitted content — review and approve to release payment</p>
+          </div>
+          <button onclick="openReviewContentModal(${deal.id}, ${latest.id})"
+            class="flex-shrink-0 bg-pickle-600 hover:bg-pickle-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
+            Review Now →
+          </button>
+        </div>`;
+    } else if (latest && latest.status === 'approved') {
+      bar.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="text-xl flex-shrink-0">✅</span>
+          <p class="text-sm font-semibold text-green-800">Content Approved — Payment Released</p>
+        </div>`;
+    } else {
+      bar.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="text-xl flex-shrink-0">⏳</span>
+          <div>
+            <p class="text-sm font-semibold text-gray-700">Waiting for Creator to Submit Content</p>
+            <p class="text-xs text-gray-400">You'll be notified once the creator submits their work.</p>
+          </div>
+        </div>`;
+    }
+  }
+}
+
+function openSubmitContentModal(dealId) {
+  _submitDealId = dealId;
+
+  // Prefill feedback if resubmitting
+  const bar = document.getElementById('content-submission-bar');
+  const feedbackBanner = document.getElementById('cs-feedback-banner');
+  const feedbackText   = document.getElementById('cs-feedback-text');
+  const submitBtn      = document.getElementById('cs-submit-btn');
+
+  // Check bar for rejection feedback text
+  const revisionEl = bar?.querySelector('.text-amber-700');
+  const feedback   = revisionEl ? revisionEl.textContent.replace(/^"/, '').replace(/"$/, '') : null;
+
+  document.getElementById('cs-urls').value = '';
+  document.getElementById('cs-note').value = '';
+  if (submitBtn) submitBtn.disabled = false;
+
+  if (feedback && feedbackBanner && feedbackText) {
+    feedbackText.textContent = feedback;
+    feedbackBanner.classList.remove('hidden');
+    if (submitBtn) submitBtn.textContent = 'Resubmit for Review →';
+  } else {
+    feedbackBanner?.classList.add('hidden');
+    if (submitBtn) submitBtn.textContent = 'Submit for Review →';
+  }
+  openModal('content-submit-modal');
+}
+
+async function submitContent() {
+  const urls = (document.getElementById('cs-urls')?.value || '').trim();
+  const note = (document.getElementById('cs-note')?.value || '').trim();
+  if (!urls) { showToast('Please enter at least one content URL', 'error'); return; }
+
+  const btn = document.getElementById('cs-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+  try {
+    await apiPost(`/api/deals/${_submitDealId}/submit-content`, {
+      content_url: urls,
+      note:        note || null,
+    });
+    closeModal('content-submit-modal');
+    showToast('Content submitted! The brand will be notified to review it.', 'success');
+    // Refresh bar
+    const allDeals = await apiGet('/api/deals').catch(() => []);
+    const deal = allDeals.find(d => d.id === _submitDealId);
+    if (deal) loadContentSubmissionBar(deal);
+  } catch (err) {
+    showToast(err.message || 'Could not submit content', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit for Review →'; }
+  }
+}
+
+async function openReviewContentModal(dealId, submissionId) {
+  _reviewDealId = dealId;
+  _reviewSubId  = submissionId;
+
+  let subs = [];
+  try { subs = await apiGet(`/api/deals/${dealId}/submissions`); } catch (_) {}
+  const active = subs.find(s => s.id === submissionId);
+  if (!active) return;
+
+  // Populate URLs
+  const urlsEl = document.getElementById('cr-urls');
+  if (urlsEl) {
+    const urls = (active.content_url || '').split('\n').map(u => u.trim()).filter(Boolean);
+    urlsEl.innerHTML = urls.map(u => `
+      <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
+         class="flex items-center gap-1.5 text-pickle-600 hover:text-pickle-800 hover:underline break-all">
+        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+        </svg>${escHtml(u)}
+      </a>`).join('');
+  }
+
+  // Creator note
+  const noteWrap = document.getElementById('cr-note-wrap');
+  const noteEl   = document.getElementById('cr-note');
+  if (noteWrap && noteEl) {
+    if (active.note) { noteEl.textContent = active.note; noteWrap.classList.remove('hidden'); }
+    else              { noteWrap.classList.add('hidden'); }
+  }
+
+  // Subtitle
+  const sub = document.getElementById('cr-subtitle');
+  if (sub && active.submitted_at) sub.textContent = `Submitted ${timeSince(active.submitted_at)}`;
+
+  // Reset rejection panel
+  hideRejectSection();
+  const fbEl = document.getElementById('cr-feedback');
+  if (fbEl) fbEl.value = '';
+  const approveBtn = document.getElementById('cr-approve-btn');
+  if (approveBtn) { approveBtn.disabled = false; approveBtn.textContent = '✓ Approve & Release Payment'; }
+
+  // Prior revision history
+  const prevRejected = subs.filter(s => s.id !== submissionId && s.status === 'rejected');
+  const hw = document.getElementById('cr-history-wrap');
+  const he = document.getElementById('cr-history');
+  if (hw && he) {
+    if (prevRejected.length) {
+      he.innerHTML = prevRejected.map(s => `
+        <div class="text-xs bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
+          <span class="text-red-600 font-medium">Revision requested${s.reviewed_at ? ' ' + timeSince(s.reviewed_at) : ''}</span>
+          ${s.feedback ? ` — <em>"${escHtml(s.feedback.slice(0, 120))}"</em>` : ''}
+        </div>`).join('');
+      hw.classList.remove('hidden');
+    } else {
+      hw.classList.add('hidden');
+    }
+  }
+
+  openModal('content-review-modal');
+}
+
+function showRejectSection() {
+  document.getElementById('cr-reject-section')?.classList.remove('hidden');
+  document.getElementById('cr-action-btns')?.classList.add('hidden');
+  document.getElementById('cr-reject-confirm-btns')?.classList.remove('hidden');
+  document.getElementById('cr-feedback')?.focus();
+}
+
+function hideRejectSection() {
+  document.getElementById('cr-reject-section')?.classList.add('hidden');
+  document.getElementById('cr-action-btns')?.classList.remove('hidden');
+  document.getElementById('cr-reject-confirm-btns')?.classList.add('hidden');
+}
+
+async function approveSubmission() {
+  const btn = document.getElementById('cr-approve-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Approving…'; }
+  try {
+    await apiPatch(`/api/submissions/${_reviewSubId}/review`, { action: 'approve' });
+    closeModal('content-review-modal');
+    showToast('🎉 Content approved! Payment has been released to the creator.', 'success');
+    renderBrandPortal();
+    const allDeals = await apiGet('/api/deals').catch(() => []);
+    const deal = allDeals.find(d => d.id === _reviewDealId);
+    if (deal) loadContentSubmissionBar(deal);
+  } catch (err) {
+    showToast(err.message || 'Could not approve submission', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Approve & Release Payment'; }
+  }
+}
+
+async function rejectSubmission() {
+  const feedback = (document.getElementById('cr-feedback')?.value || '').trim();
+  if (!feedback) {
+    showToast('Please provide feedback for the creator before sending', 'error');
+    document.getElementById('cr-feedback')?.focus();
+    return;
+  }
+  const btn = document.getElementById('cr-reject-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    await apiPatch(`/api/submissions/${_reviewSubId}/review`, { action: 'reject', feedback });
+    closeModal('content-review-modal');
+    showToast('Revision request sent to the creator.', 'info');
+    const allDeals = await apiGet('/api/deals').catch(() => []);
+    const deal = allDeals.find(d => d.id === _reviewDealId);
+    if (deal) loadContentSubmissionBar(deal);
+  } catch (err) {
+    showToast(err.message || 'Could not send feedback', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Feedback & Request Revision'; }
+  }
+}
+
+// ---------------------------------------------------------------------------
 function _renderMarkCompleteSection(containerId, deals, role) {
   if (!deals || deals.length === 0) return;
   const el = document.getElementById(containerId);
@@ -4364,6 +4631,9 @@ async function openConversation(partnerId, knownName = null) {
         stepperEl.innerHTML = '';
       }
     }
+
+    // Content submission bar — shown when active deal has signed contract + held payment
+    loadContentSubmissionBar(deal);
 
     // If creator, fetch brand's avg rating and show alongside deal status
     if (state.role === 'creator' && headerStatus) {

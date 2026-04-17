@@ -1929,6 +1929,8 @@
           </div>
           <!-- Deal status timeline stepper -->
           <div id="deal-stepper" class="hidden px-4 py-3 border-b border-gray-100 bg-gray-50/60 flex-shrink-0"></div>
+          <!-- Content submission bar -->
+          <div id="content-submission-bar" class="hidden px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0"></div>
           <!-- Dispute banner -->
           <div id="dispute-banner" class="hidden px-4 py-2.5 bg-red-50 border-b border-red-200 flex items-center justify-between gap-3 flex-shrink-0">
             <div class="flex items-center gap-2 text-sm">
@@ -2222,6 +2224,83 @@
           <button onclick="resolveDispute('resolved')" class="flex-1 bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">✅ Mark Resolved</button>
           <button onclick="resolveDispute('closed')" class="flex-1 bg-gray-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-700 transition">🔒 Close Dispute</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Content Submit Modal (creator) ───────────────────────────────── -->
+  <div id="content-submit-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('content-submit-modal')">
+    <div class="modal-content max-w-lg w-full">
+      <div class="flex justify-between items-center mb-5">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Submit Your Content</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Share your completed work for the brand to review</p>
+        </div>
+        <button onclick="closeModal('content-submit-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <!-- Revision feedback banner (shown when resubmitting) -->
+      <div id="cs-feedback-banner" class="hidden mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+        <p class="text-xs font-semibold text-amber-700 mb-1">📝 Brand's Revision Request</p>
+        <p class="text-sm text-amber-800 leading-relaxed" id="cs-feedback-text"></p>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Content URL(s) <span class="text-red-500">*</span></label>
+          <textarea id="cs-urls" rows="4" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-pickle-500 focus:border-transparent" placeholder="Paste your content link(s) here — one per line&#10;e.g. https://www.instagram.com/reel/...&#10;     https://www.tiktok.com/@user/video/..."></textarea>
+          <p class="text-xs text-gray-400 mt-1">Paste multiple URLs on separate lines if submitting more than one piece</p>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Note to Brand <span class="text-xs text-gray-400 font-normal">(optional)</span></label>
+          <textarea id="cs-note" rows="2" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-pickle-500 focus:border-transparent" placeholder="Any context about your submission..."></textarea>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button onclick="closeModal('content-submit-modal')" class="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">Cancel</button>
+        <button onclick="submitContent()" id="cs-submit-btn" class="flex-1 bg-lime-400 text-gray-900 py-2.5 rounded-xl font-semibold hover:bg-lime-500 transition text-sm">Submit for Review →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Content Review Modal (brand) ──────────────────────────────────── -->
+  <div id="content-review-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('content-review-modal')">
+    <div class="modal-content max-w-lg w-full">
+      <div class="flex justify-between items-center mb-5">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Review Submitted Content</h2>
+          <p class="text-sm text-gray-500 mt-0.5" id="cr-subtitle">Submitted by the creator for your review</p>
+        </div>
+        <button onclick="closeModal('content-review-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <!-- Content links -->
+      <div class="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Content Links</p>
+        <div id="cr-urls" class="space-y-2 text-sm"></div>
+      </div>
+      <!-- Creator note -->
+      <div id="cr-note-wrap" class="hidden mb-4">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Creator's Note</p>
+        <p id="cr-note" class="text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 leading-relaxed"></p>
+      </div>
+      <!-- Rejection feedback textarea (hidden until Request Revision clicked) -->
+      <div id="cr-reject-section" class="hidden mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Feedback for Creator <span class="text-red-500">*</span></label>
+        <p class="text-xs text-gray-400 mb-2">Required — the creator will see this message and must address it before resubmitting.</p>
+        <textarea id="cr-feedback" rows="3" class="w-full border border-red-300 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400" placeholder="Describe what changes are needed…"></textarea>
+      </div>
+      <!-- Primary action buttons -->
+      <div id="cr-action-btns" class="flex gap-3">
+        <button onclick="showRejectSection()" class="flex-1 border border-red-300 text-red-600 py-2.5 rounded-xl font-semibold hover:bg-red-50 transition text-sm">✗ Request Revision</button>
+        <button onclick="approveSubmission()" id="cr-approve-btn" class="flex-1 bg-lime-400 text-gray-900 py-2.5 rounded-xl font-semibold hover:bg-lime-500 transition text-sm">✓ Approve &amp; Release Payment</button>
+      </div>
+      <!-- Reject confirm buttons (shown after Request Revision clicked) -->
+      <div id="cr-reject-confirm-btns" class="hidden flex gap-3">
+        <button onclick="hideRejectSection()" class="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl font-medium hover:bg-gray-50 transition text-sm">← Back</button>
+        <button onclick="rejectSubmission()" id="cr-reject-confirm-btn" class="flex-1 bg-red-600 text-white py-2.5 rounded-xl font-semibold hover:bg-red-700 transition text-sm">Send Feedback &amp; Request Revision</button>
+      </div>
+      <!-- Prior revision history -->
+      <div id="cr-history-wrap" class="hidden mt-5 pt-4 border-t border-gray-100">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Prior Revisions</p>
+        <div id="cr-history" class="space-y-2"></div>
       </div>
     </div>
   </div>
@@ -3909,6 +3988,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div>
   </div>
 
-  <script src="app.js?v=192"></script>
+  <script src="app.js?v=193"></script>
 </body>
 </html>
