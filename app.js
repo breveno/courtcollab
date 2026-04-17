@@ -6840,17 +6840,33 @@ async function _loadBrandFeatStrip() {
   const colors = ['#0B1F4A','#163a70','#1E6EA6','#4f8ec0'];
   strip.innerHTML = creators.map((c, i) => {
     const total = (c.followers_ig||0)+(c.followers_tt||0)+(c.followers_yt||0);
-    const fmtF = n => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? Math.round(n/1000)+'K' : n;
+    const fmtF = n => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? Math.round(n/1000)+'K' : String(n);
     const platforms = [];
     if (c.followers_ig) platforms.push(`<span class="flex items-center gap-0.5 text-gray-500"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069z"/></svg>${fmtF(c.followers_ig)}</span>`);
     if (c.followers_tt) platforms.push(`<span class="flex items-center gap-0.5 text-gray-500"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.17 8.17 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>${fmtF(c.followers_tt)}</span>`);
     if (c.followers_yt) platforms.push(`<span class="flex items-center gap-0.5 text-gray-500"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>${fmtF(c.followers_yt)}</span>`);
+    const skills = Array.isArray(c.skills) ? c.skills : [];
+    const bio = (c.bio || '').trim();
+    const location = (c.location || '').trim();
+    const engRate = c.engagement_rate > 0 ? c.engagement_rate.toFixed(1) + '%' : null;
+    const avgViews = c.avg_views > 0 ? fmtF(c.avg_views) : null;
     return `<div class="feat-strip-card cursor-pointer" onclick="heroViewProfile(${c.user_id})">
-      <div class="w-12 h-12 rounded-full flex items-center justify-center mb-3 text-white font-bold text-lg" style="background:${colors[i%colors.length]}">${c.initials||'?'}</div>
-      <p class="font-semibold text-sm mb-0.5 truncate">${c.name||'Creator'}</p>
-      <p class="text-xs text-gray-400 mb-2 truncate">${c.niche||'Pickleball'}</p>
-      <div class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs mb-2">${platforms.join('')}</div>
-      <div class="text-xs text-gray-400">${fmtF(total)} total followers</div>
+      <div class="flex items-center gap-2.5 mb-2.5">
+        <div class="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-base" style="background:${colors[i%colors.length]}">${c.initials||'?'}</div>
+        <div class="min-w-0">
+          <p class="font-semibold text-sm leading-tight truncate">${escHtml(c.name||'Creator')}</p>
+          <p class="text-xs text-gray-400 truncate">${escHtml(c.niche||'Pickleball')}</p>
+        </div>
+      </div>
+      ${location ? `<p class="text-xs text-gray-400 mb-2 truncate">📍 ${escHtml(location)}</p>` : ''}
+      ${bio ? `<p class="text-xs text-gray-500 leading-relaxed mb-2.5" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml(bio)}</p>` : ''}
+      ${(engRate || avgViews) ? `<div class="grid grid-cols-2 gap-1.5 mb-2.5">
+        ${engRate ? `<div class="rounded-lg px-2 py-1.5 bg-gray-50"><p class="text-xs text-gray-400 mb-0.5">Engagement</p><p class="text-xs font-semibold text-gray-700">${engRate}</p></div>` : ''}
+        ${avgViews ? `<div class="rounded-lg px-2 py-1.5 bg-gray-50"><p class="text-xs text-gray-400 mb-0.5">Avg Views</p><p class="text-xs font-semibold text-gray-700">${avgViews}</p></div>` : ''}
+      </div>` : ''}
+      ${platforms.length ? `<div class="flex flex-wrap gap-x-2.5 gap-y-0.5 text-xs mb-2">${platforms.join('')}</div>` : ''}
+      ${total ? `<p class="text-xs text-gray-400 mb-2">${fmtF(total)} total followers</p>` : ''}
+      ${skills.length ? `<div class="flex flex-wrap gap-1">${skills.slice(0,3).map(s=>`<span class="text-xs px-1.5 py-0.5 rounded-full bg-pickle-50 text-pickle-600 font-medium">${escHtml(s)}</span>`).join('')}</div>` : ''}
     </div>`;
   }).join('');
 }
