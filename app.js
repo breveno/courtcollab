@@ -1128,7 +1128,7 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
     if (page === 'contact')           renderContact();
     if (page === 'admin')             renderAdmin();
     if (page === 'signed-contracts')  renderSignedContractsTab();
-    if (page === 'creator-profile') { populateCreatorForm(); renderCreatorDealHistory(); }
+    if (page === 'creator-profile') { populateCreatorForm(); }
     else { const el = document.getElementById('creator-profile-completion'); if (el) el.innerHTML = ''; }
     if (page === 'creator-dashboard') renderCreatorDashboard();
 
@@ -1691,6 +1691,9 @@ async function renderCreatorDashboard() {
 
   // Load bank account / Stripe Connect status
   loadStripeConnectStatus();
+
+  // My Deals summary card (moved from Creator Profile)
+  renderCreatorDealHistory();
 
   try {
     const [payments, deals] = await Promise.all([
