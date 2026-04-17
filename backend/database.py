@@ -1,3 +1,149 @@
+"""
+database.py — dual-mode database layer
+  • DATABASE_URL set  → PostgreSQL via psycopg2 (Supabase in production)
+  • DATABASE_URL unset → SQLite (local dev fallback)
+
+The compat wrapper makes psycopg2 behave like sqlite3 so main.py is unchanged:
+  - ? placeholders  → %s
+  - datetime('now') → NOW()
+  - INSERT          → INSERT … RETURNING id (powers cursor.lastrowid)
+  - rows            → plain dicts (same as sqlite3.Row)
+  - PRAGMA …        → silently ignored
+"""
+
+import os
+import re
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+_USE_PG = bool(DATABASE_URL)
+
+# Startup diagnostic — always visible in Railway deploy logs
+print(f"[DB] Mode: {'PostgreSQL/Supabase' if _USE_PG else 'SQLite (local)'}")
+print(f"[DB] DATABASE_URL set: {bool(DATABASE_URL)}")
+
+# ---------------------------------------------------------------------------
+# SQLite path (local dev)
+# ---------------------------------------------------------------------------
+if not _USE_PG:
+    import sqlite3
+    DB_PATH = os.path.join(os.path.dirname(__file__), "courtcollab.db")
+
+    def get_conn():
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+
+# ---------------------------------------------------------------------------
+# PostgreSQL compat wrapper
+# ---------------------------------------------------------------------------
+else:
+    import psycopg2
+    import psycopg2.extras
+
+    # Regexes compiled once
+    _RE_PLACEHOLDER  = re.compile(r"\?")
+    _RE_DATETIME_NOW = re.compile(r"datetime\('now'\)", re.IGNORECASE)
+    _RE_PRAGMA       = re.compile(r"^\s*PRAGMA\b", re.IGNORECASE)
+
+    class _CompatCursor:
+        def __init__(self, raw):
+            self._raw       = raw
+            self._lastrowid = None
+
+        @property
+        def lastrowid(self):
+            return self._lastrowid
+
+        def fetchone(self):
+            row = self._raw.fetchone()
+            return dict(row) if row else None
+
+        def fetchall(self):
+            return [dict(r) for r in self._raw.fetchall()]
+
+        def __iter__(self):
+            for row in self._raw:
+                yield dict(row)
+
+        # sqlite3 exposes .description on the cursor
+        @property
+        def description(self):
+            return self._raw.description
+
+    class _CompatConn:
+        def __init__(self, pg_conn):
+            self._conn = pg_conn
+
+        def execute(self, sql: str, params=()):
+            # Silently ignore SQLite PRAGMA statements
+            if _RE_PRAGMA.match(sql):
+                return _CompatCursor(_NoOpCursor())
+
+            # Translate SQLite → PostgreSQL syntax
+            sql = _RE_PLACEHOLDER.sub("%s", sql)
+            sql = _RE_DATETIME_NOW.sub("NOW()", sql)
+
+            # Auto-add RETURNING * to plain INSERTs so .lastrowid works.
+            # Use RETURNING * (not RETURNING id) so tables whose PK is not
+            # named "id" (e.g. creator_profiles.user_id) don't throw
+            # "column id does not exist".
+            stripped = sql.strip().upper()
+            is_insert = stripped.startswith("INSERT") and "RETURNING" not in stripped
+            if is_insert:
+                sql = sql.rstrip().rstrip(";") + " RETURNING *"
+
+            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql, params if params else None)
+
+            compat = _CompatCursor(cur)
+            if is_insert:
+                row = cur.fetchone()
+                if row:
+                    # Prefer "id" column; fall back to first column value
+                    compat._lastrowid = row.get("id") or next(iter(row.values()), None)
+
+            return compat
+
+        def commit(self):
+            self._conn.commit()
+
+        def close(self):
+            self._conn.close()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if exc_type:
+                self._conn.rollback()
+            else:
+                self._conn.commit()
+            self._conn.close()
+
+    class _NoOpCursor:
+        """Placeholder for PRAGMA no-ops."""
+        def fetchone(self):   return None
+        def fetchall(self):   return []
+        def __iter__(self):   return iter([])
+        description = None
+
+    def get_conn():
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
+        return _CompatConn(conn)
+
+
+# ---------------------------------------------------------------------------
+# Schema — PostgreSQL syntax when DATABASE_URL is set, SQLite otherwise
+# ---------------------------------------------------------------------------
+
+def init_db():
+    if _USE_PG:
+        _init_pg()
+    else:
+        _init_sqlite()
+
+
 def _init_pg():
     """Create all tables in Supabase / PostgreSQL."""
     with get_conn() as conn:
