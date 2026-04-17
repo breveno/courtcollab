@@ -222,7 +222,7 @@ def _init_pg():
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_campaigns_brand  ON campaigns(brand_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status)")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS questions TEXT DEFAULT '[]'")
+        _sqlite_add_column(conn, "ALTER TABLE campaigns ADD COLUMN questions TEXT DEFAULT '[]'")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS applications (
@@ -242,8 +242,8 @@ def _init_pg():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_applications_campaign ON applications(campaign_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_applications_creator  ON applications(creator_id)")
         # Invite columns — safe to run every startup for existing deployments
-        conn.execute("ALTER TABLE applications ADD COLUMN IF NOT EXISTS source         TEXT NOT NULL DEFAULT 'creator'")
-        conn.execute("ALTER TABLE applications ADD COLUMN IF NOT EXISTS invite_message TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE applications ADD COLUMN source         TEXT NOT NULL DEFAULT 'creator'")
+        _sqlite_add_column(conn, "ALTER TABLE applications ADD COLUMN invite_message TEXT")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS matches (
@@ -411,67 +411,67 @@ def _init_pg():
 
         # Migrations — add columns to existing tables if they don't exist yet
         # users
-        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token         TEXT")
-        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TEXT")
-        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS initials            TEXT NOT NULL DEFAULT ''")
+        _sqlite_add_column(conn, "ALTER TABLE users ADD COLUMN reset_token         TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE users ADD COLUMN reset_token_expires TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE users ADD COLUMN initials            TEXT NOT NULL DEFAULT ''")
 
         # creator_profiles — ensure every column exists regardless of when the table was first created
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS name            TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS niche           TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS bio             TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS location        TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS skill_level     TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS followers_ig    INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS followers_tt    INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS followers_yt    INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS engagement_rate REAL    DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS avg_views       INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_ig         INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_tiktok     INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_yt         INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_ugc        INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS rate_notes      TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS skills          TEXT DEFAULT '[]'")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS social_handles  TEXT DEFAULT '{}'")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS demo_age        TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS demo_gender     TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS demo_locations  TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS demo_interests  TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS stripe_account_id TEXT")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS stripe_onboarded  INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS birthday          TEXT")  # YYYY-MM-DD, private
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN name            TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN niche           TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN bio             TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN location        TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN skill_level     TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN followers_ig    INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN followers_tt    INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN followers_yt    INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN engagement_rate REAL    DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN avg_views       INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN rate_ig         INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN rate_tiktok     INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN rate_yt         INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN rate_ugc        INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN rate_notes      TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN skills          TEXT DEFAULT '[]'")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN social_handles  TEXT DEFAULT '{}'")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN demo_age        TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN demo_gender     TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN demo_locations  TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN demo_interests  TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN stripe_account_id TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN stripe_onboarded  INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE creator_profiles ADD COLUMN birthday          TEXT")  # YYYY-MM-DD, private
 
         # campaigns
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS niche         TEXT")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS skills        TEXT DEFAULT '[]'")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS target_age      TEXT")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_followers  INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS max_rate       INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS creators_needed INTEGER DEFAULT 1")
+        _sqlite_add_column(conn, "ALTER TABLE campaigns ADD COLUMN niche         TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE campaigns ADD COLUMN skills        TEXT DEFAULT '[]'")
+        _sqlite_add_column(conn, "ALTER TABLE campaigns ADD COLUMN target_age      TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE campaigns ADD COLUMN min_followers  INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE campaigns ADD COLUMN max_rate       INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE campaigns ADD COLUMN creators_needed INTEGER DEFAULT 1")
 
         # deals — SignWell contract tracking + contract terms + per-signer status
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_document_id  TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_status       TEXT DEFAULT 'none'")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS num_posts             INTEGER DEFAULT 1")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS deadline              TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS usage_rights_duration TEXT DEFAULT '1 year'")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS exclusivity_terms     TEXT DEFAULT 'None'")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_signed          INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_signed_at       TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_signed        INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_signed_at     TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_completed_url TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_sent_at      TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS signed_contract_url  TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_terms_confirmed      INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_terms_confirmed    INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS stripe_payment_intent_id  TEXT")
-        conn.execute("ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS social_handles TEXT DEFAULT '{}'")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN contract_document_id  TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN contract_status       TEXT DEFAULT 'none'")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN num_posts             INTEGER DEFAULT 1")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN deadline              TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN usage_rights_duration TEXT DEFAULT '1 year'")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN exclusivity_terms     TEXT DEFAULT 'None'")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN brand_signed          INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN brand_signed_at       TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN creator_signed        INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN creator_signed_at     TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN contract_completed_url TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN contract_sent_at      TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN signed_contract_url  TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN brand_terms_confirmed      INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN creator_terms_confirmed    INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN stripe_payment_intent_id  TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE brand_profiles ADD COLUMN social_handles TEXT DEFAULT '{}'")
 
         # Stale deal tracking
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS reminders_sent     INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS last_reminder_sent TEXT")
-        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS needs_review       INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN reminders_sent     INTEGER DEFAULT 0")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN last_reminder_sent TEXT")
+        _sqlite_add_column(conn, "ALTER TABLE deals ADD COLUMN needs_review       INTEGER DEFAULT 0")
 
         # Allow 'draft' status on campaigns (constraint originally only had open/paused/closed)
         conn.execute("ALTER TABLE campaigns DROP CONSTRAINT IF EXISTS campaigns_status_check")
@@ -488,6 +488,15 @@ def _init_pg():
         """)
 
         conn.commit()
+
+
+def _sqlite_add_column(conn, sql: str):
+    """Execute an ALTER TABLE … ADD COLUMN, silently skipping if it already exists.
+    Needed because SQLite < 3.37 does not support ADD COLUMN IF NOT EXISTS."""
+    try:
+        conn.execute(sql)
+    except Exception:
+        pass  # column already exists
 
 
 def _init_sqlite():
@@ -564,7 +573,7 @@ def _init_sqlite():
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_campaigns_brand   ON campaigns(brand_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_campaigns_status  ON campaigns(status)")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS questions TEXT DEFAULT '[]'")
+        _sqlite_add_column(conn, "ALTER TABLE campaigns ADD COLUMN questions TEXT DEFAULT '[]'")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS applications (

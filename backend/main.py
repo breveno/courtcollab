@@ -68,6 +68,7 @@ Stripe Connect
   POST   /api/stripe/webhook                 — Stripe webhook (no auth)
 """
 
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -2282,7 +2283,18 @@ async def mark_deal_complete(deal_id: int, user: dict = Depends(current_user)):
             (deal_id,)
         )
         conn.commit()
-        deal = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+        # Re-fetch with full joins so brand_name, creator_email etc. are available for notifications
+        deal = _row(conn, """
+            SELECT d.*,
+                   uc.email AS creator_email, uc.name AS creator_name,
+                   ub.email AS brand_email,   ub.name AS brand_name,
+                   c.title  AS campaign_title
+            FROM deals d
+            JOIN users uc ON uc.id = d.creator_id
+            JOIN users ub ON ub.id = d.brand_id
+            LEFT JOIN campaigns c ON c.id = d.campaign_id
+            WHERE d.id = ?
+        """, (deal_id,))
 
     brand_done   = bool(deal.get("brand_marked_complete"))
     creator_done = bool(deal.get("creator_marked_complete"))
@@ -2362,8 +2374,22 @@ async def mark_deal_complete(deal_id: int, user: dict = Depends(current_user)):
                     held_payment["stripe_account_id"], deal_id,
                 )
             except stripe.error.StripeError as exc:
+                # Log the error and alert admins — but DON'T block the deal from completing.
+                # The deal is marked payout_complete; admins must manually retry the payout.
                 logging.error("[PAYOUT] Stripe transfer failed for deal #%s: %s", deal_id, exc)
-                raise HTTPException(502, f"Stripe payout failed: {exc.user_message}")
+                payout_error_msg = getattr(exc, "user_message", str(exc)) or str(exc)
+                for admin in ADMIN_EMAILS:
+                    _send_email(
+                        admin,
+                        f"[PAYOUT FAILED] Deal #{deal_id} — manual action required",
+                        (f"Stripe transfer failed for deal #{deal_id}.\n\n"
+                         f"  Creator acct : {held_payment.get('stripe_account_id')}\n"
+                         f"  Amount       : ${creator_payout:,.2f}\n"
+                         f"  Error        : {payout_error_msg}\n\n"
+                         f"Please manually trigger the payout via the Stripe dashboard.\n\n"
+                         f"— CourtCollab Platform"),
+                        event_type="payout_failed",
+                    )
 
         # Mark payment as released and deal as payout_complete atomically
         with get_conn() as conn:
@@ -2925,9 +2951,10 @@ def stripe_connect_status(user: dict = Depends(current_user)):
         return {"onboarded": False, "stripe_account_id": None}
 
     acct = stripe.Account.retrieve(profile["stripe_account_id"])
-    charges_enabled  = acct.get("charges_enabled", False)
-    payouts_enabled  = acct.get("payouts_enabled", False)
-    details_submitted = acct.get("details_submitted", False)
+    # Stripe SDK objects use attribute access, not .get()
+    charges_enabled   = getattr(acct, "charges_enabled",   False) or False
+    payouts_enabled   = getattr(acct, "payouts_enabled",   False) or False
+    details_submitted = getattr(acct, "details_submitted", False) or False
     fully_onboarded  = charges_enabled and payouts_enabled and details_submitted
 
     # Persist onboarded flag so we don't have to call Stripe every time
@@ -3161,7 +3188,12 @@ async def stripe_webhook(request: Request):
         raise HTTPException(400, "Invalid Stripe signature")
 
     etype = event["type"]
-    data  = event["data"]["object"]
+    # Convert Stripe SDK object → plain dict so .get() and nested dict access work
+    # (Stripe Python SDK v5+ StripeObjects no longer support .get() directly)
+    try:
+        data = event["data"]["object"].to_dict()
+    except Exception:
+        data = dict(event["data"]["object"])
 
     if etype == "checkout.session.completed":
         session_id     = data["id"]
