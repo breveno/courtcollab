@@ -1997,6 +1997,8 @@ function _renderMarkCompleteSection(containerId, deals, role) {
             </div>
             <p class="text-xs text-gray-500">With ${escHtml(otherParty)}</p>
             <p class="text-xs text-teal-700 font-medium mt-1">✓ You've marked this complete — waiting for ${escHtml(otherParty)} to confirm</p>
+            ${d.reminders_sent > 0 ? `<p class="text-xs text-amber-600 mt-1" data-testid="reminder-badge">⚠ Reminder sent ${d.reminders_sent} time${d.reminders_sent === 1 ? '' : 's'}</p>` : ''}
+            ${d.needs_review ? `<p class="text-xs text-red-600 font-medium mt-1" data-testid="needs-review-notice">⚠ Escalated for manual review by the CourtCollab team</p>` : ''}
           </div>
         </div>`;
     }
@@ -2019,6 +2021,8 @@ function _renderMarkCompleteSection(containerId, deals, role) {
           </div>
           <p class="text-xs text-gray-500">With ${escHtml(otherParty)} &nbsp;·&nbsp; Confirm delivery is complete to release payout</p>
           <div class="mt-1">${otherMsg}</div>
+          ${d.reminders_sent > 0 ? `<p class="text-xs text-amber-600 mt-1" data-testid="reminder-badge">⚠ Reminder sent ${d.reminders_sent} time${d.reminders_sent === 1 ? '' : 's'} — please review as soon as possible</p>` : ''}
+          ${d.needs_review ? `<p class="text-xs text-red-600 font-medium mt-1" data-testid="needs-review-notice">⚠ This deal has been escalated for manual review by the CourtCollab team</p>` : ''}
         </div>
         <button id="mark-complete-btn-${d.id}" onclick="markDealComplete(${d.id}, '${role}')"
           class="shrink-0 bg-lime-500 hover:bg-lime-600 text-white font-semibold text-sm px-4 py-2 rounded-xl transition flex items-center gap-1.5">

@@ -144,11 +144,51 @@ const MARK_COMPLETE_BOTH_RESPONSE = {
   transfer_id:   'tr_test_mock_payout',
 };
 
+// ---------------------------------------------------------------------------
+// Stale deal fixtures — used by stale-deals.test.js
+// ---------------------------------------------------------------------------
+
+/**
+ * A deal that has been in escrow ~17 days.
+ * The background job has already sent 2 reminder emails.
+ */
+const MOCK_DEAL_STALE_2_REMINDERS = {
+  ...MOCK_DEAL_WITH_HELD_PAYMENT,
+  reminders_sent:     2,
+  last_reminder_sent: '2024-01-29T10:00:00Z',
+  needs_review:       0,
+};
+
+/**
+ * A deal that has been in escrow ~20 days.
+ * Exactly 1 reminder sent — used to test the singular "time" label.
+ */
+const MOCK_DEAL_STALE_1_REMINDER = {
+  ...MOCK_DEAL_WITH_HELD_PAYMENT,
+  reminders_sent:     1,
+  last_reminder_sent: '2024-01-29T10:00:00Z',
+  needs_review:       0,
+};
+
+/**
+ * A deal that has been flagged needs_review=1 after 30+ days.
+ * The checker has stopped reminding; Ben will resolve manually.
+ */
+const MOCK_DEAL_NEEDS_REVIEW = {
+  ...MOCK_DEAL_WITH_HELD_PAYMENT,
+  reminders_sent:     5,
+  last_reminder_sent: '2024-02-08T10:00:00Z',
+  needs_review:       1,
+};
+
 module.exports = {
   BRAND_USER,
   CREATOR_USER,
   MOCK_DEAL,
   MOCK_DEAL_WITH_HELD_PAYMENT,
+  MOCK_DEAL_STALE_1_REMINDER,
+  MOCK_DEAL_STALE_2_REMINDERS,
+  MOCK_DEAL_NEEDS_REVIEW,
   MOCK_PAYMENT_INTENT,
   MOCK_STRIPE_CONFIG,
   MOCK_PAYMENTS_BRAND,
