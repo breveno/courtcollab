@@ -1,12 +1,22 @@
 [build]
   publish = "."
 
+[functions]
+  directory = "netlify/functions"
+
 # HTML — always revalidate so users get fresh deploys immediately
 [[headers]]
   for = "/*.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
     Access-Control-Allow-Origin = "*"
+
+# Admin page — never cache (auth-gated, data changes frequently)
+[[headers]]
+  for = "/admin/payments/index.html"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag  = "noindex, nofollow"
 
 # Versioned static assets (JS, CSS, images with ?v= param) — cache 1 year, immutable
 # The ?v=N query string in the HTML is the cache-buster when files change

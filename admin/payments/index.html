@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payments Admin — CourtCollab</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Prevent Tailwind CDN flash */
+    [x-cloak] { display: none !important; }
+    /* Sticky header shadow */
+    .sticky-header { box-shadow: 0 1px 0 #e5e7eb; }
+    /* Table hover */
+    tbody tr:hover { background-color: #f9fafb; }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.8s linear infinite; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+<!-- ══════════════════════════════════════════════════════ LOCK SCREEN -->
+<div id="lock-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-4">
+  <div class="w-full max-w-sm">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center gap-2 text-white mb-2">
+        <svg class="w-8 h-8 text-lime-400" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+        </svg>
+        <span class="text-xl font-bold tracking-tight">CourtCollab</span>
+      </div>
+      <p class="text-gray-400 text-sm">Payments Admin</p>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-2xl shadow-2xl p-8">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-bold text-gray-900 text-lg leading-tight">Admin Access</h1>
+          <p class="text-xs text-gray-400">Enter your admin password to continue</p>
+        </div>
+      </div>
+
+      <form id="login-form" novalidate>
+        <div class="relative mb-4">
+          <input
+            id="password-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Admin password"
+            class="w-full border border-gray-200 rounded-xl px-4 py-3 pr-12 text-sm text-gray-900
+                   focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent
+                   placeholder-gray-400 transition"
+          />
+          <!-- Toggle visibility -->
+          <button type="button" id="toggle-pw"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+            aria-label="Toggle password visibility">
+            <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7
+                   -1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+
+        <p id="login-error" class="text-red-500 text-xs mb-3 hidden"></p>
+
+        <button type="submit" id="login-btn"
+          class="w-full bg-lime-500 hover:bg-lime-600 active:bg-lime-700 text-white font-semibold
+                 text-sm py-3 rounded-xl transition flex items-center justify-center gap-2">
+          <span id="login-btn-text">Unlock Dashboard</span>
+          <svg id="login-spinner" class="w-4 h-4 spinner hidden" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/>
+            <path class="opacity-75" fill="white"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <p class="text-center text-gray-600 text-xs mt-6">
+      CourtCollab internal use only
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ DASHBOARD -->
+<div id="dashboard" class="hidden">
+
+  <!-- Header -->
+  <header class="bg-white sticky top-0 z-10 sticky-header">
+    <div class="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg class="w-7 h-7 text-lime-500" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+        </svg>
+        <div>
+          <span class="font-bold text-gray-900 text-base">CourtCollab</span>
+          <span class="ml-2 text-xs font-medium text-gray-400 uppercase tracking-wide">Payments Admin</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="refresh-btn"
+          class="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1.5 transition"
+          title="Refresh data">
+          <svg id="refresh-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Refresh
+        </button>
+        <div class="w-px h-4 bg-gray-200"></div>
+        <button id="logout-btn"
+          class="text-xs text-gray-500 hover:text-red-500 flex items-center gap-1.5 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+          Sign out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-screen-xl mx-auto px-6 py-8">
+
+    <!-- Error banner -->
+    <div id="data-error" class="hidden mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+      <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <div>
+        <p class="text-sm font-medium text-red-800">Failed to load data</p>
+        <p id="data-error-msg" class="text-xs text-red-600 mt-0.5"></p>
+      </div>
+    </div>
+
+    <!-- ── Summary cards ─────────────────────────────────────────── -->
+    <div id="summary-cards" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <!-- Loading skeleton -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
+        <div class="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
+        <div class="h-7 bg-gray-200 rounded w-1/2"></div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
+        <div class="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
+        <div class="h-7 bg-gray-200 rounded w-1/2"></div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
+        <div class="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
+        <div class="h-7 bg-gray-200 rounded w-1/2"></div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
+        <div class="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
+        <div class="h-7 bg-gray-200 rounded w-1/2"></div>
+      </div>
+    </div>
+
+    <!-- ── Controls row ──────────────────────────────────────────── -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-4">
+      <div class="relative flex-1">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input id="search-input" type="search" placeholder="Search by brand or creator name…"
+          class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900
+                 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent
+                 placeholder-gray-400 bg-white transition" />
+      </div>
+      <div class="flex items-center gap-2">
+        <select id="status-filter"
+          class="border border-gray-200 rounded-xl text-sm text-gray-700 px-3 py-2.5 bg-white
+                 focus:outline-none focus:ring-2 focus:ring-lime-400 transition cursor-pointer">
+          <option value="all">All statuses</option>
+          <option value="held">In Escrow</option>
+          <option value="released">Paid Out</option>
+          <option value="pending">Pending</option>
+          <option value="refunded">Refunded</option>
+          <option value="needs_review">Needs Review</option>
+        </select>
+        <span id="row-count" class="text-xs text-gray-400 whitespace-nowrap"></span>
+      </div>
+    </div>
+
+    <!-- ── Transactions table ────────────────────────────────────── -->
+    <div class="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+              <th class="px-4 py-3 text-left font-semibold">Deal ID</th>
+              <th class="px-4 py-3 text-left font-semibold">Brand</th>
+              <th class="px-4 py-3 text-left font-semibold">Creator</th>
+              <th class="px-4 py-3 text-right font-semibold">Amount</th>
+              <th class="px-4 py-3 text-right font-semibold">Fee (15%)</th>
+              <th class="px-4 py-3 text-right font-semibold">Payout (85%)</th>
+              <th class="px-4 py-3 text-left font-semibold">Payment Date</th>
+              <th class="px-4 py-3 text-left font-semibold">Payout Date</th>
+              <th class="px-4 py-3 text-left font-semibold">Status</th>
+              <th class="px-4 py-3 text-left font-semibold">Alerts</th>
+            </tr>
+          </thead>
+          <tbody id="transactions-body">
+            <!-- Loading rows -->
+            <tr><td colspan="10" class="px-4 py-12 text-center text-gray-400 text-sm">
+              <div class="flex items-center justify-center gap-2">
+                <svg class="w-4 h-4 spinner text-lime-500" viewBox="0 0 24 24" fill="none">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                Loading transactions…
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty state -->
+      <div id="empty-state" class="hidden py-16 text-center">
+        <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586
+               a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <p class="text-gray-500 font-medium text-sm">No transactions match your search</p>
+        <p class="text-gray-400 text-xs mt-1">Try a different name or status filter</p>
+      </div>
+    </div>
+
+    <p class="text-xs text-gray-400 mt-4 text-center">
+      Data is fetched live from Supabase. Amounts in USD. All times UTC.
+    </p>
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SCRIPT -->
+<script>
+'use strict';
+
+// ── Constants ────────────────────────────────────────────────────────────────
+const AUTH_KEY   = 'cc_admin_token';
+const AUTH_URL   = '/.netlify/functions/admin-auth';
+const DATA_URL   = '/.netlify/functions/admin-data';
+
+// ── State ────────────────────────────────────────────────────────────────────
+let allTransactions = [];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+
+function fmt$(cents) {
+  if (cents == null || isNaN(cents)) return '—';
+  return '$' + Number(cents).toLocaleString('en-US');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+  } catch { return '—'; }
+}
+
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function statusBadge(tx) {
+  // needs_review overrides everything
+  if (tx.needs_review) {
+    return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">🚨 Needs Review</span>';
+  }
+  const map = {
+    held:     ['bg-amber-100 text-amber-700', 'In Escrow'],
+    released: ['bg-green-100 text-green-700',  'Paid Out'],
+    pending:  ['bg-gray-100 text-gray-600',    'Pending'],
+    refunded: ['bg-red-100 text-red-700',      'Refunded'],
+  };
+  const [cls, label] = map[tx.payment_status] || ['bg-gray-100 text-gray-500', tx.payment_status || '—'];
+  return `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${cls}">${escHtml(label)}</span>`;
+}
+
+function alertsBadge(tx) {
+  const chips = [];
+  if (tx.needs_review) {
+    chips.push('<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Flagged</span>');
+  }
+  if (tx.reminders_sent > 0) {
+    chips.push(`<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">⚠ ${tx.reminders_sent} reminder${tx.reminders_sent === 1 ? '' : 's'}</span>`);
+  }
+  return chips.length ? chips.join(' ') : '<span class="text-gray-300 text-xs">—</span>';
+}
+
+// ── Summary cards ─────────────────────────────────────────────────────────────
+function renderSummary(transactions) {
+  const now        = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const revenueThisMonth = transactions
+    .filter(t => ['held', 'released'].includes(t.payment_status) && new Date(t.created_at) >= monthStart)
+    .reduce((s, t) => s + (t.platform_fee || 0), 0);
+
+  const payoutsThisMonth = transactions
+    .filter(t => t.payment_status === 'released' && t.released_at && new Date(t.released_at) >= monthStart)
+    .reduce((s, t) => s + (t.creator_payout || 0), 0);
+
+  const activeDeals    = transactions.filter(t => t.payment_status === 'held').length;
+  const completedDeals = transactions.filter(t => t.payment_status === 'released').length;
+  const needsReview    = transactions.filter(t => t.needs_review).length;
+
+  const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+
+  const cards = [
+    {
+      label: `Revenue — ${monthName}`,
+      value: fmt$(revenueThisMonth),
+      sub:   '15% platform fee collected',
+      icon:  '💰',
+      color: 'text-green-600',
+    },
+    {
+      label: `Payouts — ${monthName}`,
+      value: fmt$(payoutsThisMonth),
+      sub:   '85% released to creators',
+      icon:  '📤',
+      color: 'text-blue-600',
+    },
+    {
+      label: 'Active Deals',
+      value: activeDeals,
+      sub:   'Payments held in escrow',
+      icon:  '⏳',
+      color: 'text-amber-600',
+    },
+    {
+      label: 'Completed Deals',
+      value: completedDeals,
+      sub:   needsReview ? `${needsReview} need${needsReview === 1 ? 's' : ''} review` : 'All payouts released',
+      icon:  needsReview ? '🚨' : '✅',
+      color: needsReview ? 'text-red-600' : 'text-gray-500',
+    },
+  ];
+
+  $('summary-cards').innerHTML = cards.map(c => `
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <div class="flex items-start justify-between mb-2">
+        <p class="text-xs text-gray-500 font-medium leading-tight">${escHtml(c.label)}</p>
+        <span class="text-lg leading-none">${c.icon}</span>
+      </div>
+      <p class="text-2xl font-bold text-gray-900 mb-1">${escHtml(String(c.value))}</p>
+      <p class="text-xs ${c.color}">${escHtml(c.sub)}</p>
+    </div>
+  `).join('');
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+function renderTable(transactions) {
+  const tbody      = $('transactions-body');
+  const emptyState = $('empty-state');
+  const rowCount   = $('row-count');
+
+  rowCount.textContent = transactions.length
+    ? `${transactions.length} transaction${transactions.length === 1 ? '' : 's'}`
+    : '';
+
+  if (!transactions.length) {
+    tbody.innerHTML = '';
+    emptyState.classList.remove('hidden');
+    return;
+  }
+
+  emptyState.classList.add('hidden');
+  tbody.innerHTML = transactions.map(t => `
+    <tr class="border-b border-gray-50 last:border-b-0 transition-colors">
+      <td class="px-4 py-3 text-gray-400 text-xs font-mono whitespace-nowrap">#${escHtml(String(t.deal_id))}</td>
+      <td class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">${escHtml(t.brand_name)}</td>
+      <td class="px-4 py-3 text-gray-700 whitespace-nowrap">${escHtml(t.creator_name)}</td>
+      <td class="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">${fmt$(t.amount)}</td>
+      <td class="px-4 py-3 text-right text-green-700 font-medium whitespace-nowrap">${fmt$(t.platform_fee)}</td>
+      <td class="px-4 py-3 text-right text-blue-700 font-medium whitespace-nowrap">${fmt$(t.creator_payout)}</td>
+      <td class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">${fmtDate(t.created_at)}</td>
+      <td class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">${fmtDate(t.released_at)}</td>
+      <td class="px-4 py-3 whitespace-nowrap">${statusBadge(t)}</td>
+      <td class="px-4 py-3 whitespace-nowrap">${alertsBadge(t)}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Filter ────────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const search       = $('search-input').value.trim().toLowerCase();
+  const statusFilter = $('status-filter').value;
+
+  let filtered = allTransactions;
+
+  if (search) {
+    filtered = filtered.filter(t =>
+      t.brand_name.toLowerCase().includes(search) ||
+      t.creator_name.toLowerCase().includes(search),
+    );
+  }
+
+  if (statusFilter !== 'all') {
+    if (statusFilter === 'needs_review') {
+      filtered = filtered.filter(t => t.needs_review);
+    } else {
+      filtered = filtered.filter(t => t.payment_status === statusFilter);
+    }
+  }
+
+  renderTable(filtered);
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+async function loadData() {
+  const token = localStorage.getItem(AUTH_KEY);
+  if (!token) { showLockScreen(); return; }
+
+  // Show spinner on refresh
+  const refreshIcon = $('refresh-icon');
+  refreshIcon.classList.add('spinner');
+  $('data-error').classList.add('hidden');
+
+  try {
+    const resp = await fetch(DATA_URL, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (resp.status === 401) { logout(); return; }
+
+    const json = await resp.json();
+    if (!resp.ok) throw new Error(json.error || `HTTP ${resp.status}`);
+
+    allTransactions = json.transactions || [];
+    renderSummary(allTransactions);
+    applyFilters();
+  } catch (err) {
+    $('data-error').classList.remove('hidden');
+    $('data-error-msg').textContent = err.message;
+    $('transactions-body').innerHTML = '';
+  } finally {
+    refreshIcon.classList.remove('spinner');
+  }
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function showLockScreen() {
+  $('lock-screen').classList.remove('hidden');
+  $('dashboard').classList.add('hidden');
+  $('password-input').value = '';
+  $('login-error').classList.add('hidden');
+}
+
+function showDashboard() {
+  $('lock-screen').classList.add('hidden');
+  $('dashboard').classList.remove('hidden');
+  loadData();
+}
+
+function logout() {
+  localStorage.removeItem(AUTH_KEY);
+  showLockScreen();
+}
+
+// ── Login form ────────────────────────────────────────────────────────────────
+$('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const password  = $('password-input').value;
+  const btn       = $('login-btn');
+  const btnText   = $('login-btn-text');
+  const spinner   = $('login-spinner');
+  const errorEl   = $('login-error');
+
+  if (!password) return;
+
+  // Loading state
+  btn.disabled       = true;
+  btnText.textContent = 'Checking…';
+  spinner.classList.remove('hidden');
+  errorEl.classList.add('hidden');
+
+  try {
+    const resp = await fetch(AUTH_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ password }),
+    });
+
+    const json = await resp.json();
+
+    if (!resp.ok) {
+      errorEl.textContent = json.error || 'Incorrect password';
+      errorEl.classList.remove('hidden');
+      $('password-input').focus();
+      return;
+    }
+
+    localStorage.setItem(AUTH_KEY, json.token);
+    showDashboard();
+  } catch (err) {
+    errorEl.textContent = 'Could not reach the server. Try again.';
+    errorEl.classList.remove('hidden');
+  } finally {
+    btn.disabled        = false;
+    btnText.textContent = 'Unlock Dashboard';
+    spinner.classList.add('hidden');
+  }
+});
+
+// Toggle password visibility
+$('toggle-pw').addEventListener('click', () => {
+  const input = $('password-input');
+  input.type  = input.type === 'password' ? 'text' : 'password';
+});
+
+// Search + filter
+$('search-input').addEventListener('input',   applyFilters);
+$('status-filter').addEventListener('change', applyFilters);
+
+// Refresh
+$('refresh-btn').addEventListener('click', loadData);
+
+// Logout
+$('logout-btn').addEventListener('click', logout);
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(function init() {
+  const token = localStorage.getItem(AUTH_KEY);
+  if (token) {
+    showDashboard(); // will validate token server-side on first data load
+  } else {
+    showLockScreen();
+    // Auto-focus the password input
+    $('password-input').focus();
+  }
+})();
+</script>
+</body>
+</html>
