@@ -2347,7 +2347,9 @@ async def mark_deal_complete(deal_id: int, user: dict = Depends(current_user)):
                     amount      = creator_payout_cents,
                     currency    = "usd",
                     destination = held_payment["stripe_account_id"],
-                    source_transaction = held_payment["stripe_payment_id"],
+                    # No source_transaction: escrow funds sit in the platform's
+                    # Stripe balance and are transferred from there.
+                    # (source_transaction requires a charge ID, not a PaymentIntent ID)
                     metadata    = {
                         "deal_id":    str(deal_id),
                         "payment_id": str(held_payment["id"]),
@@ -2801,7 +2803,8 @@ def release_payment(payment_id: int, user: dict = Depends(current_user)):
                 amount=int(payment["creator_payout"]) * 100,  # cents
                 currency="usd",
                 destination=creator_profile["stripe_account_id"],
-                source_transaction=payment["stripe_payment_id"],
+                # No source_transaction: funds sit in platform balance (escrow model).
+                # source_transaction requires a charge ID (ch_xxx), not a PaymentIntent ID.
                 metadata={"deal_id": str(payment["deal_id"]), "payment_id": str(payment_id)},
             )
             stripe_transfer_id = transfer["id"]
@@ -2991,11 +2994,13 @@ def stripe_payment_intent(request: Request, deal_id: int, user: dict = Depends(c
     amount_cents    = int(deal["amount"]) * 100
     platform_fee_c  = int(round(amount_cents * PLATFORM_FEE))
 
+    # Escrow model: charge the brand on the platform account — no transfer_data.
+    # Money stays in the platform's Stripe balance until both parties mark complete,
+    # at which point mark_deal_complete() manually transfers 85% to the creator.
+    # application_fee_amount is omitted for the same reason (it requires transfer_data).
     intent = stripe.PaymentIntent.create(
         amount=amount_cents,
         currency="usd",
-        application_fee_amount=platform_fee_c,
-        transfer_data={"destination": creator_profile["stripe_account_id"]},
         metadata={
             "deal_id":    str(deal_id),
             "brand_id":   str(user["id"]),
@@ -3098,8 +3103,8 @@ def stripe_checkout(request: Request, deal_id: int, user: dict = Depends(current
         success_url=f"{STRIPE_SUCCESS_URL}?deal_id={deal_id}&session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{STRIPE_CANCEL_URL}?deal_id={deal_id}",
         payment_intent_data={
-            "application_fee_amount": platform_fee_c,
-            "transfer_data": {"destination": creator_profile["stripe_account_id"]},
+            # Escrow model: no transfer_data / application_fee_amount here.
+            # Funds stay on the platform until mark_deal_complete() transfers 85% manually.
             "metadata": {
                 "deal_id":    str(deal_id),
                 "brand_id":   str(user["id"]),
