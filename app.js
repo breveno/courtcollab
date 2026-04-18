@@ -658,7 +658,7 @@ async function handleSignup(e) {
   if (role === 'brand') {
     const company = (document.getElementById('signup-company').value || '').trim();
     if (!company) {
-      showAuthError('Please enter your company name.');
+      showFieldError('signup-company', 'Company name is required.');
       return;
     }
   }
