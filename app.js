@@ -702,8 +702,7 @@ async function handleSignup(e) {
   }
 }
 
-// Platform admin emails — must match ADMIN_EMAILS on the backend
-const ADMIN_EMAILS = ['benreveno@gmail.com', 'juliacono@gmail.com', 'ben@courtcollab.com', 'julia@courtcollab.com'];
+// Admin status is provided by the server via user.is_admin — not hardcoded here
 
 function onAuthSuccess(user) {
   state.currentUser = user;
@@ -715,7 +714,7 @@ function onAuthSuccess(user) {
   document.getElementById('nav-user-name').textContent = (user.role === 'brand' && user.company_name) ? user.company_name : user.name;
   updateLandingHeroButtons(user.role);
   // Show admin nav link only for platform admins
-  const isAdmin = ADMIN_EMAILS.includes(user.email);
+  const isAdmin = !!(user.is_admin);
   const badge = document.getElementById('nav-role-badge');
   if (badge) {
     if (isAdmin) {
@@ -6121,7 +6120,7 @@ async function openDisputeDetailModal(dealId) {
     }
 
     // Admin controls
-    const isAdmin = ADMIN_EMAILS.includes(state.currentUser?.email);
+    const isAdmin = !!(state.currentUser?.is_admin);
     if (isAdmin && dispute.status !== 'closed') {
       document.getElementById('dispute-admin-controls').classList.remove('hidden');
       const resolutionInput = document.getElementById('dispute-admin-resolution');
@@ -6194,7 +6193,7 @@ function _onboardPills(containerId, items, type, multi = false, toggleFn = null)
 
 function startOnboarding(user) {
   // Only show for brand-new users; skip admins and returning users
-  if (!user || ADMIN_EMAILS.includes(user.email)) return;
+  if (!user || user.is_admin) return;
   if (localStorage.getItem(`onboarded_${user.id}`)) return;
 
   _onboardUser        = user;
@@ -6781,7 +6780,7 @@ async function renderAdmin() {
   }
 
   listEl.innerHTML = _adminUsers.map(u => {
-    const isAdmin  = ADMIN_EMAILS.includes(u.email);
+    const isAdmin  = !!(u.is_admin);
     const roleColor = u.role === 'creator' ? 'bg-pickle-100 text-pickle-700' : 'bg-brand-100 text-brand-700';
     const followers = u.role === 'creator'
       ? [u.followers_ig, u.followers_tt, u.followers_yt].filter(Boolean)
@@ -6874,7 +6873,7 @@ async function deleteSelectedUsers() {
 async function adminDeleteOne(userId) {
   const u = _adminUsers.find(u => u.id === userId);
   if (!u) return;
-  if (ADMIN_EMAILS.includes(u.email)) {
+  if (u.is_admin) {
     showToast('Admin accounts cannot be deleted.', 'error');
     return;
   }

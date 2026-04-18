@@ -98,7 +98,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import re as _re
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -111,6 +111,11 @@ from database import get_conn, init_db
 # ---------------------------------------------------------------------------
 
 SECRET_KEY     = os.environ.get("JWT_SECRET", "change-me-in-production-use-a-long-random-string")
+if SECRET_KEY == "change-me-in-production-use-a-long-random-string":
+    import sys
+    print("WARNING: JWT_SECRET env var is not set — using insecure default. Set JWT_SECRET in production.", file=sys.stderr)
+
+APP_URL        = os.environ.get("APP_URL", "https://www.courtcollab.com")
 ALGORITHM      = "HS256"
 TOKEN_TTL_HRS        = 72
 TOKEN_TTL_REMEMBER   = 24 * 30   # 30 days
@@ -145,13 +150,10 @@ SIGNWELL_TEST_MODE = os.environ.get("SIGNWELL_TEST_MODE", "true").lower() == "tr
 FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@courtcollab.com")
 
 # Platform admins — always receive a copy of every deal notification email.
-# Override via ADMIN_EMAILS env var (comma-separated) or edit the list below.
-_env_admins = os.environ.get("ADMIN_EMAILS", "")
-ADMIN_EMAILS: List[str] = (
-    [e.strip() for e in _env_admins.split(",") if e.strip()]
-    if _env_admins
-    else ["ben@courtcollab.com", "julia@courtcollab.com"]
-)
+# Set via ADMIN_EMAILS env var (comma-separated list of email addresses).
+ADMIN_EMAILS: List[str] = [
+    e.strip() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()
+]
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer  = HTTPBearer()
@@ -595,6 +597,12 @@ class UserOut(BaseModel):
     role:         str
     initials:     str
     company_name: Optional[str] = None
+    is_admin:     bool = False
+
+    @model_validator(mode='after')
+    def set_is_admin(self) -> 'UserOut':
+        self.is_admin = self.email in ADMIN_EMAILS
+        return self
 
 class AuthOut(BaseModel):
     token: str
@@ -3777,7 +3785,7 @@ def forgot_password(request: Request, body: ForgotPasswordIn):
         )
         conn.commit()
 
-    reset_url  = f"https://www.courtcollab.com/?reset_token={token}"
+    reset_url  = f"{APP_URL}/?reset_token={token}"
     email_body = (
         f"Hi {user['name']},\n\n"
         f"Someone requested a password reset for your CourtCollab account.\n\n"
@@ -3952,7 +3960,7 @@ def submit_contact(request: Request, body: ContactIn):
         f"— CourtCollab Contact Form"
     )
     subject = f"[CourtCollab Contact] {body.subject or 'New message'} — from {body.name}"
-    for recipient in ["ben@courtcollab.com", "julia@courtcollab.com"]:
+    for recipient in ADMIN_EMAILS:
         _send_email(recipient, subject, email_body, event_type="contact_form")
     return {"ok": True}
 
@@ -4006,6 +4014,8 @@ def admin_list_users(admin: dict = Depends(require_admin)):
             LEFT JOIN brand_profiles   bp ON bp.user_id = u.id
             ORDER BY u.id DESC
         """)
+    for u in users:
+        u["is_admin"] = u["email"] in ADMIN_EMAILS
     return users
 
 

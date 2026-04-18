@@ -9,7 +9,7 @@
  */
 const crypto = require('crypto');
 
-const SEED = 'courtcollab-admin-session-v1';
+const SEED = process.env.ADMIN_TOKEN_SEED || 'courtcollab-admin-session-v1';
 
 function makeToken(password) {
   return crypto.createHmac('sha256', password).update(SEED).digest('hex');
