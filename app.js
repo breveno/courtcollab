@@ -3758,7 +3758,17 @@ async function renderCampaigns() {
   list.innerHTML = campaignSkeletonHtml();
 
   try {
-    const campaigns = await apiGet('/api/campaigns');
+    let campaigns = await apiGet('/api/campaigns');
+
+    // For brands: active campaigns first, then drafts, then closed — newest within each group
+    if (state.role === 'brand') {
+      const order = { open: 0, draft: 1, closed: 2, paused: 2 };
+      campaigns = campaigns.sort((a, b) => {
+        const diff = (order[a.status] ?? 2) - (order[b.status] ?? 2);
+        if (diff !== 0) return diff;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+    }
 
     // Seed the applied-set from the has_applied flag the server already joined in
     if (state.role === 'creator') {
