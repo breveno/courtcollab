@@ -2056,6 +2056,7 @@ def list_deals(
                    c.title        AS campaign_title,
                    c.niche        AS campaign_niche,
                    ub.name        AS brand_name,
+                   bp.company_name AS brand_company_name,
                    uc.name        AS creator_name,
                    uc.initials    AS creator_initials,
                    r_mine.score   AS my_rating,
@@ -2064,6 +2065,7 @@ def list_deals(
             JOIN campaigns c ON c.id  = d.campaign_id
             JOIN users ub    ON ub.id = d.brand_id
             JOIN users uc    ON uc.id = d.creator_id
+            LEFT JOIN brand_profiles bp ON bp.user_id = d.brand_id
             LEFT JOIN ratings r_mine ON r_mine.deal_id = d.id AND r_mine.reviewer_id = ?
             LEFT JOIN payments p     ON p.deal_id = d.id AND p.status = 'held'
             WHERE d.{field} = ?

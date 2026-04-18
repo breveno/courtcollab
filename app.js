@@ -1310,7 +1310,7 @@ function _contractBannerHtml(deal) {
 
   const brandSigned   = deal.brand_signed;
   const creatorSigned = deal.creator_signed;
-  const brandName     = escHtml(deal.brand_name   || 'Brand');
+  const brandName     = escHtml(deal.brand_company_name || deal.brand_name || 'Brand');
   const creatorName   = escHtml(deal.creator_name || 'Creator');
 
   const signerRow = (signed, name, ts) => `
@@ -1433,7 +1433,7 @@ function _renderContractSection(containerId, contractDeals, payments) {
         <div>
           <p class="font-semibold text-gray-900">${escHtml(d.campaign_title || d.title || 'Deal #' + d.id)}</p>
           <p class="text-xs text-gray-400 mt-0.5">
-            ${escHtml(d.brand_name || 'Brand')} × ${escHtml(d.creator_name || 'Creator')}
+            ${escHtml(d.brand_company_name || d.brand_name || 'Brand')} × ${escHtml(d.creator_name || 'Creator')}
             &nbsp;·&nbsp; $${(d.amount || 0).toLocaleString()}
           </p>
         </div>
@@ -1774,7 +1774,7 @@ async function renderCreatorDashboard() {
                 <p class="font-semibold text-gray-900 truncate">${escHtml(d.campaign_title || d.title || 'Deal #' + d.id)}</p>
                 <span class="tag ${statusColor} text-xs">${{pending:'Proposed',active:'In Progress',paid:'Paid',deal_complete:'Confirming',payout_complete:'Complete',completed:'Complete',declined:'Declined'}[d.status] || (d.status.charAt(0).toUpperCase() + d.status.slice(1))}</span>
               </div>
-              <p class="text-sm text-gray-500 mt-0.5">${escHtml(d.brand_name || 'Brand')} · ${fmtDateUTC(d.created_at)}</p>
+              <p class="text-sm text-gray-500 mt-0.5">${escHtml(d.brand_company_name || d.brand_name || 'Brand')} · ${fmtDateUTC(d.created_at)}</p>
               <div class="mt-2">${dealStepperMiniHtml(d.status)}</div>
             </div>
             <div class="text-right shrink-0">
@@ -1925,7 +1925,7 @@ function _renderTermsConfirmationBanner(containerId, deals, role) {
 
   const cards = deals.map(d => {
     const amount = d.amount ? `$${Number(d.amount).toLocaleString()}` : '';
-    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_name || 'Brand');
+    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_company_name || d.brand_name || 'Brand');
     const otherConfirmed = role === 'brand'
       ? d.creator_terms_confirmed
       : d.brand_terms_confirmed;
@@ -2266,7 +2266,7 @@ function _renderMarkCompleteSection(containerId, deals, role) {
   const cards = deals.map(d => {
     const amount     = d.amount ? `$${Number(d.amount).toLocaleString()}` : '';
     const payout     = d.amount ? `$${Math.round(Number(d.amount) * 0.85).toLocaleString()}` : '';
-    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_name || 'Brand');
+    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_company_name || d.brand_name || 'Brand');
 
     const myMarked    = role === 'brand' ? d.brand_marked_complete   : d.creator_marked_complete;
     const otherMarked = role === 'brand' ? d.creator_marked_complete : d.brand_marked_complete;
@@ -2765,7 +2765,7 @@ function openCampaignDetailCreator(campaignId) {
 
   // Stats row — all relevant creator-facing fields
   const stats = [];
-  if (c.budget)          stats.push(`<span class="text-gray-500">Budget: <strong class="text-gray-900">$${Number(c.budget).toLocaleString()}</strong></span>`);
+  if (c.budget)          stats.push(`<span class="text-gray-500">Rate: <strong class="text-gray-900">$${Number(c.budget).toLocaleString()}</strong></span>`);
   if (c.deadline)        stats.push(`<span class="text-gray-500">Deadline: <strong class="text-gray-900">${c.deadline}</strong></span>`);
   if (c.creators_needed) stats.push(`<span class="text-gray-500">Creators needed: <strong class="text-gray-900">${c.creators_needed}</strong></span>`);
   if (c.min_followers)   stats.push(`<span class="text-gray-500">Min. followers: <strong class="text-gray-900">${Number(c.min_followers).toLocaleString()}</strong></span>`);
