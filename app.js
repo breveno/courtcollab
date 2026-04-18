@@ -4306,6 +4306,16 @@ async function _wakeServer() {
 }
 
 async function postCampaign(status = 'open') {
+  // Validate required fields before posting (drafts are exempt)
+  if (status !== 'draft') {
+    const rateVal = parseInt(document.getElementById('camp-budget').value) || 0;
+    if (rateVal <= 0) {
+      showFieldError('camp-budget', 'Please enter a rate greater than $0.');
+      document.getElementById('camp-budget').focus();
+      return;
+    }
+  }
+
   const skills = Array.from(document.querySelectorAll('#camp-skills input:checked')).map(i => i.value);
   const questions = Array.from(document.querySelectorAll('#camp-questions-list .camp-question-input'))
     .map(i => i.value.trim()).filter(Boolean);
