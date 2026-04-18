@@ -2643,6 +2643,14 @@ function openCampaignDetail(campaignId) {
   const c = _brandPortalAllCampaigns.find(x => x.id === campaignId);
   if (!c) return;
 
+  // Show brand buttons, hide creator buttons
+  document.getElementById('cdm-apps-btn')?.classList.remove('hidden');
+  document.getElementById('cdm-edit-btn')?.classList.remove('hidden');
+  document.getElementById('cdm-apply-btn')?.classList.add('hidden');
+  document.getElementById('cdm-applied-badge')?.classList.add('hidden');
+  const bNameEl = document.getElementById('cdm-brand');
+  if (bNameEl) bNameEl.textContent = '';
+
   // Cover image or gradient banner
   const cover  = c.cover_image || localStorage.getItem('camp_cover_' + c.id) || null;
   const initials = (c.title || 'C').slice(0, 2).toUpperCase();
@@ -2710,6 +2718,103 @@ function openCampaignDetail(campaignId) {
     closeModal('campaign-detail-modal');
     openDraftForEditing(campaignId);
   };
+
+  openModal('campaign-detail-modal');
+}
+
+// --- Campaign Detail (Creator — Explore page) ---
+function openCampaignDetailCreator(campaignId) {
+  const c = _campaignMap[campaignId];
+  if (!c) return;
+
+  // Cover: gradient banner with campaign initials
+  const initials = (c.title || 'C').slice(0, 2).toUpperCase();
+  const coverEl = document.getElementById('cdm-cover');
+  if (coverEl) {
+    coverEl.innerHTML = `
+      <div class="w-full h-full bg-gradient-to-br from-pickle-400 to-brand-500 flex items-center justify-center" style="min-height:80px">
+        <span class="text-white text-3xl font-bold opacity-40">${initials}</span>
+      </div>`;
+  }
+
+  // Title + status badge
+  document.getElementById('cdm-title').textContent = c.title || 'Untitled';
+  const isActive = (c.status || 'open') === 'open';
+  const badge = document.getElementById('cdm-badge');
+  if (badge) {
+    badge.textContent = isActive ? 'Active' : 'Closed';
+    badge.className = `text-xs font-medium px-2.5 py-0.5 rounded-full ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`;
+  }
+
+  // Brand name
+  const brandEl = document.getElementById('cdm-brand');
+  if (brandEl) brandEl.textContent = c.company_name || c.brand_name || '';
+
+  // Posted date
+  const dateEl = document.getElementById('cdm-date');
+  if (dateEl) {
+    if (c.created_at) {
+      const d = new Date(c.created_at.replace(' ', 'T') + 'Z');
+      dateEl.textContent = !isNaN(d)
+        ? 'Posted ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : '';
+    } else {
+      dateEl.textContent = '';
+    }
+  }
+
+  // Stats row — all relevant creator-facing fields
+  const stats = [];
+  if (c.budget)          stats.push(`<span class="text-gray-500">Budget: <strong class="text-gray-900">$${Number(c.budget).toLocaleString()}</strong></span>`);
+  if (c.deadline)        stats.push(`<span class="text-gray-500">Deadline: <strong class="text-gray-900">${c.deadline}</strong></span>`);
+  if (c.creators_needed) stats.push(`<span class="text-gray-500">Creators needed: <strong class="text-gray-900">${c.creators_needed}</strong></span>`);
+  if (c.min_followers)   stats.push(`<span class="text-gray-500">Min. followers: <strong class="text-gray-900">${Number(c.min_followers).toLocaleString()}</strong></span>`);
+  if (c.max_rate)        stats.push(`<span class="text-gray-500">Max rate: <strong class="text-gray-900">$${Number(c.max_rate).toLocaleString()}</strong></span>`);
+  if (c.target_age)      stats.push(`<span class="text-gray-500">Target age: <strong class="text-gray-900">${escHtml(c.target_age)}</strong></span>`);
+  document.getElementById('cdm-stats').innerHTML = stats.join('');
+
+  // Full description
+  document.getElementById('cdm-desc').textContent = c.description || '';
+
+  // Niche + skill tags
+  const skills = Array.isArray(c.skills) ? c.skills : [];
+  const tags = [];
+  if (c.niche) tags.push(`<span class="tag bg-brand-100 text-brand-700">${escHtml(c.niche)}</span>`);
+  skills.forEach(s => tags.push(`<span class="tag bg-gray-100 text-gray-600">${escHtml(s)}</span>`));
+  document.getElementById('cdm-tags').innerHTML = tags.join('');
+
+  // Application questions
+  const questions = Array.isArray(c.questions) ? c.questions.filter(Boolean) : [];
+  const qWrap = document.getElementById('cdm-questions-wrap');
+  const qList = document.getElementById('cdm-questions');
+  if (qWrap && qList) {
+    if (questions.length) {
+      qList.innerHTML = questions.map(q => `<li>${escHtml(q)}</li>`).join('');
+      qWrap.classList.remove('hidden');
+    } else {
+      qWrap.classList.add('hidden');
+    }
+  }
+
+  // Hide brand buttons, show creator button
+  document.getElementById('cdm-apps-btn')?.classList.add('hidden');
+  document.getElementById('cdm-edit-btn')?.classList.add('hidden');
+
+  const applyBtn    = document.getElementById('cdm-apply-btn');
+  const appliedBadge = document.getElementById('cdm-applied-badge');
+  if (_appliedCampaignIds.has(campaignId)) {
+    applyBtn?.classList.add('hidden');
+    appliedBadge?.classList.remove('hidden');
+  } else {
+    appliedBadge?.classList.add('hidden');
+    if (applyBtn) {
+      applyBtn.classList.remove('hidden');
+      applyBtn.onclick = () => {
+        closeModal('campaign-detail-modal');
+        openApplyModal(campaignId);
+      };
+    }
+  }
 
   openModal('campaign-detail-modal');
 }
@@ -3689,8 +3794,10 @@ async function renderCampaigns() {
         return `${mm}/${dd}/${yyyy} ${h}:${mins} ${ampm}`;
       })();
       const isActive   = (c.status || 'open') === 'open';
+      const isCreator = state.role === 'creator';
       return `
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 card-hover">
+        <div class="bg-white rounded-2xl border border-gray-200 p-6 card-hover${isCreator ? ' cursor-pointer' : ''}"
+             ${isCreator ? `onclick="openCampaignDetailCreator(${c.id})"` : ''}>
           <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
             <div>
               <div class="flex items-center gap-3 mb-2">
@@ -3705,20 +3812,20 @@ async function renderCampaigns() {
               ${c.deadline ? `<span>Deadline: <strong class="text-gray-900">${c.deadline}</strong></span>` : ''}
             </div>
           </div>
-          <p class="text-gray-600 mb-4">${c.description || ''}</p>
+          <p class="text-gray-600 mb-4 line-clamp-3">${c.description || ''}</p>
           <div class="flex flex-wrap items-center gap-2 mb-4">
             ${c.niche ? `<span class="tag bg-brand-100 text-brand-700">${c.niche}</span>` : ''}
             ${skills.map(s => `<span class="tag bg-gray-100 text-gray-600">${s}</span>`).join('')}
           </div>
           <div class="flex items-center justify-between pt-4 border-t border-gray-100">
             <span class="text-sm text-gray-400">${postedDate ? 'Posted ' + postedDate : ''}</span>
-            ${state.role === 'creator'
+            ${isCreator
               ? (_appliedCampaignIds.has(c.id)
                   ? `<span id="apply-badge-${c.id}" class="inline-flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 px-4 py-2 rounded-lg text-sm font-medium">
                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                        Applied
                      </span>`
-                  : `<button id="apply-btn-${c.id}" onclick="openApplyModal(${c.id})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Apply Now</button>`)
+                  : `<button id="apply-btn-${c.id}" onclick="event.stopPropagation(); openApplyModal(${c.id})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Apply Now</button>`)
               : `<button data-cid="${c.id}" data-title="${escHtml(c.title)}" onclick="openApplicationsModal(+this.dataset.cid, this.dataset.title)" class="bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">View Applications</button>`
             }
           </div>
