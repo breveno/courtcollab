@@ -2391,7 +2391,7 @@ async def mark_deal_complete(deal_id: int, user: dict = Depends(current_user)):
 
         # Attempt Stripe Transfer to creator's Express account
         if (stripe.api_key
-                and not stripe.api_key.startswith("sk_test_REPLACE")
+                and not stripe.api_key.startswith("STRIPE_KEY_NOT_CONFIGURED")
                 and held_payment.get("stripe_account_id")
                 and held_payment.get("stripe_payment_id")):
             try:
@@ -2828,7 +2828,7 @@ async def review_submission(
         creator_payout       = float(held_payment["creator_payout"])
         creator_payout_cents = int(held_payment["creator_payout"]) * 100
         if (stripe.api_key
-                and not stripe.api_key.startswith("sk_test_REPLACE")
+                and not stripe.api_key.startswith("STRIPE_KEY_NOT_CONFIGURED")
                 and held_payment.get("stripe_account_id")
                 and held_payment.get("stripe_payment_id")):
             try:
@@ -3183,7 +3183,7 @@ def release_payment(payment_id: int, user: dict = Depends(current_user)):
 
     # Attempt Stripe transfer if keys are configured and creator has an account
     if (stripe.api_key
-            and not stripe.api_key.startswith("sk_test_REPLACE")
+            and not stripe.api_key.startswith("STRIPE_KEY_NOT_CONFIGURED")
             and creator_profile
             and creator_profile.get("stripe_account_id")
             and payment.get("stripe_payment_id")):
@@ -3263,7 +3263,7 @@ def stripe_config():
 def stripe_connect_onboard(user: dict = Depends(current_user)):
     """Creator: create or retrieve a Stripe Express account and get the onboarding URL."""
     require_role("creator", user)
-    if not stripe.api_key or stripe.api_key.startswith("sk_test_REPLACE"):
+    if not stripe.api_key or stripe.api_key.startswith("STRIPE_KEY_NOT_CONFIGURED"):
         raise HTTPException(503, "Stripe is not configured on this server")
 
     with get_conn() as conn:
@@ -3302,7 +3302,7 @@ def stripe_connect_onboard(user: dict = Depends(current_user)):
 def stripe_connect_status(user: dict = Depends(current_user)):
     """Creator: check whether their Stripe Connect account is fully onboarded."""
     require_role("creator", user)
-    if not stripe.api_key or stripe.api_key.startswith("sk_test_REPLACE"):
+    if not stripe.api_key or stripe.api_key.startswith("STRIPE_KEY_NOT_CONFIGURED"):
         return {"onboarded": False, "reason": "stripe_not_configured"}
 
     with get_conn() as conn:
@@ -3347,7 +3347,7 @@ def stripe_payment_intent(request: Request, deal_id: int, user: dict = Depends(c
     15% platform fee via application_fee_amount; 85% transferred to creator's Connect account.
     """
     require_role("brand", user)
-    if not stripe.api_key or stripe.api_key.startswith("sk_test_REPLACE"):
+    if not stripe.api_key or stripe.api_key.startswith("STRIPE_KEY_NOT_CONFIGURED"):
         raise HTTPException(503, "Stripe is not configured on this server")
 
     with get_conn() as conn:
@@ -3434,7 +3434,7 @@ def stripe_checkout(request: Request, deal_id: int, user: dict = Depends(current
     85% will be transferred to the creator on release; 15% stays on platform.
     """
     require_role("brand", user)
-    if not stripe.api_key or stripe.api_key.startswith("sk_test_REPLACE"):
+    if not stripe.api_key or stripe.api_key.startswith("STRIPE_KEY_NOT_CONFIGURED"):
         raise HTTPException(503, "Stripe is not configured on this server")
 
     with get_conn() as conn:
@@ -3541,7 +3541,7 @@ async def stripe_webhook(request: Request):
     sig_header = request.headers.get("stripe-signature", "")
 
     try:
-        if STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith("whsec_REPLACE"):
+        if STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith("WEBHOOK_SECRET_NOT_CONFIGURED"):
             event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
         else:
             # Dev mode: parse without verification (never do this in production)
