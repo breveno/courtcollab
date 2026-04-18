@@ -31,7 +31,7 @@ REMINDER_START_DAYS    = 14        # begin reminders after this many days
 REMINDER_INTERVAL_DAYS = 3         # re-send every N days after the first reminder
 ESCALATION_DAYS        = 30        # flag needs_review after this many days
 APP_URL                = os.environ.get("PUBLIC_URL", "https://courtcollab.com")
-ADMIN_EMAIL            = "ben@courtcollab.com"
+ADMIN_EMAIL            = os.environ.get("ADMIN_EMAILS", "").split(",")[0].strip() or "ben@courtcollab.com"
 
 
 # ---------------------------------------------------------------------------

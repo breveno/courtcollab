@@ -6,6 +6,3 @@
   healthcheckPath = "/docs"
   restartPolicyType = "ON_FAILURE"
 
-[variables]
-  STRIPE_SUCCESS_URL = "https://www.courtcollab.com"
-  STRIPE_CANCEL_URL  = "https://www.courtcollab.com"
