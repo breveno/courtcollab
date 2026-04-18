@@ -2609,14 +2609,31 @@ function openDraftForEditing(campaignId) {
 
   // Pre-fill every form field with saved draft data
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
-  set('camp-title',           c.title       || '');
-  set('camp-desc',            c.description || '');
-  set('camp-budget',          c.budget      || '');
-  set('camp-creators-needed', c.creators_needed || 1);
+  set('camp-title',           c.title            || '');
+  set('camp-desc',            c.description      || '');
+  set('camp-budget',          c.budget           || '');
+  set('camp-creators-needed', c.creators_needed  || 1);
+  set('camp-deadline',        c.deadline         || '');
 
   // Selects
-  const nicheEl = document.getElementById('camp-niche');
-  if (nicheEl && c.niche) nicheEl.value = c.niche;
+  const nicheEl    = document.getElementById('camp-niche');
+  const contentEl  = document.getElementById('camp-content');
+  const audienceEl = document.getElementById('camp-audience');
+  if (nicheEl    && c.niche)            nicheEl.value    = c.niche;
+  if (contentEl  && c.content_type)     contentEl.value  = c.content_type;
+  if (audienceEl && c.target_audience)  audienceEl.value = c.target_audience;
+
+  // Cover image — restore preview (file input can't be pre-filled by browser security,
+  // but the existing DB image is preserved on save unless a new file is chosen)
+  const coverPreview = document.getElementById('camp-cover-preview');
+  const existingCover = c.cover_image || localStorage.getItem('camp_cover_' + c.id) || null;
+  if (coverPreview) {
+    if (existingCover) {
+      coverPreview.innerHTML = `<img src="${existingCover}" class="w-full h-full object-cover">`;
+    } else {
+      coverPreview.innerHTML = `<svg class="w-6 h-6 text-white opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`;
+    }
+  }
 
   // Skill checkboxes
   document.querySelectorAll('#camp-skills input[type="checkbox"]').forEach(cb => {
@@ -2633,6 +2650,11 @@ function openDraftForEditing(campaignId) {
       if (inputs.length) inputs[inputs.length - 1].value = q;
     });
   }
+
+  // Attachments can't be restored (browser security prevents pre-filling file inputs).
+  // Clear any stale list so it doesn't show phantom files from a previous session.
+  const attachList = document.getElementById('camp-attachment-list');
+  if (attachList) attachList.innerHTML = '';
 
   // Mark which campaign we're editing
   _editingCampaignId = campaignId;
