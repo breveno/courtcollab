@@ -1350,6 +1350,14 @@ def delete_campaign(campaign_id: int, user: dict = Depends(current_user)):
                    (campaign_id, user["id"]))
         if not row:
             raise HTTPException(404, "Campaign not found or not yours")
+        # Block deletion if any creator has already been accepted
+        active_deal = _row(conn, """
+            SELECT id FROM deals
+            WHERE campaign_id = ? AND status NOT IN ('pending', 'declined')
+            LIMIT 1
+        """, (campaign_id,))
+        if active_deal:
+            raise HTTPException(409, "Cannot delete a campaign that has active or completed deals")
         conn.execute("DELETE FROM campaigns WHERE id = ?", (campaign_id,))
         conn.commit()
 

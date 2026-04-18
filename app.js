@@ -3746,13 +3746,14 @@ async function renderCampaigns() {
   const list = document.getElementById('campaign-list');
   if (!list) return;
 
-  // Render post button only for brands
+  // Title, subtitle, and post button differ by role
+  const isBrand = state.role === 'brand';
+  const titleEl    = document.getElementById('campaigns-title');
+  const subtitleEl = document.getElementById('campaigns-subtitle');
   const postBtnWrap = document.getElementById('post-campaign-btn-wrap');
-  if (postBtnWrap) {
-    postBtnWrap.innerHTML = state.role === 'brand'
-      ? `<button onclick="openModal('campaign-modal')" id="post-campaign-btn" class="bg-brand-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-brand-700 transition whitespace-nowrap">+ Post Campaign Brief</button>`
-      : '';
-  }
+  if (titleEl)    titleEl.textContent    = isBrand ? 'My Campaigns' : 'Campaigns';
+  if (subtitleEl) subtitleEl.textContent = isBrand ? '' : 'Browse active campaigns from top brands';
+  if (postBtnWrap) postBtnWrap.innerHTML = '';
 
   list.innerHTML = campaignSkeletonHtml();
 
@@ -3838,7 +3839,12 @@ async function renderCampaigns() {
                        Applied
                      </span>`
                   : `<button id="apply-btn-${c.id}" onclick="event.stopPropagation(); openApplyModal(${c.id})" class="bg-lime-400 text-gray-900 px-5 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Apply Now</button>`)
-              : `<button data-cid="${c.id}" data-title="${escHtml(c.title)}" onclick="openApplicationsModal(+this.dataset.cid, this.dataset.title)" class="bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">View Applications</button>`
+              : `<div class="flex items-center gap-2">
+                   <button data-cid="${c.id}" data-title="${escHtml(c.title)}" onclick="openApplicationsModal(+this.dataset.cid, this.dataset.title)" class="bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">View Applications</button>
+                   <button onclick="deleteCampaign(${c.id}, '${escHtml(c.title).replace(/'/g,"\\'")}', this)" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete campaign">
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                   </button>
+                 </div>`
             }
           </div>
         </div>
@@ -3846,6 +3852,26 @@ async function renderCampaigns() {
     }).join('');
   } catch (err) {
     list.innerHTML = `<div class="text-center py-16 text-red-400">${err.message}</div>`;
+  }
+}
+
+async function deleteCampaign(campaignId, title, btn) {
+  if (!confirm(`Delete "${title}"?\n\nThis cannot be undone. You can only delete campaigns that haven't had any creators accepted yet.`)) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>`;
+  try {
+    await apiDelete(`/api/campaigns/${campaignId}`);
+    showToast('Campaign deleted.', 'success');
+    renderCampaigns();
+    renderBrandPortal();
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+    const msg = err.message?.includes('active') || err.message?.includes('409')
+      ? 'Cannot delete — a creator has already been accepted on this campaign.'
+      : (err.message || 'Could not delete campaign.');
+    showToast(msg, 'error');
   }
 }
 
