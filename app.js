@@ -1208,6 +1208,10 @@ function showToast(text, type = 'default') {
 
 // --- Modal ---
 function openModal(id) {
+  // Freeze background scroll — save current position so position:fixed doesn't jump
+  if (!document.documentElement.classList.contains('no-scroll')) {
+    document.body.style.top = `-${window.scrollY}px`;
+  }
   document.getElementById(id).classList.remove('hidden');
   document.documentElement.classList.add('no-scroll');
   // Proactively ping the server when the campaign modal opens so it's awake
@@ -1220,7 +1224,13 @@ function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
   // Only remove no-scroll if no other modals are still open
   const anyOpen = document.querySelector('.modal-overlay:not(.hidden)');
-  if (!anyOpen) document.documentElement.classList.remove('no-scroll');
+  if (!anyOpen) {
+    document.documentElement.classList.remove('no-scroll');
+    // Restore scroll position that was saved when the modal opened
+    const savedTop = document.body.style.top;
+    document.body.style.top = '';
+    if (savedTop) window.scrollTo(0, -parseInt(savedTop, 10));
+  }
   if (id === 'creator-detail-modal') {
     document.getElementById('admin-detail-meta')?.classList.add('hidden');
   }
@@ -4115,6 +4125,16 @@ function addCampQuestion() {
     </button>
   `;
   list.appendChild(div);
+  // Intercept Enter so it adds a new question row instead of submitting the form
+  const input = div.querySelector('.camp-question-input');
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      addCampQuestion();
+    }
+  });
+  input.focus();
 }
 
 // --- Campaign Attachments Preview ---
@@ -4240,6 +4260,11 @@ function campaignGoToReview() {
     ? 'CourtCollab Standard Contract'
     : `Custom Contract — ${document.getElementById('camp-contract-file')?.files[0]?.name || 'uploaded file'}`;
 
+  // Cover image & attachments for the review panel
+  const coverPreviewImg = document.querySelector('#camp-cover-preview img');
+  const coverSrc = coverPreviewImg ? coverPreviewImg.src : null;
+  const attachFiles = Array.from(document.getElementById('camp-attachments')?.files || []);
+
   const row = (label, value) =>
     `<div class="flex justify-between items-start gap-4 py-2.5 border-b border-gray-100 last:border-0">
       <span class="text-sm text-gray-500 flex-shrink-0 w-36">${label}</span>
@@ -4247,6 +4272,10 @@ function campaignGoToReview() {
     </div>`;
 
   document.getElementById('camp-review-body').innerHTML = `
+    ${coverSrc ? `<div class="mb-3">
+      <p class="text-xs font-semibold text-gray-500 mb-1.5">Cover Image</p>
+      <img src="${coverSrc}" class="w-full h-36 object-cover rounded-xl border border-gray-200">
+    </div>` : ''}
     <div class="bg-gray-50 rounded-xl px-4 py-1 mb-2">
       ${row('Title', escHtml(title))}
       ${row('Description', escHtml(desc.length > 100 ? desc.slice(0,100)+'…' : desc))}
@@ -4256,6 +4285,9 @@ function campaignGoToReview() {
       ${row('Creators Needed', escHtml(needed))}
       ${row('Deadline', deadline !== '—' ? deadline : 'Not set')}
       ${skills.length ? row('Required Skills', skills.map(s => `<span class="inline-block bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full mr-1">${escHtml(s)}</span>`).join('')) : ''}
+      ${attachFiles.length ? row('Attachments', attachFiles.map(f =>
+        `<span class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full mb-0.5"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>${escHtml(f.name)}</span>`
+      ).join(' ')) : ''}
     </div>
     <div class="flex items-center gap-3 p-3 rounded-xl border-2 ${_campContractType === 'template' ? 'border-lime-300 bg-lime-50' : 'border-blue-200 bg-blue-50'}">
       <svg class="w-5 h-5 ${_campContractType === 'template' ? 'text-lime-600' : 'text-[#1E6EA6]'} flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -4350,13 +4382,31 @@ async function postCampaign(status = 'open') {
 
   const coverFile = coverInput?.files[0];
   const saveCover = (campaignId, dataUrl) => {
-    if (dataUrl && campaignId) localStorage.setItem('camp_cover_' + campaignId, dataUrl);
+    if (dataUrl && campaignId) {
+      try { localStorage.setItem('camp_cover_' + campaignId, dataUrl); } catch (_) {
+        // localStorage quota exceeded — image is saved on the server, will load on refresh
+      }
+    }
   };
   try {
     if (coverFile) {
       await new Promise(resolve => {
         const reader = new FileReader();
-        reader.onload = ev => { body.cover_image = ev.target.result; resolve(); };
+        reader.onload = ev => {
+          // Resize to max 800 px on the longest side so we don't blow localStorage / payload
+          const img = new Image();
+          img.onload = () => {
+            const MAX = 800;
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width  = Math.round(img.width  * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            body.cover_image = canvas.toDataURL('image/jpeg', 0.82);
+            resolve();
+          };
+          img.src = ev.target.result;
+        };
         reader.readAsDataURL(coverFile);
       });
     }
@@ -6180,7 +6230,7 @@ function startOnboarding(user) {
       ? `<div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Your profile is your media kit.</strong><p class="text-xs text-gray-500 mt-0.5">Brands discover you by niche, skill level, and audience size.</p></div></div>
          <div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Every deal builds your track record.</strong><p class="text-xs text-gray-500 mt-0.5">Completed campaigns and reviews appear on your public profile.</p></div></div>
          <div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Contracts, payments & protection built in.</strong><p class="text-xs text-gray-500 mt-0.5">Auto-generated contracts, escrow payments, and dispute support.</p></div></div>`
-      : `<div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Browse verified pickleball creators.</strong><p class="text-xs text-gray-500 mt-0.5">Filter by niche, audience size, skill level, and rates.</p></div></div>
+      : `<div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Browse verified pickleball creators.</strong><p class="text-xs text-gray-500 mt-0.5">Filter by niche, audience size, and skill level.</p></div></div>
          <div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Post campaigns and get matched instantly.</strong><p class="text-xs text-gray-500 mt-0.5">Our AI scores creators against your brief and budget.</p></div></div>
          <div class="flex items-start gap-3"><span class="text-lime-600 font-bold text-base mt-0.5">✓</span><div><strong class="text-gray-800 text-sm">Deals, contracts & payments in one place.</strong><p class="text-xs text-gray-500 mt-0.5">No more back-and-forth emails or chasing invoices.</p></div></div>`;
   }
@@ -6204,7 +6254,7 @@ function startOnboarding(user) {
   } else {
     if (s2Title) s2Title.textContent = 'Tell us about your brand';
     if (s2Sub)   s2Sub.textContent   = 'Creators will see this when reviewing your campaign briefs.';
-    if (s2Next)  s2Next.textContent  = 'Finish & go to dashboard';
+    if (s2Next)  s2Next.textContent  = 'Finished';
     if (brandF)   brandF.classList.remove('hidden');
     if (creatorF) creatorF.classList.add('hidden');
     _onboardPills('onboard-industry-pills', _ONBOARD_INDUSTRIES, 'industry');
