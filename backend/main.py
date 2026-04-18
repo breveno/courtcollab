@@ -933,7 +933,7 @@ def get_creator(user_id: int, user: dict = Depends(current_user)):
         deal_history = _rows(conn, """
             SELECT d.id, d.amount, d.updated_at AS completed_at,
                    c.title AS campaign_title,
-                   COALESCE(bp.company_name, ub.name) AS brand_name,
+                   COALESCE(bp.company_name, 'Brand') AS brand_name,
                    r.score AS brand_rating
             FROM deals d
             JOIN campaigns c    ON c.id  = d.campaign_id
@@ -3112,13 +3112,14 @@ def list_payments(user: dict = Depends(current_user)):
             SELECT p.*,
                    d.amount       AS deal_amount,
                    c.title        AS campaign_title,
-                   ub.name        AS brand_name,
+                   COALESCE(bp.company_name, 'Brand') AS brand_name,
                    uc.name        AS creator_name
             FROM payments p
             JOIN deals     d  ON d.id  = p.deal_id
             JOIN campaigns c  ON c.id  = d.campaign_id
             JOIN users     ub ON ub.id = p.brand_id
             JOIN users     uc ON uc.id = p.creator_id
+            LEFT JOIN brand_profiles bp ON bp.user_id = p.brand_id
             WHERE p.{field} = ?
             ORDER BY p.created_at DESC
         """, (user["id"],))

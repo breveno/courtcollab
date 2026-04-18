@@ -1310,7 +1310,7 @@ function _contractBannerHtml(deal) {
 
   const brandSigned   = deal.brand_signed;
   const creatorSigned = deal.creator_signed;
-  const brandName     = escHtml(deal.brand_company_name || deal.brand_name || 'Brand');
+  const brandName     = escHtml(deal.brand_company_name || 'Brand');
   const creatorName   = escHtml(deal.creator_name || 'Creator');
 
   const signerRow = (signed, name, ts) => `
@@ -1433,7 +1433,7 @@ function _renderContractSection(containerId, contractDeals, payments) {
         <div>
           <p class="font-semibold text-gray-900">${escHtml(d.campaign_title || d.title || 'Deal #' + d.id)}</p>
           <p class="text-xs text-gray-400 mt-0.5">
-            ${escHtml(d.brand_company_name || d.brand_name || 'Brand')} × ${escHtml(d.creator_name || 'Creator')}
+            ${escHtml(d.brand_company_name || 'Brand')} × ${escHtml(d.creator_name || 'Creator')}
             &nbsp;·&nbsp; $${(d.amount || 0).toLocaleString()}
           </p>
         </div>
@@ -1774,7 +1774,7 @@ async function renderCreatorDashboard() {
                 <p class="font-semibold text-gray-900 truncate">${escHtml(d.campaign_title || d.title || 'Deal #' + d.id)}</p>
                 <span class="tag ${statusColor} text-xs">${{pending:'Proposed',active:'In Progress',paid:'Paid',deal_complete:'Confirming',payout_complete:'Complete',completed:'Complete',declined:'Declined'}[d.status] || (d.status.charAt(0).toUpperCase() + d.status.slice(1))}</span>
               </div>
-              <p class="text-sm text-gray-500 mt-0.5">${escHtml(d.brand_company_name || d.brand_name || 'Brand')} · ${fmtDateUTC(d.created_at)}</p>
+              <p class="text-sm text-gray-500 mt-0.5">${escHtml(d.brand_company_name || 'Brand')} · ${fmtDateUTC(d.created_at)}</p>
               <div class="mt-2">${dealStepperMiniHtml(d.status)}</div>
             </div>
             <div class="text-right shrink-0">
@@ -1888,7 +1888,7 @@ async function renderSignedContractsTab() {
               <span class="text-xs font-medium px-2 py-0.5 rounded-full ${roleBadge}">${roleLabel}</span>
             </div>
             <p class="text-xs text-gray-500 mt-0.5">
-              ${c.brand_company || c.brand_name} × ${c.creator_name}
+              ${c.brand_company || 'Brand'} × ${c.creator_name}
               &nbsp;·&nbsp; ${amount}
               &nbsp;·&nbsp; Signed ${signedDate}
             </p>
@@ -1925,7 +1925,7 @@ function _renderTermsConfirmationBanner(containerId, deals, role) {
 
   const cards = deals.map(d => {
     const amount = d.amount ? `$${Number(d.amount).toLocaleString()}` : '';
-    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_company_name || d.brand_name || 'Brand');
+    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_company_name || 'Brand');
     const otherConfirmed = role === 'brand'
       ? d.creator_terms_confirmed
       : d.brand_terms_confirmed;
@@ -2266,7 +2266,7 @@ function _renderMarkCompleteSection(containerId, deals, role) {
   const cards = deals.map(d => {
     const amount     = d.amount ? `$${Number(d.amount).toLocaleString()}` : '';
     const payout     = d.amount ? `$${Math.round(Number(d.amount) * 0.85).toLocaleString()}` : '';
-    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_company_name || d.brand_name || 'Brand');
+    const otherParty = role === 'brand' ? (d.creator_name || 'Creator') : (d.brand_company_name || 'Brand');
 
     const myMarked    = role === 'brand' ? d.brand_marked_complete   : d.creator_marked_complete;
     const otherMarked = role === 'brand' ? d.creator_marked_complete : d.brand_marked_complete;
@@ -2748,7 +2748,7 @@ function openCampaignDetailCreator(campaignId) {
 
   // Brand name
   const brandEl = document.getElementById('cdm-brand');
-  if (brandEl) brandEl.textContent = c.company_name || c.brand_name || '';
+  if (brandEl) brandEl.textContent = c.company_name || '';
 
   // Posted date
   const dateEl = document.getElementById('cdm-date');
@@ -3324,7 +3324,7 @@ async function renderCreatorInvitations() {
               <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
                   <p class="font-semibold text-gray-900 truncate">${escHtml(inv.campaign_title)}</p>
-                  <p class="text-sm text-gray-500 mt-0.5">${escHtml(inv.company_name || inv.brand_name || 'Brand')}${inv.campaign_niche ? ' · ' + escHtml(inv.campaign_niche) : ''}${inv.budget ? ' · $' + inv.budget.toLocaleString() + ' budget' : ''}</p>
+                  <p class="text-sm text-gray-500 mt-0.5">${escHtml(inv.company_name || 'Brand')}${inv.campaign_niche ? ' · ' + escHtml(inv.campaign_niche) : ''}${inv.budget ? ' · $' + inv.budget.toLocaleString() + ' budget' : ''}</p>
                   ${inv.invite_message ? `<p class="text-sm text-gray-600 italic mt-1.5">"${escHtml(inv.invite_message)}"</p>` : ''}
                 </div>
               </div>
@@ -3778,7 +3778,7 @@ async function renderCampaigns() {
     list.innerHTML = campaigns.map(c => {
       _campaignMap[c.id] = c;
       const skills     = Array.isArray(c.skills) ? c.skills : [];
-      const brandLabel = c.company_name || c.brand_name || 'Brand';
+      const brandLabel = c.company_name || 'Brand';
       const budget     = c.budget ? `$${Number(c.budget).toLocaleString()}` : (c.budget_min && c.budget_max ? `$${c.budget_min.toLocaleString()} – $${c.budget_max.toLocaleString()}` : '—');
       const postedDate = (() => {
         if (!c.created_at) return '';
@@ -4717,7 +4717,7 @@ async function openConversation(partnerId, knownName = null) {
     // Update header — find a message sent BY the partner so we get their name, not ours
     const partnerMsg  = messages.find(m => m.sender_id === partnerId);
     const partnerName = partnerMsg?.sender_name
-      || (state.role === 'brand' ? deal?.creator_name : deal?.brand_name)
+      || (state.role === 'brand' ? deal?.creator_name : (deal?.brand_company_name || 'Brand'))
       || resolvedName
       || 'Conversation';
     _setChatHeader(partnerName);
@@ -5466,7 +5466,7 @@ async function renderCreatorDealHistory() {
             <div class="py-3">
               <div class="flex items-center justify-between mb-2">
                 <div class="min-w-0 mr-3">
-                  <div class="font-medium text-sm">${escHtml(d.brand_name || 'Brand')}</div>
+                  <div class="font-medium text-sm">${escHtml(d.brand_company_name || 'Brand')}</div>
                   <div class="text-xs text-gray-500 truncate">${escHtml(d.campaign_title || '')}</div>
                 </div>
                 <span class="font-semibold text-pickle-700 text-sm flex-shrink-0">$${(d.amount || 0).toLocaleString()}</span>
@@ -7024,7 +7024,7 @@ let _campTimer = null;
 const _CAMP_AVATAR_COLORS = ['#1E6EA6','#7c3aed','#059669','#b45309','#0B1F4A'];
 
 function _campCardHtml(c, idx) {
-  const brandName  = c.company_name || c.brand_name || 'Brand';
+  const brandName  = c.company_name || 'Brand';
   const initials   = brandName.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const color      = _CAMP_AVATAR_COLORS[idx % _CAMP_AVATAR_COLORS.length];
   const niche      = c.niche || 'Campaign';
@@ -7272,7 +7272,7 @@ async function _loadCreatorFeatStrip() {
   try { campaigns = await apiGet('/api/campaigns?status=open'); } catch(e) {}
   if (!campaigns || !campaigns.length) return;
   strip.innerHTML = campaigns.slice(0,4).map(c => {
-    const initials = (c.brand_name||'B').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const initials = (c.company_name||'B').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const rate = c.budget > 0 ? `$${Number(c.budget).toLocaleString()}`
       : c.max_rate > 0 ? `Up to $${Number(c.max_rate).toLocaleString()}`
       : null;
