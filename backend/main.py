@@ -1107,6 +1107,11 @@ class CampaignIn(BaseModel):
     questions:        Optional[List[str]]  = []
     creators_needed:  Optional[int]        = Field(default=1, ge=1)
     status:           Optional[str]        = Field(default='open')
+    content_type:     Optional[str]        = None
+    target_audience:  Optional[str]        = None
+    deadline:         Optional[str]        = None
+    contract_type:    Optional[str]        = None
+    cover_image:      Optional[str]        = None   # base64 data URL
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
@@ -1124,6 +1129,11 @@ class CampaignUpdateIn(BaseModel):
     questions:        Optional[List[str]] = None
     creators_needed:  Optional[int]       = None
     status:           Optional[str]       = None   # allows publishing a draft → 'open'
+    content_type:     Optional[str]       = None
+    target_audience:  Optional[str]       = None
+    deadline:         Optional[str]       = None
+    contract_type:    Optional[str]       = None
+    cover_image:      Optional[str]       = None
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
@@ -1182,14 +1192,17 @@ def create_campaign(body: CampaignIn, background_tasks: BackgroundTasks, user: d
             cur = conn.execute("""
                 INSERT INTO campaigns
                   (brand_id, title, description, budget, niche, skills,
-                   target_age, min_followers, max_rate, questions, creators_needed, status)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                   target_age, min_followers, max_rate, questions, creators_needed, status,
+                   content_type, target_audience, deadline, contract_type, cover_image)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (user["id"], body.title, body.description, body.budget,
                   body.niche, json.dumps(body.skills),
                   body.target_age, body.min_followers, body.max_rate,
                   json.dumps(body.questions or []),
                   body.creators_needed or 1,
-                  body.status or 'open'))
+                  body.status or 'open',
+                  body.content_type, body.target_audience, body.deadline,
+                  body.contract_type or 'template', body.cover_image))
             conn.commit()
             cid = cur.lastrowid
         if not cid:
@@ -1284,6 +1297,11 @@ async def update_campaign(campaign_id: int, body: CampaignUpdateIn,
         if body.max_rate        is not None: updates["max_rate"]        = body.max_rate
         if body.questions       is not None: updates["questions"]       = json.dumps(body.questions)
         if body.creators_needed is not None: updates["creators_needed"] = body.creators_needed
+        if body.content_type    is not None: updates["content_type"]    = body.content_type
+        if body.target_audience is not None: updates["target_audience"] = body.target_audience
+        if body.deadline        is not None: updates["deadline"]        = body.deadline
+        if body.contract_type   is not None: updates["contract_type"]   = body.contract_type
+        if body.cover_image     is not None: updates["cover_image"]     = body.cover_image
         if body.status          is not None:
             if body.status not in ('open', 'paused', 'closed', 'draft'):
                 raise HTTPException(400, "Invalid status")

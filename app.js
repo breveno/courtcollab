@@ -2691,10 +2691,13 @@ function openCampaignDetail(campaignId) {
 
   // Stats row
   const stats = [];
-  if (c.budget)           stats.push(`<span class="text-gray-500">Budget: <strong class="text-gray-900">$${Number(c.budget).toLocaleString()}</strong></span>`);
+  if (c.budget)           stats.push(`<span class="text-gray-500">Rate: <strong class="text-gray-900">$${Number(c.budget).toLocaleString()}</strong></span>`);
   if (c.creators_needed)  stats.push(`<span class="text-gray-500">Creators needed: <strong class="text-gray-900">${c.creators_needed}</strong></span>`);
+  if (c.deadline)         stats.push(`<span class="text-gray-500">Deadline: <strong class="text-gray-900">${fmtDateUTC(c.deadline)}</strong></span>`);
+  if (c.content_type)     stats.push(`<span class="text-gray-500">Content type: <strong class="text-gray-900">${escHtml(c.content_type)}</strong></span>`);
+  if (c.target_audience)  stats.push(`<span class="text-gray-500">Audience: <strong class="text-gray-900">${escHtml(c.target_audience)}</strong></span>`);
+  if (c.contract_type)    stats.push(`<span class="text-gray-500">Contract: <strong class="text-gray-900">${c.contract_type === 'template' ? 'CourtCollab Standard' : 'Custom'}</strong></span>`);
   if (c.min_followers)    stats.push(`<span class="text-gray-500">Min. followers: <strong class="text-gray-900">${Number(c.min_followers).toLocaleString()}</strong></span>`);
-  if (c.max_rate)         stats.push(`<span class="text-gray-500">Max rate: <strong class="text-gray-900">$${Number(c.max_rate).toLocaleString()}</strong></span>`);
   document.getElementById('cdm-stats').innerHTML = stats.join('');
 
   // Description
@@ -4356,9 +4359,11 @@ async function postCampaign(status = 'open') {
     description:      document.getElementById('camp-desc').value,
     niche:            document.getElementById('camp-niche')?.value || null,
     budget:           parseInt(document.getElementById('camp-budget').value) || 0,
-    deadline:         document.getElementById('camp-deadline').value,
+    deadline:         document.getElementById('camp-deadline').value || null,
     creators_needed:  parseInt(document.getElementById('camp-creators-needed')?.value) || 1,
     contract_type:    _campContractType,
+    content_type:     document.getElementById('camp-content')?.value || null,
+    target_audience:  document.getElementById('camp-audience')?.value || null,
     status,
     skills,
     questions,
