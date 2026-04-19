@@ -5232,7 +5232,8 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
 
     to_email = payload.email
 
-    def _send():
+    def _smtp_send(recipients: list, subject: str, text_body: str, html_body: str):
+        """Send an email to one or more recipients via Zoho SMTP."""
         host   = os.environ.get("SMTP_HOST", "smtp.zoho.com")
         port   = int(os.environ.get("SMTP_PORT", "587"))
         user   = os.environ.get("SMTP_USER", "")
@@ -5240,35 +5241,67 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
         sender = os.environ.get("FROM_EMAIL", user) or user
 
         if not user or not passwd:
-            logging.warning("[SMTP] SMTP_USER or SMTP_PASS not set — skipping waitlist confirmation to %s", to_email)
+            logging.warning("[SMTP] SMTP_USER or SMTP_PASS not set — skipping email to %s", recipients)
             return
 
         try:
             msg = MIMEMultipart("alternative")
-            msg["Subject"] = "You're on the CourtCollab Waitlist!"
+            msg["Subject"] = subject
             msg["From"]    = f"CourtCollab <{sender}>"
-            msg["To"]      = to_email
-
-            msg.attach(MIMEText(WAITLIST_CONFIRMATION_TEXT, "plain"))
-            msg.attach(MIMEText(WAITLIST_CONFIRMATION_HTML, "html"))
+            msg["To"]      = ", ".join(recipients)
+            msg.attach(MIMEText(text_body, "plain"))
+            msg.attach(MIMEText(html_body, "html"))
 
             use_ssl = os.environ.get("SMTP_SSL", "false").lower() == "true" or port == 465
             if use_ssl:
                 with smtplib.SMTP_SSL(host, port, timeout=15) as server:
                     server.login(user, passwd)
-                    server.sendmail(sender, [to_email], msg.as_string())
+                    server.sendmail(sender, recipients, msg.as_string())
             else:
                 with smtplib.SMTP(host, port, timeout=15) as server:
                     server.ehlo()
                     server.starttls()
                     server.login(user, passwd)
-                    server.sendmail(sender, [to_email], msg.as_string())
+                    server.sendmail(sender, recipients, msg.as_string())
 
-            logging.info("[SMTP] Waitlist confirmation sent to %s", to_email)
+            logging.info("[SMTP] Email sent to %s — %s", recipients, subject)
         except Exception as exc:
-            logging.warning("[SMTP] Waitlist confirmation failed for %s: %s", to_email, exc)
+            logging.warning("[SMTP] Email failed for %s: %s", recipients, exc)
 
-    threading.Thread(target=_send, daemon=True).start()
+    def _send_all():
+        # 1. Confirmation email to the creator
+        _smtp_send(
+            recipients=[to_email],
+            subject="You're on the CourtCollab Waitlist!",
+            text_body=WAITLIST_CONFIRMATION_TEXT,
+            html_body=WAITLIST_CONFIRMATION_HTML,
+        )
+
+        # 2. Notification email to all admins
+        admin_recipients = [e for e in ADMIN_EMAILS if e]
+        if admin_recipients:
+            notification_html = f"""
+            <div style="font-family:Arial,sans-serif;padding:24px;background:#f4f6f9;">
+              <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:10px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,0.07);">
+                <p style="margin:0 0 8px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">CourtCollab · Waitlist</p>
+                <h2 style="margin:0 0 16px;font-size:20px;color:#0B1F4A;">New waitlist signup 🎾</h2>
+                <p style="margin:0 0 8px;font-size:15px;color:#374151;">
+                  <strong>{to_email}</strong> just joined the CourtCollab waitlist.
+                </p>
+                <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
+                <p style="margin:0;font-size:12px;color:#9ca3af;">CourtCollab · The pickleball creator marketplace</p>
+              </div>
+            </div>
+            """
+            notification_text = f"New CourtCollab waitlist signup: {to_email}"
+            _smtp_send(
+                recipients=admin_recipients,
+                subject=f"New Waitlist Signup: {to_email}",
+                text_body=notification_text,
+                html_body=notification_html,
+            )
+
+    threading.Thread(target=_send_all, daemon=True).start()
     return {"status": "queued"}
 
 
