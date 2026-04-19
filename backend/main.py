@@ -5230,51 +5230,55 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
 
+    import urllib.request
+    import urllib.error
+    import json as _json
+    import threading
+
     to_email = payload.email
 
-    def _smtp_send(recipients: list, subject: str, text_body: str, html_body: str):
-        """Send an email to one or more recipients via Zoho SMTP."""
-        host   = os.environ.get("SMTP_HOST", "smtp.zoho.com")
-        port   = int(os.environ.get("SMTP_PORT", "587"))
-        user   = os.environ.get("SMTP_USER", "")
-        passwd = os.environ.get("SMTP_PASS", "")
-        sender = os.environ.get("FROM_EMAIL", user) or user
+    def _resend_send(recipients: list, subject: str, html_body: str, text_body: str):
+        """Send email via Resend HTTP API — works on Railway (no SMTP port issues)."""
+        api_key = os.environ.get("RESEND_API_KEY", "")
+        from_email = os.environ.get("FROM_EMAIL", "CourtCollab <onboarding@resend.dev>")
 
-        if not user or not passwd:
-            logging.warning("[SMTP] SMTP_USER or SMTP_PASS not set — skipping email to %s", recipients)
+        if not api_key:
+            logging.warning("[Resend] RESEND_API_KEY not set — skipping email to %s", recipients)
             return
 
+        payload_data = {
+            "from": from_email,
+            "to": recipients,
+            "subject": subject,
+            "html": html_body,
+            "text": text_body,
+        }
+
         try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"]    = f"CourtCollab <{sender}>"
-            msg["To"]      = ", ".join(recipients)
-            msg.attach(MIMEText(text_body, "plain"))
-            msg.attach(MIMEText(html_body, "html"))
-
-            use_ssl = os.environ.get("SMTP_SSL", "false").lower() == "true" or port == 465
-            if use_ssl:
-                with smtplib.SMTP_SSL(host, port, timeout=15) as server:
-                    server.login(user, passwd)
-                    server.sendmail(sender, recipients, msg.as_string())
-            else:
-                with smtplib.SMTP(host, port, timeout=15) as server:
-                    server.ehlo()
-                    server.starttls()
-                    server.login(user, passwd)
-                    server.sendmail(sender, recipients, msg.as_string())
-
-            logging.info("[SMTP] Email sent to %s — %s", recipients, subject)
+            req = urllib.request.Request(
+                "https://api.resend.com/emails",
+                data=_json.dumps(payload_data).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                logging.info("[Resend] Email sent to %s — %s (status %s)", recipients, subject, resp.status)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            logging.warning("[Resend] Email failed for %s: HTTP %s — %s", recipients, exc.code, body)
         except Exception as exc:
-            logging.warning("[SMTP] Email failed for %s: %s", recipients, exc)
+            logging.warning("[Resend] Email failed for %s: %s", recipients, exc)
 
     def _send_all():
         # 1. Confirmation email to the creator
-        _smtp_send(
+        _resend_send(
             recipients=[to_email],
             subject="You're on the CourtCollab Waitlist!",
-            text_body=WAITLIST_CONFIRMATION_TEXT,
             html_body=WAITLIST_CONFIRMATION_HTML,
+            text_body=WAITLIST_CONFIRMATION_TEXT,
         )
 
         # 2. Notification email to all admins
@@ -5294,11 +5298,11 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
             </div>
             """
             notification_text = f"New CourtCollab waitlist signup: {to_email}"
-            _smtp_send(
+            _resend_send(
                 recipients=admin_recipients,
                 subject=f"New Waitlist Signup: {to_email}",
-                text_body=notification_text,
                 html_body=notification_html,
+                text_body=notification_text,
             )
 
     threading.Thread(target=_send_all, daemon=True).start()
