@@ -5099,6 +5099,180 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
 
 
 # ---------------------------------------------------------------------------
+# Waitlist confirmation email
+# ---------------------------------------------------------------------------
+
+class WaitlistEmailIn(BaseModel):
+    email: EmailStr
+
+WAITLIST_CONFIRMATION_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You're on the CourtCollab Waitlist!</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0B1F4A 0%,#163a70 50%,#0d2a60 100%);padding:36px 40px;text-align:center;">
+              <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:12px;">
+                    <img src="https://www.courtcollab.com/logo-paddles.png" alt="CourtCollab" width="52" height="auto" style="display:block;" />
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <span style="font-size:28px;font-weight:900;letter-spacing:-0.03em;line-height:1;">
+                      <span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span>
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+              <h1 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#0B1F4A;line-height:1.3;">
+                You're on the waitlist! 🎉
+              </h1>
+              <p style="margin:0 0 20px;font-size:16px;color:#374151;line-height:1.7;">
+                Thanks for joining the CourtCollab waitlist — we will reach out when we launch.
+                Get ready to start collaborating with brands! We're excited to have you a part of this community.
+              </p>
+              <p style="margin:0 0 32px;font-size:16px;color:#374151;line-height:1.7;">
+                In the meantime, follow us on social to stay up to date:
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 32px;">
+                <tr>
+                  <td style="padding-right:12px;">
+                    <a href="https://www.instagram.com/courtcollab" style="display:inline-block;background:#0B1F4A;color:#C8F135;text-decoration:none;font-weight:700;font-size:14px;padding:10px 20px;border-radius:9999px;">
+                      Instagram
+                    </a>
+                  </td>
+                  <td>
+                    <a href="https://www.tiktok.com/@officialcourtcollab" style="display:inline-block;background:#0B1F4A;color:#C8F135;text-decoration:none;font-weight:700;font-size:14px;padding:10px 20px;border-radius:9999px;">
+                      TikTok
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 28px;" />
+
+              <!-- Signature -->
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-right:14px;vertical-align:middle;">
+                    <img src="https://www.courtcollab.com/logo-paddles.png" alt="CourtCollab" width="36" height="auto" style="display:block;" />
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <p style="margin:0;font-size:14px;font-weight:800;color:#0B1F4A;letter-spacing:-0.01em;">
+                      <span style="color:#163a70;">Court</span>Collab
+                    </p>
+                    <p style="margin:2px 0 0;font-size:13px;color:#6b7280;">Ben Reveno &nbsp;·&nbsp; Founder</p>
+                    <a href="mailto:ben@courtcollab.com" style="font-size:13px;color:#1E6EA6;text-decoration:none;">ben@courtcollab.com</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f9fafb;padding:20px 40px;text-align:center;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;font-size:12px;color:#9ca3af;">
+                © 2026 CourtCollab · The pickleball creator marketplace
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+WAITLIST_CONFIRMATION_TEXT = """\
+You're on the CourtCollab waitlist!
+
+Thanks for joining the CourtCollab waitlist — we will reach out when we launch.
+Get ready to start collaborating with brands! We're excited to have you a part of this community.
+
+Follow us:
+  Instagram: https://www.instagram.com/courtcollab
+  TikTok:    https://www.tiktok.com/@officialcourtcollab
+
+—
+Ben Reveno · Founder
+ben@courtcollab.com
+CourtCollab
+"""
+
+
+@app.post("/api/waitlist/confirm-email", status_code=200)
+def waitlist_confirm_email(payload: WaitlistEmailIn):
+    """
+    Send a waitlist confirmation email via Zoho SMTP.
+    Called by the waitlist landing page after a successful Supabase insert.
+    Always returns 200 — email failure is logged but not surfaced to the client.
+    """
+    import smtplib
+    import threading
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    to_email = payload.email
+
+    def _send():
+        host   = os.environ.get("SMTP_HOST", "smtp.zoho.com")
+        port   = int(os.environ.get("SMTP_PORT", "587"))
+        user   = os.environ.get("SMTP_USER", "")
+        passwd = os.environ.get("SMTP_PASS", "")
+        sender = os.environ.get("FROM_EMAIL", user) or user
+
+        if not user or not passwd:
+            logging.warning("[SMTP] SMTP_USER or SMTP_PASS not set — skipping waitlist confirmation to %s", to_email)
+            return
+
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = "You're on the CourtCollab Waitlist!"
+            msg["From"]    = f"CourtCollab <{sender}>"
+            msg["To"]      = to_email
+
+            msg.attach(MIMEText(WAITLIST_CONFIRMATION_TEXT, "plain"))
+            msg.attach(MIMEText(WAITLIST_CONFIRMATION_HTML, "html"))
+
+            use_ssl = os.environ.get("SMTP_SSL", "false").lower() == "true" or port == 465
+            if use_ssl:
+                with smtplib.SMTP_SSL(host, port, timeout=15) as server:
+                    server.login(user, passwd)
+                    server.sendmail(sender, [to_email], msg.as_string())
+            else:
+                with smtplib.SMTP(host, port, timeout=15) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.login(user, passwd)
+                    server.sendmail(sender, [to_email], msg.as_string())
+
+            logging.info("[SMTP] Waitlist confirmation sent to %s", to_email)
+        except Exception as exc:
+            logging.warning("[SMTP] Waitlist confirmation failed for %s: %s", to_email, exc)
+
+    threading.Thread(target=_send, daemon=True).start()
+    return {"status": "queued"}
+
+
+# ---------------------------------------------------------------------------
 # Run directly
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
