@@ -5195,6 +5195,11 @@ WAITLIST_CONFIRMATION_HTML = """
             </td>
           </tr>
 
+          <!-- Bottom padding — keeps blue around white card on desktop -->
+          <tr>
+            <td bgcolor="#0B1F4A" style="background:#0B1F4A;padding:36px 0;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
         </table>
       </td>
     </tr>
