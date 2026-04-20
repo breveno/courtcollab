@@ -5131,7 +5131,7 @@ WAITLIST_CONFIRMATION_HTML = """
 
           <!-- Header -->
           <tr>
-            <td bgcolor="#0B1F4A" style="background:#0B1F4A;padding:36px 40px;text-align:center;">
+            <td bgcolor="#0B1F4A" style="background:#0B1F4A;padding:36px 36px 36px 36px;text-align:center;">
               <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr>
                   <td style="vertical-align:middle;padding-right:12px;">
@@ -5170,7 +5170,7 @@ WAITLIST_CONFIRMATION_HTML = """
                        style="display:inline-block;text-decoration:none;line-height:1;"
                        title="Instagram">
                       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/240px-Instagram_icon.png"
-                           width="40" height="40" alt="Instagram" border="0"
+                           width="28" height="28" alt="Instagram" border="0"
                            style="display:block;" />
                     </a>
                   </td>
@@ -5180,7 +5180,7 @@ WAITLIST_CONFIRMATION_HTML = """
                        style="display:inline-block;text-decoration:none;line-height:1;"
                        title="TikTok">
                       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Ionicons_logo-tiktok.svg/60px-Ionicons_logo-tiktok.svg.png"
-                           width="40" height="40" alt="TikTok" border="0"
+                           width="28" height="28" alt="TikTok" border="0"
                            style="display:block;" />
                     </a>
                   </td>
