@@ -5230,10 +5230,8 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
 
-    import urllib.request
-    import urllib.error
-    import json as _json
     import threading
+    import requests as _requests
 
     to_email = payload.email
 
@@ -5246,8 +5244,6 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
             logging.warning("[Resend] RESEND_API_KEY not set — skipping email to %s", recipients)
             return
 
-        logging.warning("[Resend] Sending from=%s to=%s key_prefix=%s key_len=%s", from_email, recipients, api_key[:12], len(api_key))
-
         payload_data = {
             "from": from_email,
             "to": recipients,
@@ -5257,23 +5253,19 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
         }
 
         try:
-            req = urllib.request.Request(
+            resp = _requests.post(
                 "https://api.resend.com/emails",
-                data=_json.dumps(payload_data).encode("utf-8"),
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                method="POST",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json=payload_data,
+                timeout=15,
             )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                resp_body = resp.read().decode("utf-8", errors="replace")
-                logging.info("[Resend] Email sent to %s — %s (status %s) resp=%s", recipients, subject, resp.status, resp_body)
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            logging.warning("[Resend] Email failed for %s: HTTP %s — full response: %s", recipients, exc.code, body)
+            if resp.ok:
+                logging.info("[Resend] Email sent to %s — status %s", recipients, resp.status_code)
+            else:
+                logging.warning("[Resend] Email failed for %s: HTTP %s — %s", recipients, resp.status_code, resp.text)
         except Exception as exc:
             logging.warning("[Resend] Email failed for %s: %s", recipients, exc)
+
 
     def _send_all():
         # 1. Confirmation email to the creator
