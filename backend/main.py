@@ -5121,6 +5121,9 @@ WAITLIST_CONFIRMATION_HTML = """
     :root { color-scheme: light only; }
     html, body { margin: 0 !important; padding: 0 !important; background: #0B1F4A !important; }
     a { color: inherit; }
+    @media only screen and (max-width: 600px) {
+      .desktop-bottom-pad { display: none !important; max-height: 0 !important; overflow: hidden !important; }
+    }
   </style>
 </head>
 <body style="margin:0;padding:0;background:#0B1F4A;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color-scheme:light only;">
@@ -5195,8 +5198,8 @@ WAITLIST_CONFIRMATION_HTML = """
             </td>
           </tr>
 
-          <!-- Bottom padding — keeps blue around white card on desktop -->
-          <tr>
+          <!-- Bottom padding — desktop only, hidden on mobile via media query -->
+          <tr class="desktop-bottom-pad" style="display:table-row;">
             <td bgcolor="#0B1F4A" style="background:#0B1F4A;padding:36px 0;font-size:0;line-height:0;">&nbsp;</td>
           </tr>
 
