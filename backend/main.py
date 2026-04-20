@@ -5144,7 +5144,7 @@ WAITLIST_CONFIRMATION_HTML = """
                 You're on the waitlist! 🎉
               </h1>
               <p style="margin:0 0 20px;font-size:16px;color:#374151;line-height:1.7;">
-                Thanks for joining the CourtCollab waitlist — we will reach out when we launch.
+                Thanks for joining the CourtCollab waitlist, we will reach out when we launch.
                 Get ready to start collaborating with brands! We're excited to have you a part of this community.
               </p>
               <p style="margin:0 0 32px;font-size:16px;color:#374151;line-height:1.7;">
@@ -5202,7 +5202,7 @@ WAITLIST_CONFIRMATION_HTML = """
 WAITLIST_CONFIRMATION_TEXT = """\
 You're on the CourtCollab waitlist!
 
-Thanks for joining the CourtCollab waitlist — we will reach out when we launch.
+Thanks for joining the CourtCollab waitlist, we will reach out when we launch.
 Get ready to start collaborating with brands! We're excited to have you a part of this community.
 
 Follow us:
