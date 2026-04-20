@@ -5114,10 +5114,10 @@ WAITLIST_CONFIRMATION_HTML = """
   <title>You're on the CourtCollab Waitlist!</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f6f9;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:32px 0;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:0;margin:0;">
     <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+      <td align="center" style="padding:0;">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
 
           <!-- Header -->
           <tr>
@@ -5144,7 +5144,7 @@ WAITLIST_CONFIRMATION_HTML = """
                 You're on the waitlist! 🎉
               </h1>
               <p style="margin:0 0 20px;font-size:16px;color:#374151;line-height:1.7;">
-                Thanks for joining the CourtCollab waitlist — we will reach out when we launch.
+                Thanks for joining the CourtCollab waitlist, we will reach out when we launch.
                 Get ready to start collaborating with brands! We're excited to have you a part of this community.
               </p>
               <p style="margin:0 0 32px;font-size:16px;color:#374151;line-height:1.7;">
@@ -5173,11 +5173,9 @@ WAITLIST_CONFIRMATION_HTML = """
                     <img src="https://www.courtcollab.com/logo-paddles.png" alt="CourtCollab" width="36" height="auto" style="display:block;" />
                   </td>
                   <td style="vertical-align:middle;">
-                    <p style="margin:0;font-size:14px;font-weight:800;color:#0B1F4A;letter-spacing:-0.01em;">
-                      <span style="color:#163a70;">Court</span>Collab
+                    <p style="margin:0;font-size:14px;font-weight:800;letter-spacing:-0.01em;">
+                      <span style="color:#C8F135;">Court</span><span style="color:#0B1F4A;">Collab</span>
                     </p>
-                    <p style="margin:2px 0 0;font-size:13px;color:#6b7280;">Ben Reveno &nbsp;·&nbsp; Founder</p>
-                    <a href="mailto:ben@courtcollab.com" style="font-size:13px;color:#1E6EA6;text-decoration:none;">ben@courtcollab.com</a>
                   </td>
                 </tr>
               </table>
@@ -5204,7 +5202,7 @@ WAITLIST_CONFIRMATION_HTML = """
 WAITLIST_CONFIRMATION_TEXT = """\
 You're on the CourtCollab waitlist!
 
-Thanks for joining the CourtCollab waitlist — we will reach out when we launch.
+Thanks for joining the CourtCollab waitlist, we will reach out when we launch.
 Get ready to start collaborating with brands! We're excited to have you a part of this community.
 
 Follow us:
