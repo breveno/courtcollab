@@ -5240,11 +5240,13 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
     def _resend_send(recipients: list, subject: str, html_body: str, text_body: str):
         """Send email via Resend HTTP API — works on Railway (no SMTP port issues)."""
         api_key = os.environ.get("RESEND_API_KEY", "")
-        from_email = os.environ.get("FROM_EMAIL", "CourtCollab <onboarding@resend.dev>")
+        from_email = os.environ.get("FROM_EMAIL", "onboarding@resend.dev")
 
         if not api_key:
             logging.warning("[Resend] RESEND_API_KEY not set — skipping email to %s", recipients)
             return
+
+        logging.info("[Resend] Sending from=%s to=%s key_prefix=%s", from_email, recipients, api_key[:8])
 
         payload_data = {
             "from": from_email,
@@ -5265,10 +5267,11 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=15) as resp:
-                logging.info("[Resend] Email sent to %s — %s (status %s)", recipients, subject, resp.status)
+                resp_body = resp.read().decode("utf-8", errors="replace")
+                logging.info("[Resend] Email sent to %s — %s (status %s) resp=%s", recipients, subject, resp.status, resp_body)
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
-            logging.warning("[Resend] Email failed for %s: HTTP %s — %s", recipients, exc.code, body)
+            logging.warning("[Resend] Email failed for %s: HTTP %s — full response: %s", recipients, exc.code, body)
         except Exception as exc:
             logging.warning("[Resend] Email failed for %s: %s", recipients, exc)
 
