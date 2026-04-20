@@ -5107,7 +5107,7 @@ class WaitlistEmailIn(BaseModel):
 
 WAITLIST_CONFIRMATION_HTML = """
 <!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" style="margin:0;padding:0;background:#0B1F4A;">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -5119,7 +5119,7 @@ WAITLIST_CONFIRMATION_HTML = """
   <![endif]-->
   <style>
     :root { color-scheme: light only; }
-    body { color-scheme: light only; }
+    html, body { margin: 0 !important; padding: 0 !important; background: #0B1F4A !important; }
     a { color: inherit; }
   </style>
 </head>
@@ -5158,43 +5158,31 @@ WAITLIST_CONFIRMATION_HTML = """
                 Get ready to start collaborating with brands! We're excited to have you a part of this community.
               </p>
               <p style="margin:0 0 20px;font-size:16px;color:#374151;line-height:1.7;">
-                In the meantime, follow us on social to stay up to date:
+                In the meantime, follow us on our socials to stay up to date:
               </p>
 
               <!-- Social Icon Buttons -->
               <table cellpadding="0" cellspacing="0" style="margin:0 0 32px;">
                 <tr>
                   <!-- Instagram icon -->
-                  <td style="padding-right:12px;">
-                    <table cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td bgcolor="#0B1F4A" style="background:#0B1F4A;border-radius:12px;padding:0;">
-                          <a href="https://www.instagram.com/courtcollab"
-                             style="display:inline-block;padding:12px;text-decoration:none;line-height:1;"
-                             title="Instagram">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/240px-Instagram_icon.png"
-                                 width="28" height="28" alt="Instagram" border="0"
-                                 style="display:block;" />
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
+                  <td style="padding-right:16px;">
+                    <a href="https://www.instagram.com/courtcollab"
+                       style="display:inline-block;text-decoration:none;line-height:1;"
+                       title="Instagram">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/240px-Instagram_icon.png"
+                           width="40" height="40" alt="Instagram" border="0"
+                           style="display:block;" />
+                    </a>
                   </td>
                   <!-- TikTok icon -->
                   <td>
-                    <table cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td bgcolor="#0B1F4A" style="background:#0B1F4A;border-radius:12px;padding:0;">
-                          <a href="https://www.tiktok.com/@officialcourtcollab"
-                             style="display:inline-block;padding:12px;text-decoration:none;line-height:1;"
-                             title="TikTok">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Ionicons_logo-tiktok.svg/60px-Ionicons_logo-tiktok.svg.png"
-                                 width="28" height="28" alt="TikTok" border="0"
-                                 style="display:block;" />
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
+                    <a href="https://www.tiktok.com/@officialcourtcollab"
+                       style="display:inline-block;text-decoration:none;line-height:1;"
+                       title="TikTok">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Ionicons_logo-tiktok.svg/60px-Ionicons_logo-tiktok.svg.png"
+                           width="40" height="40" alt="TikTok" border="0"
+                           style="display:block;" />
+                    </a>
                   </td>
                 </tr>
               </table>
