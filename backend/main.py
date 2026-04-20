@@ -5285,6 +5285,10 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
             "subject": subject,
             "html": html_body,
             "text": text_body,
+            "reply_to": from_email,
+            "headers": {
+                "List-Unsubscribe": f"<mailto:{from_email}?subject=unsubscribe>",
+            },
         }
 
         try:
@@ -5318,7 +5322,7 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
             <div style="font-family:Arial,sans-serif;padding:24px;background:#f4f6f9;">
               <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:10px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,0.07);">
                 <p style="margin:0 0 8px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">CourtCollab · Waitlist</p>
-                <h2 style="margin:0 0 16px;font-size:20px;color:#0B1F4A;">New waitlist signup 🎾</h2>
+                <h2 style="margin:0 0 16px;font-size:20px;color:#0B1F4A;">New waitlist signup</h2>
                 <p style="margin:0 0 8px;font-size:15px;color:#374151;">
                   <strong>{to_email}</strong> just joined the CourtCollab waitlist.
                 </p>
