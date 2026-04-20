@@ -5246,7 +5246,7 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
             logging.warning("[Resend] RESEND_API_KEY not set — skipping email to %s", recipients)
             return
 
-        logging.info("[Resend] Sending from=%s to=%s key_prefix=%s", from_email, recipients, api_key[:8])
+        logging.warning("[Resend] Sending from=%s to=%s key_prefix=%s key_len=%s", from_email, recipients, api_key[:12], len(api_key))
 
         payload_data = {
             "from": from_email,
