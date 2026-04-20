@@ -5144,7 +5144,7 @@ WAITLIST_CONFIRMATION_HTML = """
                 You're on the waitlist! 🎉
               </h1>
               <p style="margin:0 0 20px;font-size:16px;color:#374151;line-height:1.7;">
-                Thanks for joining the CourtCollab waitlist, we will reach out when we launch.
+                Thanks for joining the CourtCollab waitlist; we will reach out when we launch.
                 Get ready to start collaborating with brands! We're excited to have you a part of this community.
               </p>
               <p style="margin:0 0 32px;font-size:16px;color:#374151;line-height:1.7;">
@@ -5152,14 +5152,16 @@ WAITLIST_CONFIRMATION_HTML = """
               </p>
               <table cellpadding="0" cellspacing="0" style="margin:0 0 32px;">
                 <tr>
-                  <td style="padding-right:12px;">
-                    <a href="https://www.instagram.com/courtcollab" style="display:inline-block;background:#0B1F4A;color:#C8F135;text-decoration:none;font-weight:700;font-size:14px;padding:10px 20px;border-radius:9999px;">
-                      Instagram
+                  <td style="padding-right:16px;">
+                    <a href="https://www.instagram.com/courtcollab" style="display:inline-block;background:#0B1F4A;text-decoration:none;padding:12px;border-radius:12px;" title="Instagram">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/240px-Instagram_icon.png" width="28" height="28" alt="Instagram" style="display:block;" />
                     </a>
                   </td>
                   <td>
-                    <a href="https://www.tiktok.com/@officialcourtcollab" style="display:inline-block;background:#0B1F4A;color:#C8F135;text-decoration:none;font-weight:700;font-size:14px;padding:10px 20px;border-radius:9999px;">
-                      TikTok
+                    <a href="https://www.tiktok.com/@officialcourtcollab" style="display:inline-block;background:#0B1F4A;text-decoration:none;padding:12px;border-radius:12px;" title="TikTok">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#ffffff" style="display:block;">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z"/>
+                      </svg>
                     </a>
                   </td>
                 </tr>
@@ -5202,7 +5204,7 @@ WAITLIST_CONFIRMATION_HTML = """
 WAITLIST_CONFIRMATION_TEXT = """\
 You're on the CourtCollab waitlist!
 
-Thanks for joining the CourtCollab waitlist, we will reach out when we launch.
+Thanks for joining the CourtCollab waitlist; we will reach out when we launch.
 Get ready to start collaborating with brands! We're excited to have you a part of this community.
 
 Follow us:
