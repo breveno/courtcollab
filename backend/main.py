@@ -5240,7 +5240,7 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
     def _resend_send(recipients: list, subject: str, html_body: str, text_body: str):
         """Send email via Resend HTTP API — works on Railway (no SMTP port issues)."""
         api_key = os.environ.get("RESEND_API_KEY", "")
-        from_email = os.environ.get("FROM_EMAIL", "onboarding@resend.dev")
+        from_email = os.environ.get("WAITLIST_FROM_EMAIL") or os.environ.get("FROM_EMAIL", "onboarding@resend.dev")
 
         if not api_key:
             logging.warning("[Resend] RESEND_API_KEY not set — skipping email to %s", recipients)
