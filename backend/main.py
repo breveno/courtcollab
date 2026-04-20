@@ -5127,7 +5127,7 @@ WAITLIST_CONFIRMATION_HTML = """
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B1F4A;padding:0;margin:0;">
     <tr>
       <td align="center" style="padding:0;">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#0B1F4A;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#0B1F4A;">
 
           <!-- Header -->
           <tr>
@@ -5149,7 +5149,7 @@ WAITLIST_CONFIRMATION_HTML = """
 
           <!-- Body -->
           <tr>
-            <td bgcolor="#ffffff" style="background:#ffffff;padding:40px 40px 32px;border-radius:0 0 12px 12px;">
+            <td bgcolor="#ffffff" style="background:#ffffff;padding:40px 40px 32px;">
               <h1 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#0B1F4A;line-height:1.3;">
                 You're on the waitlist! 🎉
               </h1>
@@ -5172,7 +5172,7 @@ WAITLIST_CONFIRMATION_HTML = """
                           <a href="https://www.instagram.com/courtcollab"
                              style="display:inline-block;padding:12px;text-decoration:none;line-height:1;"
                              title="Instagram">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Instagram_icon%2C_white_version.svg/60px-Instagram_icon%2C_white_version.svg.png"
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/240px-Instagram_icon.png"
                                  width="28" height="28" alt="Instagram" border="0"
                                  style="display:block;" />
                           </a>
