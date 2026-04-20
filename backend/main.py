@@ -5107,13 +5107,23 @@ class WaitlistEmailIn(BaseModel):
 
 WAITLIST_CONFIRMATION_HTML = """
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light" />
   <title>You're on the CourtCollab Waitlist!</title>
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style>
+    :root { color-scheme: light only; }
+    body { color-scheme: light only; }
+    a { color: inherit; }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color-scheme:light only;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:0;margin:0;">
     <tr>
       <td align="center" style="padding:0;">
@@ -5121,15 +5131,15 @@ WAITLIST_CONFIRMATION_HTML = """
 
           <!-- Header -->
           <tr>
-            <td style="background:linear-gradient(135deg,#0B1F4A 0%,#163a70 50%,#0d2a60 100%);padding:36px 40px;text-align:center;">
+            <td bgcolor="#0B1F4A" style="background:#0B1F4A;padding:36px 40px;text-align:center;">
               <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr>
                   <td style="vertical-align:middle;padding-right:12px;">
                     <img src="https://www.courtcollab.com/logo-paddles.png" alt="CourtCollab" width="52" height="auto" style="display:block;" />
                   </td>
                   <td style="vertical-align:middle;">
-                    <span style="font-size:28px;font-weight:900;letter-spacing:-0.03em;line-height:1;">
-                      <span style="color:#C8F135;">Court</span><span style="color:#ffffff;">Collab</span>
+                    <span style="font-size:28px;font-weight:900;letter-spacing:-0.03em;line-height:1;mso-line-height-rule:exactly;">
+                      <span style="color:#C8F135 !important;">Court</span><span style="color:#ffffff !important;">Collab</span>
                     </span>
                   </td>
                 </tr>
@@ -5139,7 +5149,7 @@ WAITLIST_CONFIRMATION_HTML = """
 
           <!-- Body -->
           <tr>
-            <td style="padding:40px 40px 32px;">
+            <td bgcolor="#ffffff" style="background:#ffffff;padding:40px 40px 32px;">
               <h1 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#0B1F4A;line-height:1.3;">
                 You're on the waitlist! 🎉
               </h1>
@@ -5147,25 +5157,50 @@ WAITLIST_CONFIRMATION_HTML = """
                 Thanks for joining the CourtCollab waitlist; we will reach out when we launch.
                 Get ready to start collaborating with brands! We're excited to have you a part of this community.
               </p>
-              <p style="margin:0 0 32px;font-size:16px;color:#374151;line-height:1.7;">
+              <p style="margin:0 0 24px;font-size:16px;color:#374151;line-height:1.7;">
                 In the meantime, follow us on social to stay up to date:
               </p>
+
+              <!-- Social Buttons -->
               <table cellpadding="0" cellspacing="0" style="margin:0 0 32px;">
                 <tr>
-                  <td style="padding-right:16px;">
-                    <a href="https://www.instagram.com/courtcollab" style="display:inline-block;background:#0B1F4A;text-decoration:none;padding:12px;border-radius:12px;" title="Instagram">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/240px-Instagram_icon.png" width="28" height="28" alt="Instagram" style="display:block;" />
-                    </a>
+                  <!-- Instagram button -->
+                  <td style="padding-right:12px;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td bgcolor="#0B1F4A" style="background:#0B1F4A;border-radius:10px;padding:0;">
+                          <a href="https://www.instagram.com/courtcollab"
+                             style="display:inline-block;padding:10px 18px;text-decoration:none;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:#ffffff;white-space:nowrap;"
+                             title="Follow on Instagram">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Instagram_icon%2C_white_version.svg/60px-Instagram_icon%2C_white_version.svg.png"
+                                 width="18" height="18" alt="" border="0"
+                                 style="display:inline-block;vertical-align:middle;margin-right:7px;" />
+                            <span style="vertical-align:middle;color:#ffffff;">Instagram</span>
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
+                  <!-- TikTok button -->
                   <td>
-                    <a href="https://www.tiktok.com/@officialcourtcollab" style="display:inline-block;background:#0B1F4A;text-decoration:none;padding:12px;border-radius:12px;" title="TikTok">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#ffffff" style="display:block;">
-                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z"/>
-                      </svg>
-                    </a>
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td bgcolor="#0B1F4A" style="background:#0B1F4A;border-radius:10px;padding:0;">
+                          <a href="https://www.tiktok.com/@officialcourtcollab"
+                             style="display:inline-block;padding:10px 18px;text-decoration:none;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:#ffffff;white-space:nowrap;"
+                             title="Follow on TikTok">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Ionicons_logo-tiktok.svg/60px-Ionicons_logo-tiktok.svg.png"
+                                 width="18" height="18" alt="" border="0"
+                                 style="display:inline-block;vertical-align:middle;margin-right:7px;" />
+                            <span style="vertical-align:middle;color:#ffffff;">TikTok</span>
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
+
               <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 28px;" />
 
               <!-- Signature -->
@@ -5176,7 +5211,7 @@ WAITLIST_CONFIRMATION_HTML = """
                   </td>
                   <td style="vertical-align:middle;">
                     <p style="margin:0;font-size:14px;font-weight:800;letter-spacing:-0.01em;">
-                      <span style="color:#C8F135;">Court</span><span style="color:#0B1F4A;">Collab</span>
+                      <span style="color:#C8F135 !important;">Court</span><span style="color:#0B1F4A !important;">Collab</span>
                     </p>
                   </td>
                 </tr>
@@ -5186,9 +5221,9 @@ WAITLIST_CONFIRMATION_HTML = """
 
           <!-- Footer -->
           <tr>
-            <td style="background:#f9fafb;padding:20px 40px;text-align:center;border-top:1px solid #e5e7eb;">
+            <td bgcolor="#f9fafb" style="background:#f9fafb;padding:20px 40px;text-align:center;border-top:1px solid #e5e7eb;">
               <p style="margin:0;font-size:12px;color:#9ca3af;">
-                © 2026 CourtCollab · The pickleball creator marketplace
+                &copy; 2026 CourtCollab &middot; The pickleball creator marketplace
               </p>
             </td>
           </tr>
