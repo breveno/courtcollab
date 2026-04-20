@@ -5151,7 +5151,7 @@ WAITLIST_CONFIRMATION_HTML = """
           <tr>
             <td bgcolor="#ffffff" style="background:#ffffff;padding:40px 40px 32px;border-radius:0 0 12px 12px;">
               <h1 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#0B1F4A;line-height:1.3;">
-                You're on the waitlist!
+                You're on the waitlist! 🎉
               </h1>
               <p style="margin:0 0 20px;font-size:16px;color:#374151;line-height:1.7;">
                 Thanks for joining the CourtCollab waitlist; we will reach out when we launch.
