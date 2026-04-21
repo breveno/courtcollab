@@ -1920,6 +1920,7 @@ def _build_contract_pdf(
     """
     try:
         from fpdf import FPDF
+        from fpdf.enums import XPos, YPos
     except ImportError:
         # fpdf2 not available — return plain-text bytes (SignWell still accepts .txt)
         text = _generate_contract(deal, campaign, brand_profile, creator_profile)
@@ -1950,35 +1951,112 @@ def _build_contract_pdf(
     # Encode to Latin-1, replacing any remaining non-encodable characters
     contract_text = contract_text.encode("latin-1", errors="replace").decode("latin-1")
 
+    import os as _os
+
+    NAVY  = (11, 31, 74)     # #0B1F4A
+    LIME  = (200, 241, 53)   # #C8F135
+    WHITE = (255, 255, 255)
+    GRAY  = (150, 160, 180)  # subtitle muted
+
+    # ── Extract deal meta for the header row ──────────────────────────
+    today        = datetime.now().strftime("%B %d, %Y")
+    deal_id      = deal.get("id", "—")
+    agreement_id = f"CC-DEAL-{deal_id}"
+
     pdf = FPDF(orientation="P", unit="mm", format="A4")
-    pdf.set_margins(left=20, top=20, right=20)
+    pdf.set_margins(left=0, top=0, right=0)
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
 
-    # Header — CourtCollab branding
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.set_fill_color(26, 26, 46)   # #1a1a2e navy
-    pdf.set_text_color(200, 241, 53) # #C8F135 lime
-    pdf.cell(0, 10, "CourtCollab", ln=True, fill=True, align="C")
+    # ── Hero header — full-bleed navy block ───────────────────────────
+    HERO_H = 46  # mm tall
 
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Helvetica", "", 9)
-    pdf.ln(4)
+    pdf.set_fill_color(*NAVY)
+    pdf.rect(0, 0, 210, HERO_H, "F")
 
-    # Body — contract text line by line
-    for line in contract_text.split("\n"):
-        # Section headers in bold
+    # Lime bottom accent stripe
+    pdf.set_fill_color(*LIME)
+    pdf.rect(0, HERO_H, 210, 2, "F")
+
+    # Logo image (paddles PNG, transparent → composited onto navy)
+    logo_path = _os.path.join(_os.path.dirname(__file__), "logo-paddles.png")
+    LOGO_H    = 24   # mm
+    LOGO_W    = LOGO_H * (382 / 366)   # maintain aspect ratio ≈ 25 mm
+
+    # "Court" + "Collab" wordmark width estimate at 26pt Helvetica Bold
+    pdf.set_font("Helvetica", "B", 26)
+    court_w  = pdf.get_string_width("Court")
+    collab_w = pdf.get_string_width("Collab")
+    word_w   = court_w + collab_w
+    GAP      = 4   # mm between logo and text
+
+    GROUP_W  = LOGO_W + GAP + word_w
+    group_x  = (210 - GROUP_W) / 2   # center the logo+wordmark group
+    logo_y   = (HERO_H - LOGO_H) / 2
+
+    if _os.path.exists(logo_path):
+        pdf.image(logo_path, x=group_x, y=logo_y, h=LOGO_H)
+
+    # Wordmark — vertically centered, sitting beside logo
+    text_x = group_x + LOGO_W + GAP
+    text_y = logo_y + (LOGO_H - 10) / 2   # 10 mm ≈ cap-height at 26pt
+
+    pdf.set_font("Helvetica", "B", 26)
+    pdf.set_text_color(*LIME)
+    pdf.set_xy(text_x, text_y)
+    pdf.cell(court_w, 10, "Court", ln=False)
+
+    pdf.set_text_color(*WHITE)
+    pdf.set_xy(text_x + court_w, text_y)
+    pdf.cell(collab_w, 10, "Collab", ln=False)
+
+    # Subtitle beneath wordmark
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(*GRAY)
+    sub = "Creator & Brand Collaboration Agreement  |  courtcollab.com"
+    sub_w = pdf.get_string_width(sub)
+    pdf.set_xy(text_x, text_y + 11)
+    pdf.cell(sub_w, 5, sub, ln=False)
+
+    # ── Meta info row (date / agreement ID) ──────────────────────────
+    pdf.set_margins(left=20, top=0, right=20)
+    pdf.set_y(HERO_H + 2 + 5)   # below stripe + small padding
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(100, 110, 130)
+    meta = f"Date: {today}   |   Agreement ID: {agreement_id}   |   Platform: CourtCollab"
+    pdf.cell(0, 5, meta, align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(5)
+
+    # ── Body — skip the text-based header (now handled visually) ──────
+    body_lines = contract_text.split("\n")
+    start = 0
+    for i, bline in enumerate(body_lines):
+        if bline.strip() == "PARTIES":
+            start = i
+            break
+    body_lines = body_lines[start:]
+
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.set_left_margin(20)
+    pdf.set_right_margin(20)
+    pdf.set_x(20)
+    for line in body_lines:
         stripped = line.strip()
-        is_header = (
+        is_section = (
             stripped.isupper() and len(stripped) > 3
             or stripped.startswith("====")
             or stripped.startswith("----")
         )
-        if is_header:
+        if is_section:
             pdf.set_font("Helvetica", "B", 9)
+            pdf.set_fill_color(235, 240, 255)   # light blue-gray tint
+            pdf.set_text_color(11, 31, 74)       # navy text
+            pdf.cell(0, 6, f"  {stripped}", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.set_text_color(0, 0, 0)
         else:
             pdf.set_font("Helvetica", "", 9)
-        pdf.multi_cell(0, 4.5, line if line else " ")
+            pdf.set_text_color(0, 0, 0)
+            pdf.multi_cell(0, 4.5, line if line else " ", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     return bytes(pdf.output())
 
