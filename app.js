@@ -3685,6 +3685,9 @@ async function saveCreatorProfile(e) {
 
     await apiPut('/api/creator/profile', body);
 
+    // Update navbar avatar immediately after save
+    if (body.avatar_url) _setNavAvatar(body.avatar_url);
+
     // Update completion bar using form data
     const formProfile = { ...body, social_handles: handles, skills };
     _updateVerifiedBadgeUI(handles);
@@ -5395,6 +5398,8 @@ async function populateCreatorForm() {
       avatarImg.classList.add('hidden');
       if (avatarPlaceholder) avatarPlaceholder.classList.remove('hidden');
     }
+    // Sync profile photo to navbar avatar
+    _setNavAvatar(p.avatar_url || null);
   } catch (err) {
     // Profile doesn't exist yet (new user) — show empty completion bar
     const emailEl = document.getElementById('cp-account-email');
@@ -5402,6 +5407,27 @@ async function populateCreatorForm() {
     renderCreatorCompletion({});
     _attachProfileFormListeners();
   }
+}
+
+function _setNavAvatar(url) {
+  const pairs = [
+    ['nav-user-avatar', 'nav-user-initials'],
+    ['nav-user-avatar-mobile', 'nav-user-initials-mobile'],
+  ];
+  pairs.forEach(([imgId, initialsId]) => {
+    const img      = document.getElementById(imgId);
+    const initials = document.getElementById(initialsId);
+    if (!img) return;
+    if (url) {
+      img.src = url;
+      img.classList.remove('hidden');
+      if (initials) initials.classList.add('hidden');
+    } else {
+      img.src = '';
+      img.classList.add('hidden');
+      if (initials) initials.classList.remove('hidden');
+    }
+  });
 }
 
 function handleAvatarUpload(event) {
