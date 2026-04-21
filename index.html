@@ -166,12 +166,6 @@
   #auth-gate { padding-bottom: env(safe-area-inset-bottom); }
   .auth-gate-hero { background:linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%); padding:4rem 1.5rem 5rem; text-align:center; position:relative; overflow:hidden; }
   .auth-gate-hero::before { display:none; }
-  /* Push hero gradient below status bar so solid #0B1F4A shows there — matches theme-color */
-  @supports (padding: env(safe-area-inset-top)) {
-    .auth-gate-hero { padding-top: calc(4rem + env(safe-area-inset-top)); }
-  }
-  /* Fade hero bottom to white — removes blue block below form card on mobile */
-  .auth-gate-hero::after { content:''; position:absolute; bottom:0; left:0; right:0; height:260px; background:linear-gradient(to bottom, transparent 0%, #ffffff 65%); pointer-events:none; z-index:1; }
   .auth-gate-wrap { max-width:480px; margin:0 auto; width:100%; }
   .auth-form-card { background:white; border-radius:1.25rem; padding:2rem 2rem; box-shadow:0 20px 60px rgba(0,0,0,0.25); text-align:left; }
   .auth-gate-section { padding:5rem 1.5rem; }
