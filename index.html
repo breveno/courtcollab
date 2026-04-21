@@ -164,6 +164,8 @@
   #auth-gate.hidden { display:none; }
   /* Fix white safe-area gap at bottom of auth gate on iOS */
   #auth-gate { padding-bottom: env(safe-area-inset-bottom); }
+  /* Match auth-gate background to hero gradient so no colour mismatch shows at bottom or top */
+  #auth-gate { background: linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%) !important; }
   .auth-gate-hero { background:linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%); padding:4rem 1.5rem 5rem; text-align:center; position:relative; overflow:hidden; }
   .auth-gate-hero::before { display:none; }
   .auth-gate-wrap { max-width:480px; margin:0 auto; width:100%; }
@@ -777,36 +779,6 @@
 
   </div>
 
-  <!-- Match auth-gate background to whichever section sits at the bottom of the viewport -->
-  <script>
-    (function() {
-      var gate = document.getElementById('auth-gate');
-      if (!gate) return;
-      function getBgForSection(el) {
-        if (el.classList.contains('auth-gate-section-white')) return '#ffffff';
-        if (el.classList.contains('auth-gate-section-lime')) return '#0B1F4A';
-        if (el.classList.contains('auth-gate-footer-bar')) return '#0B1F4A';
-        // hero — match the bottom colour of the gradient exactly
-        return '#0d2a60';
-      }
-      function updateGateBg() {
-        var gateRect = gate.getBoundingClientRect();
-        var bottomY = gateRect.bottom;
-        var sections = gate.querySelectorAll('.auth-gate-hero, .auth-gate-section, .auth-gate-footer-bar');
-        var bg = '#0B1F4A';
-        sections.forEach(function(el) {
-          var rect = el.getBoundingClientRect();
-          if (rect.top <= bottomY) {
-            bg = getBgForSection(el);
-          }
-        });
-        gate.style.background = bg;
-      }
-      gate.addEventListener('scroll', updateGateBg, { passive: true });
-      window.addEventListener('resize', updateGateBg);
-      updateGateBg();
-    })();
-  </script>
 
   <!-- Nav -->
   <nav id="main-navbar" class="bg-pickle-600 border-b border-pickle-500 sticky top-0 z-50">
