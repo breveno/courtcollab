@@ -387,8 +387,8 @@ async function apiPut(path, body, opts = {}) {
       },
       body: JSON.stringify(body)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(_extractDetail(data));
+    const data = await _safeJson(res);
+    if (!res.ok) throw new Error(_extractDetail(data) || `Server error (${res.status})`);
     return data;
   } finally { if (opts.loading) hideLoading(); }
 }
@@ -5428,11 +5428,13 @@ function handleOnboardLogoUpload(event) {
       const canvas = document.createElement('canvas');
       canvas.width = 160; canvas.height = 160;
       const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 160, 160);
       const side = Math.min(img.width, img.height);
       const sx = (img.width - side) / 2;
       const sy = (img.height - side) / 2;
       ctx.drawImage(img, sx, sy, side, side, 0, 0, 160, 160);
-      const dataUrl = canvas.toDataURL('image/png', 0.9);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       const imgEl = document.getElementById('onboard-logo-img');
       const placeholder = document.getElementById('onboard-logo-placeholder');
       if (imgEl) { imgEl.src = dataUrl; imgEl.classList.remove('hidden'); }
@@ -5455,10 +5457,12 @@ function handleLogoUpload(event) {
       const side = Math.min(img.width, img.height);
       canvas.width = 160; canvas.height = 160;
       const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 160, 160);
       const sx = (img.width - side) / 2;
       const sy = (img.height - side) / 2;
       ctx.drawImage(img, sx, sy, side, side, 0, 0, 160, 160);
-      const dataUrl = canvas.toDataURL('image/png', 0.9);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       const imgEl = document.getElementById('bp-logo-img');
       const placeholder = document.getElementById('bp-logo-placeholder');
       if (imgEl) { imgEl.src = dataUrl; imgEl.classList.remove('hidden'); }
@@ -5555,7 +5559,7 @@ async function openBrandProfileModal(highlightKey) {
     const setSel = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
     const setNum = (id, v) => { const el = document.getElementById(id); if (el) el.value = v > 0 ? v : ''; };
 
-    setVal('bp-company',     p.company_name || state.currentUser?.company_name || '');
+    setVal('bp-company',     p.company_name || state.currentUser?.company_name || state.currentUser?.name || '');
     setSel('bp-industry',    p.industry);
     setVal('bp-website',     p.website);
     setNum('bp-budget-min',  p.budget_min);
