@@ -782,17 +782,19 @@
     (function() {
       var gate = document.getElementById('auth-gate');
       if (!gate) return;
+      function getBgForSection(el) {
+        if (el.classList.contains('auth-gate-section-white')) return '#ffffff';
+        if (el.classList.contains('auth-gate-section-lime')) return '#0B1F4A';
+        if (el.classList.contains('auth-gate-footer-bar')) return '#0B1F4A';
+        return '#0B1F4A'; // hero and default
+      }
       function updateGateBg() {
         var bottomY = gate.scrollTop + gate.clientHeight;
         var sections = gate.querySelectorAll('.auth-gate-hero, .auth-gate-section, .auth-gate-footer-bar');
         var bg = '#0B1F4A';
         sections.forEach(function(el) {
           if (el.offsetTop <= bottomY) {
-            var style = window.getComputedStyle(el);
-            var elBg = style.backgroundColor;
-            if (elBg && elBg !== 'rgba(0, 0, 0, 0)' && elBg !== 'transparent') {
-              bg = elBg;
-            }
+            bg = getBgForSection(el);
           }
         });
         gate.style.background = bg;
