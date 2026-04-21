@@ -409,6 +409,9 @@ function showAuthGate() {
   window.scrollTo(0, window.scrollY);
   const gate = document.getElementById('auth-gate');
   if (gate) { gate.style.display = ''; gate.classList.remove('hidden'); }
+  // Hide cookie banner while auth gate is open (it has higher z-index and shows as a blue bar)
+  const cookieBanner = document.getElementById('cookie-banner');
+  if (cookieBanner) cookieBanner.style.display = 'none';
   const navLinks = document.getElementById('main-nav');
   if (navLinks) navLinks.style.display = '';
   const navRight = document.getElementById('nav-right-controls');
@@ -435,6 +438,11 @@ function hideAuthGate() {
   if (gate) gate.classList.add('hidden');
   document.body.classList.remove('no-scroll');
   document.documentElement.classList.remove('gate-open');
+  // Restore cookie banner if user hasn't accepted/declined yet
+  if (!localStorage.getItem('cc_consent')) {
+    const cookieBanner = document.getElementById('cookie-banner');
+    if (cookieBanner) cookieBanner.style.display = '';
+  }
   // Restore theme-color for app pages (light background)
   const tc = document.getElementById('meta-theme-color');
   if (tc) tc.setAttribute('content', '#ffffff');
