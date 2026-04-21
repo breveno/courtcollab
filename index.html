@@ -162,6 +162,8 @@
   body { max-width: 100vw; overflow-x: clip; overscroll-behavior-x: none; }
   #auth-gate { position:fixed; inset:0; z-index:9999; background:#0B1F4A; overflow-y:auto; overflow-x:hidden; overscroll-behavior:none; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
   #auth-gate.hidden { display:none; }
+  /* Fix white safe-area gap at bottom of auth gate on iOS */
+  #auth-gate { padding-bottom: env(safe-area-inset-bottom); }
   .auth-gate-hero { background:linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%); padding:4rem 1.5rem 5rem; text-align:center; position:relative; overflow:hidden; }
   .auth-gate-hero::before { display:none; }
   .auth-gate-wrap { max-width:480px; margin:0 auto; width:100%; }
