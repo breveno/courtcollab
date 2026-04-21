@@ -164,12 +164,8 @@
   #auth-gate.hidden { display:none; }
   /* Fix white safe-area gap at bottom of auth gate on iOS */
   #auth-gate { padding-bottom: env(safe-area-inset-bottom); }
-  /* Pin status bar area to solid #0B1F4A so it matches theme-color exactly */
-  #auth-gate::before { content:''; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top); background:#0B1F4A; z-index:2; pointer-events:none; }
   .auth-gate-hero { background:linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%); padding:4rem 1.5rem 5rem; text-align:center; position:relative; overflow:hidden; }
   .auth-gate-hero::before { display:none; }
-  /* Fade hero bottom to white so it blends into the white section below */
-  .auth-gate-hero::after { content:''; position:absolute; bottom:0; left:0; right:0; height:140px; background:linear-gradient(to bottom, transparent, #ffffff); pointer-events:none; z-index:1; }
   .auth-gate-wrap { max-width:480px; margin:0 auto; width:100%; }
   .auth-form-card { background:white; border-radius:1.25rem; padding:2rem 2rem; box-shadow:0 20px 60px rgba(0,0,0,0.25); text-align:left; }
   .auth-gate-section { padding:5rem 1.5rem; }
@@ -780,6 +776,31 @@
     </div>
 
   </div>
+
+  <!-- Match auth-gate background to whichever section sits at the bottom of the viewport -->
+  <script>
+    (function() {
+      var gate = document.getElementById('auth-gate');
+      if (!gate) return;
+      function updateGateBg() {
+        var bottomY = gate.scrollTop + gate.clientHeight;
+        var sections = gate.querySelectorAll('.auth-gate-hero, .auth-gate-section, .auth-gate-footer-bar');
+        var bg = '#0B1F4A';
+        sections.forEach(function(el) {
+          if (el.offsetTop <= bottomY) {
+            var style = window.getComputedStyle(el);
+            var elBg = style.backgroundColor;
+            if (elBg && elBg !== 'rgba(0, 0, 0, 0)' && elBg !== 'transparent') {
+              bg = elBg;
+            }
+          }
+        });
+        gate.style.background = bg;
+      }
+      gate.addEventListener('scroll', updateGateBg, { passive: true });
+      updateGateBg();
+    })();
+  </script>
 
   <!-- Nav -->
   <nav id="main-navbar" class="bg-pickle-600 border-b border-pickle-500 sticky top-0 z-50">
