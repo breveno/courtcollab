@@ -3264,18 +3264,10 @@ async function renderCreators() {
               </div>
             </div>
             <p class="text-gray-600 text-sm mb-4 line-clamp-2">${c.bio || ''}</p>
-            <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="grid grid-cols-1 gap-3 mb-4">
               <div class="text-center p-2 bg-gray-50 rounded-lg">
                 <div class="font-bold text-pickle-700">${fmtNum(c.total_followers)}</div>
                 <div class="text-xs text-gray-500">Followers</div>
-              </div>
-              <div class="text-center p-2 bg-gray-50 rounded-lg">
-                <div class="font-bold text-pickle-700">${c.engagement_rate || 0}%</div>
-                <div class="text-xs text-gray-500">Engagement</div>
-              </div>
-              <div class="text-center p-2 bg-gray-50 rounded-lg">
-                <div class="font-bold text-pickle-700">${fmtNum(c.avg_views)}</div>
-                <div class="text-xs text-gray-500">Avg Views</div>
               </div>
             </div>
             <div class="flex flex-wrap gap-1 mb-4">
@@ -3481,19 +3473,11 @@ async function adminViewUser(userId) {
         <h3 class="font-bold mb-3">Creator Skills</h3>
         <div class="flex flex-wrap gap-1 mb-6">${skills.length ? skills.map(s=>`<span class="tag bg-pickle-100 text-pickle-700">${s}</span>`).join('') : '<span class="text-gray-400 text-sm">No skills listed</span>'}</div>
         <h3 class="font-bold mb-3">Audience Stats</h3>
-        <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="grid grid-cols-2 gap-3 mb-6">
           <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Instagram</div><div class="font-bold text-lg">${fmtNum(c.followers_ig)}</div></div>
           <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">TikTok</div><div class="font-bold text-lg">${fmtNum(c.followers_tt)}</div></div>
           <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">YouTube</div><div class="font-bold text-lg">${fmtNum(c.followers_yt)}</div></div>
-          <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Engagement</div><div class="font-bold text-lg">${c.engagement_rate||0}%</div></div>
-          <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Avg Views</div><div class="font-bold text-lg">${fmtNum(c.avg_views)}</div></div>
           <div class="text-center p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Total</div><div class="font-bold text-lg">${fmtNum(c.total_followers)}</div></div>
-        </div>
-        <h3 class="font-bold mb-3">Demographics</h3>
-        <div class="grid grid-cols-2 gap-3 mb-6">
-          <div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Primary Age</div><div class="font-semibold">${c.demo_age||'—'}</div></div>
-          <div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">Gender Split</div><div class="font-semibold">${c.demo_gender||'—'}</div></div>
-          <div class="p-3 bg-gray-50 rounded-xl col-span-2"><div class="text-xs text-gray-500 mb-1">Top Locations</div><div class="font-semibold">${c.demo_locations||'—'}</div></div>
         </div>
       `;
     } catch (err) {
@@ -3603,7 +3587,7 @@ async function showCreatorDetail(userId) {
       </div>
 
       <h3 class="font-bold mb-3">Audience Stats</h3>
-      <div class="grid grid-cols-3 gap-3 mb-6">
+      <div class="grid grid-cols-2 gap-3 mb-6">
         <div class="text-center p-3 bg-gray-50 rounded-xl">
           <div class="text-xs text-gray-500 mb-1">Instagram</div>
           <div class="font-bold text-lg">${fmtNum(c.followers_ig)}</div>
@@ -3617,32 +3601,8 @@ async function showCreatorDetail(userId) {
           <div class="font-bold text-lg">${fmtNum(c.followers_yt)}</div>
         </div>
         <div class="text-center p-3 bg-gray-50 rounded-xl">
-          <div class="text-xs text-gray-500 mb-1">Engagement</div>
-          <div class="font-bold text-lg">${c.engagement_rate || 0}%</div>
-        </div>
-        <div class="text-center p-3 bg-gray-50 rounded-xl">
-          <div class="text-xs text-gray-500 mb-1">Avg Views</div>
-          <div class="font-bold text-lg">${fmtNum(c.avg_views)}</div>
-        </div>
-        <div class="text-center p-3 bg-gray-50 rounded-xl">
           <div class="text-xs text-gray-500 mb-1">Total</div>
           <div class="font-bold text-lg">${fmtNum(c.total_followers)}</div>
-        </div>
-      </div>
-
-      <h3 class="font-bold mb-3">Demographics</h3>
-      <div class="grid grid-cols-2 gap-3 mb-6">
-        <div class="p-3 bg-gray-50 rounded-xl">
-          <div class="text-xs text-gray-500 mb-1">Primary Age</div>
-          <div class="font-semibold">${c.demo_age || '—'}</div>
-        </div>
-        <div class="p-3 bg-gray-50 rounded-xl">
-          <div class="text-xs text-gray-500 mb-1">Gender Split</div>
-          <div class="font-semibold">${c.demo_gender || '—'}</div>
-        </div>
-        <div class="p-3 bg-gray-50 rounded-xl col-span-2">
-          <div class="text-xs text-gray-500 mb-1">Top Locations</div>
-          <div class="font-semibold">${c.demo_locations || '—'}</div>
         </div>
       </div>
 
@@ -3699,12 +3659,6 @@ async function saveCreatorProfile(e) {
       followers_ig:    parseInt(document.getElementById('cp-ig')?.value)           || 0,
       followers_tt:    parseInt(document.getElementById('cp-tiktok')?.value)       || 0,
       followers_yt:    parseInt(document.getElementById('cp-yt')?.value)           || 0,
-      engagement_rate: parseFloat(document.getElementById('cp-engagement')?.value) || 0,
-      avg_views:       parseInt(document.getElementById('cp-views')?.value)        || 0,
-      demo_age:        (document.getElementById('cp-age')?.value          || ''),
-      demo_gender:     (document.getElementById('cp-gender')?.value       || ''),
-      demo_locations:  (document.getElementById('cp-locations')?.value    || ''),
-      demo_interests:  (document.getElementById('cp-interests')?.value    || ''),
     };
     // Social handles — build dict, skip blanks
     const _ig = (document.getElementById('cp-handle-ig')?.value || '').trim().replace(/^@/, '');
@@ -5184,28 +5138,16 @@ const _CREATOR_COMPLETION_FIELDS = [
     scroll: true,
   },
   {
-    key: 'skill_level', label: 'Set your skill level', icon: '🎯', pct: 5,
+    key: 'skill_level', label: 'Set your skill level', icon: '🎯', pct: 10,
     tip: 'Pickleball skill level helps brands target the right audience.',
     check: p => !!(p.skill_level || '').trim(),
     focusId: 'cp-skill-level',
   },
   {
-    key: 'location', label: 'Add your location', icon: '📍', pct: 5,
+    key: 'location', label: 'Add your location', icon: '📍', pct: 10,
     tip: 'Local brands love working with creators in their market.',
     check: p => !!(p.location || '').trim(),
     focusId: 'cp-location',
-  },
-  {
-    key: 'engagement', label: 'Enter engagement rate', icon: '⚡', pct: 5,
-    tip: 'High engagement can outweigh follower count for many brands.',
-    check: p => (p.engagement_rate || 0) > 0,
-    focusId: 'cp-engagement',
-  },
-  {
-    key: 'demo', label: 'Add audience demographics', icon: '👥', pct: 5,
-    tip: 'Demographics help brands confirm audience fit.',
-    check: p => !!(p.demo_age || p.demo_gender || p.demo_locations),
-    focusId: 'cp-age',
   },
 ];
 
@@ -5320,10 +5262,6 @@ function _buildProfileFromForm() {
     followers_ig:    parseInt(document.getElementById('cp-ig')?.value)         || 0,
     followers_tt:    parseInt(document.getElementById('cp-tiktok')?.value)     || 0,
     followers_yt:    parseInt(document.getElementById('cp-yt')?.value)         || 0,
-    engagement_rate: parseFloat(document.getElementById('cp-engagement')?.value) || 0,
-    demo_age:        (document.getElementById('cp-age')?.value         || '').trim(),
-    demo_gender:     (document.getElementById('cp-gender')?.value      || '').trim(),
-    demo_locations:  (document.getElementById('cp-locations')?.value   || '').trim(),
   };
 }
 
@@ -5340,8 +5278,7 @@ function _updateTotalFollowers() {
 function _attachProfileFormListeners() {
   const fieldIds = [
     'cp-name','cp-bio','cp-location','cp-skill-level','cp-niche',
-    'cp-ig','cp-tiktok','cp-yt','cp-engagement','cp-views',
-    'cp-age','cp-gender','cp-locations','cp-interests',
+    'cp-ig','cp-tiktok','cp-yt',
     'cp-handle-ig','cp-handle-tt','cp-handle-yt',
   ];
   const handler = () => renderCreatorCompletion(_buildProfileFromForm());
@@ -5397,12 +5334,6 @@ async function populateCreatorForm() {
     setNum('cp-ig',         p.followers_ig);
     setNum('cp-tiktok',     p.followers_tt);
     setNum('cp-yt',         p.followers_yt);
-    setNum('cp-engagement', p.engagement_rate);
-    setNum('cp-views',      p.avg_views);
-    setSel('cp-age',        p.demo_age);
-    setSel('cp-gender',     p.demo_gender);
-    setVal('cp-locations',  p.demo_locations);
-    setVal('cp-interests',  p.demo_interests);
 
     // Tick skill checkboxes
     const skills = Array.isArray(p.skills) ? p.skills : [];
