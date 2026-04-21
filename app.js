@@ -5606,9 +5606,9 @@ async function saveBrandProfileModal() {
   const handles = {};
   if (ig) handles.instagram = ig;
   if (tt) handles.tiktok    = tt;
+  const pendingLogo = window._pendingLogoUrl || (() => { const s = document.getElementById('bp-logo-img')?.src; return (s && s.startsWith('data:')) ? s : null; })();
   const body = {
     company_name:   document.getElementById('bp-company')?.value.trim() || '',
-    logo_url:       window._pendingLogoUrl || (() => { const s = document.getElementById('bp-logo-img')?.src; return (s && s.startsWith('data:')) ? s : null; })(),
     industry:       document.getElementById('bp-industry')?.value || '',
     website:        document.getElementById('bp-website')?.value.trim() || '',
     budget_min:     parseInt(document.getElementById('bp-budget-min')?.value || '0') || 0,
@@ -5616,8 +5616,7 @@ async function saveBrandProfileModal() {
     description:    document.getElementById('bp-description')?.value.trim() || '',
     social_handles: JSON.stringify(handles),
   };
-  // Don't send empty string as logo_url
-  if (!body.logo_url) body.logo_url = null;
+  if (pendingLogo) body.logo_url = pendingLogo;
   try {
     await apiPut('/api/brand/profile', body);
     closeModal('bp-edit-modal');
