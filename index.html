@@ -786,7 +786,8 @@
         if (el.classList.contains('auth-gate-section-white')) return '#ffffff';
         if (el.classList.contains('auth-gate-section-lime')) return '#0B1F4A';
         if (el.classList.contains('auth-gate-footer-bar')) return '#0B1F4A';
-        return '#0B1F4A';
+        // hero — match its exact gradient so no colour mismatch at bottom
+        return 'linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%)';
       }
       function updateGateBg() {
         var gateRect = gate.getBoundingClientRect();
