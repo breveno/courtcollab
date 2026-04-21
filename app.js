@@ -213,21 +213,56 @@ window.fetch = function(...args) {
   });
 };
 
+// ── Cookie helpers — used as a fallback for iOS Safari, which can evict
+//    localStorage after ~7 days of inactivity even when "Remember Me" is set.
+//    Cookies (first-party, SameSite=Strict) survive longer under iOS storage
+//    management, so we mirror the JWT there as a recovery path.
+function _setCookie(name, value, days) {
+  const secure  = location.protocol === 'https:' ? '; Secure' : '';
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = name + '=' + encodeURIComponent(value) +
+    '; expires=' + expires + '; path=/; SameSite=Strict' + secure;
+}
+function _getCookie(name) {
+  return document.cookie.split('; ').reduce((r, c) => {
+    const [k, ...v] = c.split('=');
+    return k === name ? decodeURIComponent(v.join('=')) : r;
+  }, null);
+}
+function _deleteCookie(name) {
+  document.cookie = name +
+    '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
+}
+
 function getToken() {
-  return localStorage.getItem('cc_jwt') || sessionStorage.getItem('cc_jwt');
+  // 1. localStorage — primary, fastest
+  let t = localStorage.getItem('cc_jwt');
+  if (t) return t;
+  // 2. sessionStorage — for non-remember-me sessions
+  t = sessionStorage.getItem('cc_jwt');
+  if (t) return t;
+  // 3. Cookie fallback — iOS Safari can evict localStorage after ~7 days of
+  //    inactivity; the cookie survives longer.  Restore to localStorage so
+  //    future reads skip the cookie entirely.
+  t = _getCookie('cc_jwt');
+  if (t) { localStorage.setItem('cc_jwt', t); return t; }
+  return null;
 }
 function setToken(t, remember = true) {
   if (remember) {
     localStorage.setItem('cc_jwt', t);
     sessionStorage.removeItem('cc_jwt');
+    _setCookie('cc_jwt', t, 30);        // 30-day cookie backup for iOS
   } else {
     sessionStorage.setItem('cc_jwt', t);
     localStorage.removeItem('cc_jwt');
+    _deleteCookie('cc_jwt');            // no persistent cookie for non-remember
   }
 }
 function clearToken() {
   localStorage.removeItem('cc_jwt');
   sessionStorage.removeItem('cc_jwt');
+  _deleteCookie('cc_jwt');
 }
 
 function _withTimeout(promise, ms = 15000) {
@@ -5147,16 +5182,28 @@ const _CREATOR_COMPLETION_FIELDS = [
     scroll: true,
   },
   {
-    key: 'skill_level', label: 'Set your skill level', icon: '🎯', pct: 10,
+    key: 'skill_level', label: 'Set your skill level', icon: '🎯', pct: 5,
     tip: 'Pickleball skill level helps brands target the right audience.',
     check: p => !!(p.skill_level || '').trim(),
     focusId: 'cp-skill-level',
   },
   {
-    key: 'location', label: 'Add your location', icon: '📍', pct: 10,
+    key: 'location', label: 'Add your location', icon: '📍', pct: 5,
     tip: 'Local brands love working with creators in their market.',
     check: p => !!(p.location || '').trim(),
     focusId: 'cp-location',
+  },
+  {
+    key: 'engagement', label: 'Enter engagement rate', icon: '⚡', pct: 5,
+    tip: 'High engagement can outweigh follower count for many brands.',
+    check: p => (p.engagement_rate || 0) > 0,
+    focusId: 'cp-engagement',
+  },
+  {
+    key: 'demo', label: 'Add audience demographics', icon: '👥', pct: 5,
+    tip: 'Demographics help brands confirm audience fit.',
+    check: p => !!(p.demo_age || p.demo_gender || p.demo_locations),
+    focusId: 'cp-age',
   },
 ];
 
