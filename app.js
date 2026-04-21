@@ -44,11 +44,6 @@ function declineCookies() {
   if (banner) banner.style.display = 'none';
 }
 document.addEventListener('DOMContentLoaded', initCookieBanner);
-// Keep auth gate hero height in sync with the true viewport (iOS Safari toolbar show/hide)
-window.addEventListener('resize', () => {
-  const gate = document.getElementById('auth-gate');
-  if (gate && !gate.classList.contains('hidden')) _setAuthHeroHeight();
-});
 
 // --- Auth & API Helpers ---
 // Route all API calls through Netlify's proxy (/api/* → Railway).
@@ -407,13 +402,6 @@ function hideLoading() {
 }
 
 // --- Auth Gate ---
-function _setAuthHeroHeight() {
-  // Use window.innerHeight (true visible height) so the hero exactly fills the viewport
-  // on iOS Safari — dvh/svh can have a 1–2px mismatch with fixed inset:0 containers,
-  // causing the white "How It Works" section to peek through at the bottom.
-  const hero = document.querySelector('.auth-gate-hero');
-  if (hero) hero.style.minHeight = window.innerHeight + 'px';
-}
 function showAuthGate() {
   // Hard-reset horizontal scroll before the gate paints
   document.documentElement.scrollLeft = 0;
@@ -421,11 +409,6 @@ function showAuthGate() {
   window.scrollTo(0, window.scrollY);
   const gate = document.getElementById('auth-gate');
   if (gate) { gate.style.display = ''; gate.classList.remove('hidden'); }
-  // Hide cookie banner while auth gate is open (it has higher z-index and shows as a blue bar)
-  const cookieBanner = document.getElementById('cookie-banner');
-  if (cookieBanner) cookieBanner.style.display = 'none';
-  // Pin hero height to true viewport size (prevents white section peeking at bottom on iOS)
-  _setAuthHeroHeight();
   const navLinks = document.getElementById('main-nav');
   if (navLinks) navLinks.style.display = '';
   const navRight = document.getElementById('nav-right-controls');
@@ -452,11 +435,6 @@ function hideAuthGate() {
   if (gate) gate.classList.add('hidden');
   document.body.classList.remove('no-scroll');
   document.documentElement.classList.remove('gate-open');
-  // Restore cookie banner if user hasn't accepted/declined yet
-  if (!localStorage.getItem('cc_consent')) {
-    const cookieBanner = document.getElementById('cookie-banner');
-    if (cookieBanner) cookieBanner.style.display = '';
-  }
   // Restore theme-color for app pages (light background)
   const tc = document.getElementById('meta-theme-color');
   if (tc) tc.setAttribute('content', '#ffffff');
