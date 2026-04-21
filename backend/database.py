@@ -801,6 +801,7 @@ def _init_sqlite():
     _add_column_if_missing("deals",          "creator_marked_complete",  "INTEGER DEFAULT 0")
     _add_column_if_missing("deals",          "stripe_payment_intent_id", "TEXT")
     _add_column_if_missing("brand_profiles", "social_handles",           "TEXT DEFAULT '{}'")
+    _add_column_if_missing("brand_profiles", "logo_url",                 "TEXT")
     _add_column_if_missing("deals",          "reminders_sent",           "INTEGER DEFAULT 0")
     _add_column_if_missing("deals",          "last_reminder_sent",       "TEXT")
     _add_column_if_missing("deals",          "needs_review",             "INTEGER DEFAULT 0")

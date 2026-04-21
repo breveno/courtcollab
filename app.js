@@ -797,6 +797,11 @@ function onAuthSuccess(user) {
       if (navBadgeMobile) navBadgeMobile.classList.toggle('hidden', pct < 100);
     }).catch(() => {});
   }
+  if (user.role === 'brand') {
+    apiGet('/api/brand/profile').then(p => {
+      _setNavAvatar(p.logo_url || null);
+    }).catch(() => {});
+  }
   startNotifPolling();
   _connectWS();
   // Proactively wake the Railway server on login so it's ready for subsequent calls.
@@ -5413,6 +5418,58 @@ function handleAvatarUpload(event) {
   reader.readAsDataURL(file);
 }
 
+function handleOnboardLogoUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 160; canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2;
+      const sy = (img.height - side) / 2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, 160, 160);
+      const dataUrl = canvas.toDataURL('image/png', 0.9);
+      const imgEl = document.getElementById('onboard-logo-img');
+      const placeholder = document.getElementById('onboard-logo-placeholder');
+      if (imgEl) { imgEl.src = dataUrl; imgEl.classList.remove('hidden'); }
+      if (placeholder) placeholder.classList.add('hidden');
+      window._pendingLogoUrl = dataUrl;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleLogoUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const side = Math.min(img.width, img.height);
+      canvas.width = 160; canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      const sx = (img.width - side) / 2;
+      const sy = (img.height - side) / 2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, 160, 160);
+      const dataUrl = canvas.toDataURL('image/png', 0.9);
+      const imgEl = document.getElementById('bp-logo-img');
+      const placeholder = document.getElementById('bp-logo-placeholder');
+      if (imgEl) { imgEl.src = dataUrl; imgEl.classList.remove('hidden'); }
+      if (placeholder) placeholder.classList.add('hidden');
+      window._pendingLogoUrl = dataUrl;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function toggleBioEdit() {
   const display  = document.getElementById('cp-bio-display');
   const editor   = document.getElementById('cp-bio-editor');
@@ -5504,6 +5561,18 @@ async function openBrandProfileModal(highlightKey) {
     setNum('bp-budget-min',  p.budget_min);
     setNum('bp-budget-max',  p.budget_max);
     setVal('bp-description', p.description);
+
+    // Load existing logo preview
+    const logoImg = document.getElementById('bp-logo-img');
+    const logoPlaceholder = document.getElementById('bp-logo-placeholder');
+    if (p.logo_url) {
+      if (logoImg) { logoImg.src = p.logo_url; logoImg.classList.remove('hidden'); }
+      if (logoPlaceholder) logoPlaceholder.classList.add('hidden');
+    } else {
+      if (logoImg) logoImg.classList.add('hidden');
+      if (logoPlaceholder) logoPlaceholder.classList.remove('hidden');
+    }
+    window._pendingLogoUrl = null;
   } catch (_) {}
 
   openModal('bp-edit-modal');
@@ -5527,22 +5596,27 @@ async function openBrandProfileModal(highlightKey) {
 async function saveBrandProfileModal() {
   const body = {
     company_name: document.getElementById('bp-company')?.value.trim() || '',
+    logo_url:     window._pendingLogoUrl || document.getElementById('bp-logo-img')?.src || null,
     industry:     document.getElementById('bp-industry')?.value || '',
     website:      document.getElementById('bp-website')?.value.trim() || '',
     budget_min:   parseInt(document.getElementById('bp-budget-min')?.value || '0') || 0,
     budget_max:   parseInt(document.getElementById('bp-budget-max')?.value || '0') || 0,
     description:  document.getElementById('bp-description')?.value.trim() || '',
   };
+  // Don't send empty string as logo_url
+  if (!body.logo_url) body.logo_url = null;
   try {
     await apiPut('/api/brand/profile', body);
     closeModal('bp-edit-modal');
     showToast('Brand profile saved!', 'success');
-    // Update nav display name to new company name immediately
+    window._pendingLogoUrl = null;
+    // Update nav display immediately
     if (body.company_name) {
       const navName = document.getElementById('nav-user-name');
       if (navName) navName.textContent = body.company_name;
       if (state.currentUser) state.currentUser.company_name = body.company_name;
     }
+    _setNavAvatar(body.logo_url || null);
     renderBrandPortal(); // re-renders completion bar + stats
   } catch (err) {
     showToast(err.message || 'Could not save profile', 'error');
@@ -6605,6 +6679,7 @@ async function _onboardSaveBrand() {
     if (igHandle) handles.instagram = igHandle;
     if (ttHandle) handles.tiktok    = ttHandle;
     if (Object.keys(handles).length) payload.social_handles = JSON.stringify(handles);
+    if (window._pendingLogoUrl) { payload.logo_url = window._pendingLogoUrl; window._pendingLogoUrl = null; }
     if (Object.keys(payload).length) await apiPut('/api/brand/profile', payload);
   } catch (_) { /* best-effort */ }
 }
