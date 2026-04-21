@@ -2279,6 +2279,18 @@
         <button onclick="closeModal('bp-edit-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
       </div>
       <div class="space-y-4">
+        <!-- Company Logo -->
+        <div class="flex items-center gap-4">
+          <div class="relative w-16 h-16 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer" onclick="document.getElementById('bp-logo-input').click()">
+            <img id="bp-logo-img" src="" alt="" class="w-full h-full object-cover hidden">
+            <span id="bp-logo-placeholder" class="text-2xl text-gray-400">🏢</span>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-gray-700">Company Logo</p>
+            <button type="button" onclick="document.getElementById('bp-logo-input').click()" class="mt-1 text-xs text-pickle-600 font-medium hover:underline">Upload logo</button>
+            <input type="file" id="bp-logo-input" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+          </div>
+        </div>
         <div class="grid grid-cols-2 gap-4">
           <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
@@ -3551,6 +3563,18 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
 
           <!-- Brand fields -->
           <div id="onboard-brand-fields" class="hidden space-y-5">
+            <!-- Logo upload -->
+            <div class="flex items-center gap-4">
+              <div class="relative w-16 h-16 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer" onclick="document.getElementById('onboard-logo-input').click()">
+                <img id="onboard-logo-img" src="" alt="" class="w-full h-full object-cover hidden">
+                <span id="onboard-logo-placeholder" class="text-2xl text-gray-400">🏢</span>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-700">Company Logo <span class="font-normal text-gray-400">(optional)</span></p>
+                <button type="button" onclick="document.getElementById('onboard-logo-input').click()" class="mt-1 text-xs text-pickle-600 font-medium hover:underline">Upload logo</button>
+                <input type="file" id="onboard-logo-input" accept="image/*" class="hidden" onchange="handleOnboardLogoUpload(event)">
+              </div>
+            </div>
             <div>
               <p class="text-sm font-semibold text-gray-700 mb-2">Industry</p>
               <div class="flex flex-wrap gap-2" id="onboard-industry-pills"></div>
@@ -3982,6 +4006,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div>
   </div>
 
-  <script src="app.js?v=210"></script>
+  <script src="app.js?v=211"></script>
 </body>
 </html>
