@@ -5172,7 +5172,7 @@ WAITLIST_CONFIRMATION_HTML = """
                     <a href="https://www.instagram.com/courtcollab"
                        style="display:inline-block;text-decoration:none;line-height:1;"
                        title="Instagram">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/240px-Instagram_icon.png"
+                      <img src="https://cdn-icons-png.flaticon.com/512/174/174855.png"
                            width="28" height="28" alt="Instagram" border="0"
                            style="display:block;" />
                     </a>
