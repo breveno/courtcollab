@@ -777,6 +777,31 @@
 
   </div>
 
+  <!-- Match auth-gate background to whichever section sits at the bottom of the viewport -->
+  <script>
+    (function() {
+      var gate = document.getElementById('auth-gate');
+      if (!gate) return;
+      function updateGateBg() {
+        var bottomY = gate.scrollTop + gate.clientHeight;
+        var sections = gate.querySelectorAll('.auth-gate-hero, .auth-gate-section, .auth-gate-footer-bar');
+        var bg = '#0B1F4A';
+        sections.forEach(function(el) {
+          if (el.offsetTop <= bottomY) {
+            var style = window.getComputedStyle(el);
+            var elBg = style.backgroundColor;
+            if (elBg && elBg !== 'rgba(0, 0, 0, 0)' && elBg !== 'transparent') {
+              bg = elBg;
+            }
+          }
+        });
+        gate.style.background = bg;
+      }
+      gate.addEventListener('scroll', updateGateBg, { passive: true });
+      updateGateBg();
+    })();
+  </script>
+
   <!-- Nav -->
   <nav id="main-navbar" class="bg-pickle-600 border-b border-pickle-500 sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
