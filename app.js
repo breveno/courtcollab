@@ -5555,7 +5555,7 @@ async function openBrandProfileModal(highlightKey) {
     const setSel = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
     const setNum = (id, v) => { const el = document.getElementById(id); if (el) el.value = v > 0 ? v : ''; };
 
-    setVal('bp-company',     p.company_name);
+    setVal('bp-company',     p.company_name || state.currentUser?.company_name || '');
     setSel('bp-industry',    p.industry);
     setVal('bp-website',     p.website);
     setNum('bp-budget-min',  p.budget_min);
@@ -5604,7 +5604,7 @@ async function saveBrandProfileModal() {
   if (tt) handles.tiktok    = tt;
   const body = {
     company_name:   document.getElementById('bp-company')?.value.trim() || '',
-    logo_url:       window._pendingLogoUrl || document.getElementById('bp-logo-img')?.src || null,
+    logo_url:       window._pendingLogoUrl || (() => { const s = document.getElementById('bp-logo-img')?.src; return (s && s.startsWith('data:')) ? s : null; })(),
     industry:       document.getElementById('bp-industry')?.value || '',
     website:        document.getElementById('bp-website')?.value.trim() || '',
     budget_min:     parseInt(document.getElementById('bp-budget-min')?.value || '0') || 0,
