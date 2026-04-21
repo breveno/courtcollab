@@ -786,20 +786,23 @@
         if (el.classList.contains('auth-gate-section-white')) return '#ffffff';
         if (el.classList.contains('auth-gate-section-lime')) return '#0B1F4A';
         if (el.classList.contains('auth-gate-footer-bar')) return '#0B1F4A';
-        return '#0B1F4A'; // hero and default
+        return '#0B1F4A';
       }
       function updateGateBg() {
-        var bottomY = gate.scrollTop + gate.clientHeight;
+        var gateRect = gate.getBoundingClientRect();
+        var bottomY = gateRect.bottom;
         var sections = gate.querySelectorAll('.auth-gate-hero, .auth-gate-section, .auth-gate-footer-bar');
         var bg = '#0B1F4A';
         sections.forEach(function(el) {
-          if (el.offsetTop <= bottomY) {
+          var rect = el.getBoundingClientRect();
+          if (rect.top <= bottomY) {
             bg = getBgForSection(el);
           }
         });
         gate.style.background = bg;
       }
       gate.addEventListener('scroll', updateGateBg, { passive: true });
+      window.addEventListener('resize', updateGateBg);
       updateGateBg();
     })();
   </script>
