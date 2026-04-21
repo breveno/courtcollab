@@ -468,6 +468,7 @@ def _init_pg():
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_terms_confirmed    INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS stripe_payment_intent_id  TEXT")
         conn.execute("ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS social_handles TEXT DEFAULT '{}'")
+        conn.execute("ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS logo_url       TEXT")
 
         # Stale deal tracking
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS reminders_sent     INTEGER DEFAULT 0")
