@@ -971,7 +971,7 @@ function navigateDashboard() {
 
 function navigateToProfile() {
   if (state.role === 'creator') navigate('creator-profile');
-  else openAccountSettings();
+  else openBrandProfileModal();
 }
 
 function openAccountSettings() {
@@ -5561,6 +5561,9 @@ async function openBrandProfileModal(highlightKey) {
     setNum('bp-budget-min',  p.budget_min);
     setNum('bp-budget-max',  p.budget_max);
     setVal('bp-description', p.description);
+    const handles = (typeof p.social_handles === 'string' ? JSON.parse(p.social_handles || '{}') : p.social_handles) || {};
+    setVal('bp-ig', handles.instagram || '');
+    setVal('bp-tt', handles.tiktok    || '');
 
     // Load existing logo preview
     const logoImg = document.getElementById('bp-logo-img');
@@ -5594,14 +5597,20 @@ async function openBrandProfileModal(highlightKey) {
 }
 
 async function saveBrandProfileModal() {
+  const ig = document.getElementById('bp-ig')?.value.trim() || '';
+  const tt = document.getElementById('bp-tt')?.value.trim() || '';
+  const handles = {};
+  if (ig) handles.instagram = ig;
+  if (tt) handles.tiktok    = tt;
   const body = {
-    company_name: document.getElementById('bp-company')?.value.trim() || '',
-    logo_url:     window._pendingLogoUrl || document.getElementById('bp-logo-img')?.src || null,
-    industry:     document.getElementById('bp-industry')?.value || '',
-    website:      document.getElementById('bp-website')?.value.trim() || '',
-    budget_min:   parseInt(document.getElementById('bp-budget-min')?.value || '0') || 0,
-    budget_max:   parseInt(document.getElementById('bp-budget-max')?.value || '0') || 0,
-    description:  document.getElementById('bp-description')?.value.trim() || '',
+    company_name:   document.getElementById('bp-company')?.value.trim() || '',
+    logo_url:       window._pendingLogoUrl || document.getElementById('bp-logo-img')?.src || null,
+    industry:       document.getElementById('bp-industry')?.value || '',
+    website:        document.getElementById('bp-website')?.value.trim() || '',
+    budget_min:     parseInt(document.getElementById('bp-budget-min')?.value || '0') || 0,
+    budget_max:     parseInt(document.getElementById('bp-budget-max')?.value || '0') || 0,
+    description:    document.getElementById('bp-description')?.value.trim() || '',
+    social_handles: JSON.stringify(handles),
   };
   // Don't send empty string as logo_url
   if (!body.logo_url) body.logo_url = null;
