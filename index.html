@@ -164,8 +164,8 @@
   #auth-gate.hidden { display:none; }
   /* Fix white safe-area gap at bottom of auth gate on iOS */
   #auth-gate { padding-bottom: env(safe-area-inset-bottom); }
-  /* Match auth-gate background to hero gradient so no colour mismatch shows at bottom or top */
-  #auth-gate { background: linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%) !important; }
+  /* Make hero solid dark navy — removes lighter blues and matches auth-gate #0B1F4A exactly */
+  .auth-gate-hero { background: #0B1F4A !important; }
   .auth-gate-hero { background:linear-gradient(160deg,#0B1F4A 0%,#163a70 55%,#0d2a60 100%); padding:4rem 1.5rem 5rem; text-align:center; position:relative; overflow:hidden; }
   .auth-gate-hero::before { display:none; }
   .auth-gate-wrap { max-width:480px; margin:0 auto; width:100%; }
