@@ -20,10 +20,12 @@ function hiwToggle(type) {
   const isCreator = type === 'creator';
   creators.style.display = isCreator ? '' : 'none';
   brands.style.display   = isCreator ? 'none' : '';
-  btnC.style.background  = isCreator ? '#0B1F4A' : 'transparent';
-  btnC.style.color       = isCreator ? '#C8F135' : '#6b7280';
-  btnB.style.background  = isCreator ? 'transparent' : '#0B1F4A';
-  btnB.style.color       = isCreator ? '#6b7280' : '#ffffff';
+  // "Get Started in 3 Steps" now has a navy (#0B1F4A) background,
+  // so active = lime chip, inactive = translucent white text
+  btnC.style.background  = isCreator ? '#C8F135' : 'transparent';
+  btnC.style.color       = isCreator ? '#0B1F4A' : 'rgba(255,255,255,0.6)';
+  btnB.style.background  = isCreator ? 'transparent' : '#C8F135';
+  btnB.style.color       = isCreator ? 'rgba(255,255,255,0.6)' : '#0B1F4A';
 }
 
 // --- Cookie Consent Banner ---
