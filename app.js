@@ -785,10 +785,11 @@ function onAuthSuccess(user) {
   _heroShowForRole(user.role);
   if (user.role === 'creator') {
     loadStripeConnectStatus();
-    // Restore verified badge from saved profile without waiting for profile page visit
+    // Restore nav avatar + verified badge on login without requiring a profile page visit
     apiGet('/api/creator/profile').then(p => {
       p.social_handles = (typeof p.social_handles === 'object' && p.social_handles) ? p.social_handles : {};
       p.skills = Array.isArray(p.skills) ? p.skills : [];
+      _setNavAvatar(p.avatar_url || null);
       const pct = _calcCompletion(p, _CREATOR_COMPLETION_FIELDS);
       const navBadge       = document.getElementById('nav-verified-badge');
       const navBadgeMobile = document.getElementById('nav-verified-badge-mobile');
@@ -5107,13 +5108,13 @@ async function updateDealStatus(dealId, status) {
 
 const _CREATOR_COMPLETION_FIELDS = [
   {
-    key: 'bio', label: 'Write a bio', icon: '✍️', pct: 20,
+    key: 'bio', label: 'Write a bio', icon: '✍️', pct: 25,
     tip: 'Brands read your bio first — make it count.',
     check: p => (p.bio || '').trim().length > 10,
     focusId: 'cp-bio',
   },
   {
-    key: 'niche', label: 'Choose a content niche', icon: '🎯', pct: 20,
+    key: 'niche', label: 'Choose a content niche', icon: '🎯', pct: 25,
     tip: 'Niche is the #1 filter brands use to find creators.',
     check: p => !!(p.niche || '').trim(),
     focusId: 'cp-niche',
@@ -5125,29 +5126,17 @@ const _CREATOR_COMPLETION_FIELDS = [
     focusId: 'cp-ig',
   },
   {
-    key: 'name', label: 'Add a display name', icon: '👤', pct: 10,
+    key: 'name', label: 'Add a display name', icon: '👤', pct: 15,
     tip: 'Your creator name shown to brands.',
     check: p => !!(p.name || '').trim(),
     focusId: 'cp-name',
   },
   {
-    key: 'skills', label: 'Select creator skills', icon: '🛠️', pct: 10,
+    key: 'skills', label: 'Select creator skills', icon: '🛠️', pct: 15,
     tip: 'Skills power the AI matching engine.',
     check: p => Array.isArray(p.skills) ? p.skills.length > 0 : !!(p.skills),
     focusId: 'cp-skills',
     scroll: true,
-  },
-  {
-    key: 'skill_level', label: 'Set your skill level', icon: '🎯', pct: 10,
-    tip: 'Pickleball skill level helps brands target the right audience.',
-    check: p => !!(p.skill_level || '').trim(),
-    focusId: 'cp-skill-level',
-  },
-  {
-    key: 'location', label: 'Add your location', icon: '📍', pct: 10,
-    tip: 'Local brands love working with creators in their market.',
-    check: p => !!(p.location || '').trim(),
-    focusId: 'cp-location',
   },
 ];
 
