@@ -907,9 +907,14 @@ def _migrate_sqlite_payout_status():
 
 
 def _add_column_if_missing(table: str, column: str, definition: str):
-    """SQLite only — idempotent column migration."""
+    """Idempotent column migration — works for both SQLite and PostgreSQL."""
     with get_conn() as conn:
-        cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
-        if column not in cols:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
-            conn.commit()
+        if _USE_PG:
+            # PostgreSQL supports IF NOT EXISTS natively
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}")
+        else:
+            # SQLite < 3.37 has no IF NOT EXISTS; check via PRAGMA
+            cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+            if column not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+        conn.commit()
