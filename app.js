@@ -5144,28 +5144,16 @@ const _CREATOR_COMPLETION_FIELDS = [
     scroll: true,
   },
   {
-    key: 'skill_level', label: 'Set your skill level', icon: '🎯', pct: 5,
+    key: 'skill_level', label: 'Set your skill level', icon: '🎯', pct: 10,
     tip: 'Pickleball skill level helps brands target the right audience.',
     check: p => !!(p.skill_level || '').trim(),
     focusId: 'cp-skill-level',
   },
   {
-    key: 'location', label: 'Add your location', icon: '📍', pct: 5,
+    key: 'location', label: 'Add your location', icon: '📍', pct: 10,
     tip: 'Local brands love working with creators in their market.',
     check: p => !!(p.location || '').trim(),
     focusId: 'cp-location',
-  },
-  {
-    key: 'engagement', label: 'Enter engagement rate', icon: '⚡', pct: 5,
-    tip: 'High engagement can outweigh follower count for many brands.',
-    check: p => (p.engagement_rate || 0) > 0,
-    focusId: 'cp-engagement',
-  },
-  {
-    key: 'demo', label: 'Add audience demographics', icon: '👥', pct: 5,
-    tip: 'Demographics help brands confirm audience fit.',
-    check: p => !!(p.demo_age || p.demo_gender || p.demo_locations),
-    focusId: 'cp-age',
   },
 ];
 
