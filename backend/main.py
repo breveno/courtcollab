@@ -2322,17 +2322,26 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
         if body.status == "completed" and deal["status"] != "active":
             raise HTTPException(409, "Can only complete an active deal")
 
-        conn.execute(
-            "UPDATE deals SET status = ?, updated_at = datetime('now') WHERE id = ?",
-            (body.status, deal_id),
-        )
+        if body.status == "active":
+            # Auto-confirm terms for both parties so contract generates immediately
+            conn.execute(
+                """UPDATE deals
+                   SET status = 'active',
+                       brand_terms_confirmed   = 1,
+                       creator_terms_confirmed = 1,
+                       updated_at = datetime('now')
+                   WHERE id = ?""",
+                (deal_id,),
+            )
+        else:
+            conn.execute(
+                "UPDATE deals SET status = ?, updated_at = datetime('now') WHERE id = ?",
+                (body.status, deal_id),
+            )
         conn.commit()
         deal = _deal_detail(conn, deal_id)
 
     label = _STATUS_LABELS.get(body.status, body.status)
-
-    # Contract will be triggered after both parties confirm deal terms
-    # (see POST /api/deals/{deal_id}/confirm-terms)
 
     # Notify the other party
     if body.status == "active":
@@ -2342,7 +2351,7 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
             notif_type = "deal_active",
             title      = f"{deal['creator_name']} accepted your deal",
             body       = (f"Your ${deal['amount']:,} deal for \"{deal['campaign_title']}\" "
-                          f"is now active. Please review and confirm the deal terms to generate your contract."),
+                          f"is now active. The contract is being generated and will be sent for signatures shortly."),
             data       = {"deal_id": deal_id, "campaign_id": deal["campaign_id"]},
             email      = deal["brand_email"],
         )
@@ -2353,10 +2362,13 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
             title      = f"You accepted the deal — \"{deal['campaign_title']}\"",
             body       = (f"Congrats! You've accepted the ${deal['amount']:,} deal with "
                           f"{deal['brand_name']} for \"{deal['campaign_title']}\". "
-                          f"The brand will now review and confirm the deal terms to generate your contract."),
+                          f"Your contract is being generated now — you'll receive a signing link shortly."),
             data       = {"deal_id": deal_id, "campaign_id": deal["campaign_id"]},
             email      = deal["creator_email"],
         )
+        # Auto-generate contract now that both parties' terms are confirmed
+        import asyncio as _asyncio
+        _asyncio.create_task(_trigger_contract_for_deal(deal_id))
     elif body.status == "declined":
         # Creator declined → notify brand
         await _notify(
