@@ -2313,17 +2313,17 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
 
         # Signature fields placed on the dedicated signature page.
-        # Coordinates in px at 72 PPI (A4 = 595×841px), origin top-left per SignWell.
-        # mm→px factor ≈ 2.8346. Positions match the signature lines drawn in _build_contract_pdf.
+        # SignWell uses signer_id (matches recipient id), top-left origin, 72 PPI.
+        # A4=595×841px. Coordinates derived from _build_contract_pdf signature page layout.
         sig_fields = [
-            # Brand (recipient 1) — signature, date, initials
-            {"type": "signature", "recipient_id": "1", "page": sig_page, "x": 57,  "y": 200, "width": 227, "height": 34, "required": True},
-            {"type": "date",      "recipient_id": "1", "page": sig_page, "x": 326, "y": 200, "width": 170, "height": 34, "required": True},
-            {"type": "initials",  "recipient_id": "1", "page": sig_page, "x": 57,  "y": 255, "width": 99,  "height": 28, "required": True},
-            # Creator (recipient 2) — signature, date, initials
-            {"type": "signature", "recipient_id": "2", "page": sig_page, "x": 57,  "y": 368, "width": 227, "height": 34, "required": True},
-            {"type": "date",      "recipient_id": "2", "page": sig_page, "x": 326, "y": 368, "width": 170, "height": 34, "required": True},
-            {"type": "initials",  "recipient_id": "2", "page": sig_page, "x": 57,  "y": 425, "width": 99,  "height": 28, "required": True},
+            # Brand signer (id "1") — signature line ~y=64mm, initials ~y=84mm
+            {"type": "signature", "signer_id": "1", "page": sig_page, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
+            {"type": "date",      "signer_id": "1", "page": sig_page, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
+            {"type": "initials",  "signer_id": "1", "page": sig_page, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
+            # Creator signer (id "2") — signature line ~y=117mm, initials ~y=137mm
+            {"type": "signature", "signer_id": "2", "page": sig_page, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
+            {"type": "date",      "signer_id": "2", "page": sig_page, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
+            {"type": "initials",  "signer_id": "2", "page": sig_page, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
         ]
 
         sw_doc = await sw.create_document(
