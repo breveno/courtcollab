@@ -1334,7 +1334,10 @@ function fmtDateUTC(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr.slice(0, 10);
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getUTCDate()).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  return `${mm}/${dd}/${yyyy}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -2854,7 +2857,7 @@ function openCampaignDetailCreator(campaignId) {
   // Stats row — all relevant creator-facing fields
   const stats = [];
   if (c.budget)          stats.push(`<span class="text-gray-500">Rate: <strong class="text-gray-900">$${Number(c.budget).toLocaleString()}</strong></span>`);
-  if (c.deadline)        stats.push(`<span class="text-gray-500">Deadline: <strong class="text-gray-900">${c.deadline}</strong></span>`);
+  if (c.deadline)        stats.push(`<span class="text-gray-500">Deadline: <strong class="text-gray-900">${fmtDateUTC(c.deadline)}</strong></span>`);
   if (c.creators_needed) stats.push(`<span class="text-gray-500">Creators needed: <strong class="text-gray-900">${c.creators_needed}</strong></span>`);
   if (c.min_followers)   stats.push(`<span class="text-gray-500">Min. followers: <strong class="text-gray-900">${Number(c.min_followers).toLocaleString()}</strong></span>`);
   if (c.max_rate)        stats.push(`<span class="text-gray-500">Max rate: <strong class="text-gray-900">$${Number(c.max_rate).toLocaleString()}</strong></span>`);
@@ -3808,6 +3811,30 @@ async function renderCampaigns() {
       _appliedCampaignIds = new Set(
         campaigns.filter(c => c.has_applied).map(c => c.id)
       );
+
+      // Sort by relevance to the creator's profile (niche + skills match)
+      try {
+        const profile = await apiGet('/api/creator/profile', { silent: true });
+        const creatorNiche  = (profile.niche  || '').toLowerCase();
+        const creatorSkills = (Array.isArray(profile.skills) ? profile.skills : []).map(s => s.toLowerCase());
+
+        const score = c => {
+          let s = 0;
+          const campNiche  = (c.niche         || '').toLowerCase();
+          const campSkills = (Array.isArray(c.skills) ? c.skills : []).map(x => x.toLowerCase());
+          const campType   = (c.content_type  || '').toLowerCase();
+          if (creatorNiche && campNiche && creatorNiche === campNiche)          s += 3;
+          campSkills.forEach(sk => { if (creatorSkills.includes(sk)) s += 2; });
+          if (campType && creatorSkills.includes(campType))                    s += 1;
+          return s;
+        };
+
+        campaigns = campaigns.sort((a, b) => {
+          const diff = score(b) - score(a);
+          if (diff !== 0) return diff;
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+      } catch (_) { /* fall back to default order */ }
     }
 
     if (campaigns.length === 0) {
@@ -3865,7 +3892,7 @@ async function renderCampaigns() {
             <div class="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
               <span>Rate: <strong class="text-gray-900">${budget}</strong></span>
               ${c.creators_needed ? `<span>👥 <strong class="text-gray-900">${c.creators_needed}</strong> creator${c.creators_needed > 1 ? 's' : ''} needed</span>` : ''}
-              ${c.deadline ? `<span>Deadline: <strong class="text-gray-900">${c.deadline}</strong></span>` : ''}
+              ${c.deadline ? `<span>Deadline: <strong class="text-gray-900">${fmtDateUTC(c.deadline)}</strong></span>` : ''}
             </div>
           </div>
           <p class="text-gray-600 mb-4 line-clamp-3">${c.description || ''}</p>
