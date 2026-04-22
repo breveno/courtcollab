@@ -2079,35 +2079,55 @@ def _build_contract_pdf(
     pdf.multi_cell(0, 4, "By signing below each party agrees to be legally bound by the terms of this agreement.")
     pdf.ln(8)
 
-    def _sig_block(label, y_start):
+    def _sig_block(label, y_start, recipient_id):
         pdf.set_y(y_start)
         pdf.set_font("Helvetica", "B", 9)
         pdf.set_text_color(11, 31, 74)
         pdf.cell(0, 5, label, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.ln(2)
 
-        # Signature line
+        sig_y = pdf.get_y()
+
+        # Drawn guide lines for print / preview
         pdf.set_draw_color(100, 110, 130)
         pdf.set_line_width(0.3)
-        pdf.line(20, pdf.get_y() + 10, 100, pdf.get_y() + 10)
-        pdf.line(115, pdf.get_y() + 10, 190, pdf.get_y() + 10)
+        pdf.line(20, sig_y + 10, 100, sig_y + 10)
+        pdf.line(115, sig_y + 10, 190, sig_y + 10)
+
+        # SignWell text tags — white (invisible on page) but detected by SignWell's parser
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Helvetica", "", 12)
+        pdf.set_xy(20, sig_y)
+        pdf.cell(80, 12, f"[[signature|{recipient_id}]]")
+        pdf.set_xy(115, sig_y)
+        pdf.cell(75, 12, f"[[date_signed|{recipient_id}]]")
 
         pdf.set_font("Helvetica", "", 7)
         pdf.set_text_color(120, 120, 120)
-        pdf.set_xy(20, pdf.get_y() + 12)
+        pdf.set_xy(20, sig_y + 12)
         pdf.cell(80, 4, "Signature")
         pdf.set_xy(115, pdf.get_y())
         pdf.cell(75, 4, "Date", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.ln(6)
 
         # Initials line
-        pdf.line(20, pdf.get_y() + 8, 55, pdf.get_y() + 8)
-        pdf.set_xy(20, pdf.get_y() + 10)
+        initials_y = pdf.get_y()
+        pdf.line(20, initials_y + 8, 55, initials_y + 8)
+
+        # Initials text tag
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Helvetica", "", 12)
+        pdf.set_xy(20, initials_y)
+        pdf.cell(35, 10, f"[[initials|{recipient_id}]]")
+
+        pdf.set_font("Helvetica", "", 7)
+        pdf.set_text_color(120, 120, 120)
+        pdf.set_xy(20, initials_y + 10)
         pdf.cell(35, 4, "Initials", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.ln(10)
 
-    _sig_block("1.  CREATOR", pdf.get_y())
-    _sig_block("2.  BRAND REPRESENTATIVE", pdf.get_y())
+    _sig_block("1.  CREATOR", pdf.get_y(), 1)
+    _sig_block("2.  BRAND REPRESENTATIVE", pdf.get_y(), 2)
 
     return bytes(pdf.output()), sig_page
 
@@ -2312,21 +2332,8 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         creator_name  = full_deal.get("creator_name", "Creator")
         doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
 
-        # Signature fields at top-level per SignWell API spec.
-        # Creator signs first (recipient "1", top block). Brand countersigns (recipient "2", bottom block).
-        # page is 0-indexed. Coordinates in px at 72 PPI, origin top-left. A4=595×841px.
-        sp = sig_page - 1   # convert 1-indexed FPDF page → 0-indexed SignWell page
-        sig_fields = [
-            # Creator (recipient "1") — first block on sig page, y≈159px
-            {"api_id": "creator_sig",    "type": "signature", "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
-            {"api_id": "creator_date",   "type": "date",      "recipient_id": "1", "file_index": 0, "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
-            {"api_id": "creator_initials","type": "initials",  "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
-            # Brand (recipient "2") — second block on sig page, y≈309px
-            {"api_id": "brand_sig",      "type": "signature", "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
-            {"api_id": "brand_date",     "type": "date",      "recipient_id": "2", "file_index": 0, "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
-            {"api_id": "brand_initials", "type": "initials",  "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
-        ]
-
+        # Fields are embedded as SignWell text tags inside the PDF (see _build_contract_pdf).
+        # No coordinate-based fields needed — text tags are auto-detected by SignWell.
         sw_doc = await sw.create_document(
             name    = doc_name,
             subject = f"Please sign: {doc_name}",
@@ -2338,7 +2345,6 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
             ),
             signers       = signers,
             file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
-            fields        = sig_fields,
             send_in_order = True,
         )
         sw_doc_id = sw_doc.get("id", "")
@@ -5281,19 +5287,8 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
     # ── 4 & 5. Signers: creator first (order=1), brand countersigns (order=2) ──
     signers = _get_contract_signers(deal, brand_prof)
 
-    sp = sig_page - 1   # 0-indexed for SignWell
-    sig_fields = [
-        # Creator (recipient "1") — first block on sig page
-        {"api_id": "creator_sig",      "type": "signature", "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
-        {"api_id": "creator_date",     "type": "date",      "recipient_id": "1", "file_index": 0, "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
-        {"api_id": "creator_initials", "type": "initials",  "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
-        # Brand (recipient "2") — second block on sig page
-        {"api_id": "brand_sig",        "type": "signature", "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
-        {"api_id": "brand_date",       "type": "date",      "recipient_id": "2", "file_index": 0, "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
-        {"api_id": "brand_initials",   "type": "initials",  "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
-    ]
-
     # ── 6 & 7. Create SignWell document; send_in_order enforces sequence ─
+    # Fields are embedded as text tags inside the PDF (see _build_contract_pdf).
     try:
         sw_doc = await sw.create_document(
             name    = doc_name,
@@ -5306,7 +5301,6 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
             ),
             signers      = signers,
             file_base64  = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
-            fields       = sig_fields,
             send_in_order= True,
         )
     except httpx.HTTPStatusError as e:
