@@ -2669,7 +2669,7 @@ def rate_deal(deal_id: int, body: RatingIn, user: dict = Depends(current_user)):
 
 
 @app.get("/api/deals/{deal_id}/contract")
-def get_contract(deal_id: int, request: Request, user: dict = Depends(current_user)):
+async def get_contract(deal_id: int, request: Request, user: dict = Depends(current_user)):
     """Return the contract for a deal, including signing status."""
     with get_conn() as conn:
         deal     = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
@@ -2679,7 +2679,11 @@ def get_contract(deal_id: int, request: Request, user: dict = Depends(current_us
             raise HTTPException(403, "Not your deal")
         contract = _row(conn, "SELECT * FROM contracts WHERE deal_id = ?", (deal_id,))
     if not contract:
-        raise HTTPException(404, "Contract not generated yet")
+        # Auto-trigger generation for active deals that somehow missed it
+        if deal.get("status") == "active":
+            import asyncio as _asyncio
+            _asyncio.create_task(_trigger_contract_for_deal(deal_id))
+        raise HTTPException(404, "Contract is being generated — please check back in a moment")
     contract["is_brand_signed"]   = bool(contract.get("brand_signed_at"))
     contract["is_creator_signed"] = bool(contract.get("creator_signed_at"))
     contract["is_fully_signed"]   = contract["is_brand_signed"] and contract["is_creator_signed"]

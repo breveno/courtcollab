@@ -6203,7 +6203,16 @@ async function openContractModal(dealId) {
         : '⏳ Waiting for the other party to sign.';
     }
   } catch (err) {
-    document.getElementById('contract-body').textContent = 'Could not load contract: ' + err.message;
+    const bodyEl = document.getElementById('contract-body');
+    if (err.message && err.message.toLowerCase().includes('being generated')) {
+      bodyEl.textContent = '⏳ Your contract is being generated, please wait…';
+      // Auto-retry after 5 seconds
+      setTimeout(() => {
+        if (_contractDealId === dealId) openContractModal(dealId);
+      }, 5000);
+    } else {
+      bodyEl.textContent = 'Could not load contract: ' + err.message;
+    }
   }
 }
 
