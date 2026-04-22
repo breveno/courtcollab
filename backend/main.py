@@ -2334,8 +2334,21 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         creator_name  = full_deal.get("creator_name", "Creator")
         doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
 
-        # Fields are embedded as SignWell text tags inside the PDF (see _build_contract_pdf).
-        # No coordinate-based fields needed — text tags are auto-detected by SignWell.
+        # fields is a 2D array: fields[0] = creator (recipient 1), fields[1] = brand (recipient 2).
+        # page is 0-indexed. Coordinates in points at 72dpi, origin top-left.
+        sp = sig_page - 1
+        sig_fields = [
+            [   # Creator signs first (recipient 1) — top sig block on signature page
+                {"api_id": "creator_sig",      "type": "signature", "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
+                {"api_id": "creator_date",     "type": "date",      "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
+                {"api_id": "creator_initials", "type": "initials",  "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
+            ],
+            [   # Brand countersigns (recipient 2) — bottom sig block
+                {"api_id": "brand_sig",      "type": "signature", "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
+                {"api_id": "brand_date",     "type": "date",      "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
+                {"api_id": "brand_initials", "type": "initials",  "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
+            ],
+        ]
         sw_doc = await sw.create_document(
             name    = doc_name,
             subject = f"Please sign: {doc_name}",
@@ -2347,8 +2360,10 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
             ),
             signers       = signers,
             file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
+            fields        = sig_fields,
             send_in_order = True,
         )
+        logging.info("SignWell create_document response for deal #%s: %s", deal_id, sw_doc)
         sw_doc_id = sw_doc.get("id", "")
         if sw_doc_id:
             with get_conn() as conn:
@@ -5290,7 +5305,20 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
     signers = _get_contract_signers(deal, brand_prof)
 
     # ── 6 & 7. Create SignWell document; send_in_order enforces sequence ─
-    # Fields are embedded as text tags inside the PDF (see _build_contract_pdf).
+    # fields is a 2D array: [0]=creator (recipient 1), [1]=brand (recipient 2).
+    sp = sig_page - 1
+    sig_fields = [
+        [
+            {"api_id": "creator_sig",      "type": "signature", "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
+            {"api_id": "creator_date",     "type": "date",      "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
+            {"api_id": "creator_initials", "type": "initials",  "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
+        ],
+        [
+            {"api_id": "brand_sig",      "type": "signature", "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
+            {"api_id": "brand_date",     "type": "date",      "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
+            {"api_id": "brand_initials", "type": "initials",  "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
+        ],
+    ]
     try:
         sw_doc = await sw.create_document(
             name    = doc_name,
@@ -5303,8 +5331,10 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
             ),
             signers      = signers,
             file_base64  = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
+            fields       = sig_fields,
             send_in_order= True,
         )
+        logging.info("SignWell create_document response for deal #%s: %s", deal_id, sw_doc)
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code,
                             detail=f"SignWell error: {e.response.text}")
