@@ -2139,6 +2139,20 @@ async def create_deal(request: Request, body: DealIn, user: dict = Depends(curre
         email      = creator["email"],
     )
 
+    # Send a message in the conversation so the red dot appears for the creator
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO messages (sender_id, receiver_id, body, deal_id) VALUES (?,?,?,?)",
+            (
+                user["id"],
+                body.creator_id,
+                (f"Hi! I've sent you a deal proposal of ${body.amount:,} for "
+                 f"\"{campaign['title']}\". Please review the deal and accept or decline."),
+                did,
+            ),
+        )
+        conn.commit()
+
     # Notify admins — new deal created
     admin_subject = f"[New Deal] {user['name']} → {creator['name']} — ${body.amount:,}"
     admin_body = (
@@ -2331,6 +2345,17 @@ async def update_deal_status(deal_id: int, body: DealStatusIn, user: dict = Depe
                           f"is now active. Please review and confirm the deal terms to generate your contract."),
             data       = {"deal_id": deal_id, "campaign_id": deal["campaign_id"]},
             email      = deal["brand_email"],
+        )
+        # Also confirm acceptance to the creator via email
+        await _notify(
+            user_id    = deal["creator_id"],
+            notif_type = "deal_accepted_confirmation",
+            title      = f"You accepted the deal — \"{deal['campaign_title']}\"",
+            body       = (f"Congrats! You've accepted the ${deal['amount']:,} deal with "
+                          f"{deal['brand_name']} for \"{deal['campaign_title']}\". "
+                          f"The brand will now review and confirm the deal terms to generate your contract."),
+            data       = {"deal_id": deal_id, "campaign_id": deal["campaign_id"]},
+            email      = deal["creator_email"],
         )
     elif body.status == "declined":
         # Creator declined → notify brand
