@@ -2378,7 +2378,8 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
             logging.info("Contract triggered for deal #%s — doc %s", deal_id, sw_doc_id)
 
     except Exception as exc:
-        logging.warning("_trigger_contract_for_deal failed for deal #%s: %s", deal_id, exc)
+        logging.warning("_trigger_contract_for_deal failed for deal #%s: %s", deal_id, exc, exc_info=True)
+        raise
 
 
 @app.patch("/api/deals/{deal_id}/status")
@@ -2789,9 +2790,15 @@ async def regenerate_contract(deal_id: int, user: dict = Depends(current_user)):
         conn.execute("DELETE FROM contracts WHERE deal_id = ?", (deal_id,))
         conn.commit()
 
-    import asyncio as _asyncio
-    _asyncio.create_task(_trigger_contract_for_deal(deal_id))
-    return {"ok": True, "message": "Contract regeneration started"}
+    # Await directly so errors surface to the caller instead of failing silently
+    try:
+        await _trigger_contract_for_deal(deal_id)
+    except Exception as exc:
+        raise HTTPException(500, f"Contract generation failed: {exc}")
+
+    with get_conn() as conn:
+        deal_after = _row(conn, "SELECT contract_document_id FROM deals WHERE id = ?", (deal_id,))
+    return {"ok": True, "contract_document_id": deal_after.get("contract_document_id")}
 
 
 @app.get("/api/deals/{deal_id}/contract")
