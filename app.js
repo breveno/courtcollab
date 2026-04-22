@@ -1513,73 +1513,90 @@ async function viewSignWellContract(dealId) {
   const frame   = document.getElementById('contract-signing-frame');
   if (!modal) return;
 
-  // Show modal with spinner
   frame.classList.add('hidden');
   frame.src = 'about:blank';
   loading.classList.remove('hidden');
   modal.classList.remove('hidden');
+  _contractDealId = dealId;
+
+  await _loadSigningUrl(dealId);
+}
+
+async function regenerateContract(dealId) {
+  const loading = document.getElementById('contract-signing-loading');
+  const frame   = document.getElementById('contract-signing-frame');
+  frame.classList.add('hidden');
+  frame.src = 'about:blank';
+  loading.classList.remove('hidden');
 
   try {
-    // If neither party has signed yet, regenerate to ensure fields are present
-    const dealStatus = await apiGet(`/api/deals/${dealId}/contract-status`, { silent: true }).catch(() => null);
-    const neitherSigned = dealStatus && !dealStatus.brand_signed && !dealStatus.creator_signed;
-    if (neitherSigned) {
-      await apiPost(`/api/deals/${dealId}/regenerate-contract`, {}, { silent: true }).catch(() => {});
-      // Wait for SignWell to process the new document
-      await new Promise(r => setTimeout(r, 8000));
-    }
+    await apiPost(`/api/deals/${dealId}/regenerate-contract`, {});
+    showToast('Regenerating contract — this takes about 15 seconds…', 'default');
+    await _pollForSigningUrl(dealId, 30);
+  } catch (e) {
+    showToast('Could not regenerate: ' + (e.message || 'unknown error'), 'error');
+    const loading2 = document.getElementById('contract-signing-loading');
+    if (loading2) loading2.classList.add('hidden');
+  }
+}
 
+async function _loadSigningUrl(dealId) {
+  const loading = document.getElementById('contract-signing-loading');
+  const frame   = document.getElementById('contract-signing-frame');
+  try {
     const data = await apiGet(`/api/deals/${dealId}/my-signing-url`);
-    if (data.signing_url) {
-      frame.src = data.signing_url;
-      frame.onload = () => {
-        loading.classList.add('hidden');
-        frame.classList.remove('hidden');
-      };
-      // Fallback: show after 3s in case onload doesn't fire for cross-origin
-      setTimeout(() => {
-        loading.classList.add('hidden');
-        frame.classList.remove('hidden');
-      }, 3000);
+    if (!data.signing_url) throw new Error('no_url');
+    _showContractFrame(data.signing_url);
+  } catch (err) {
+    // No contract yet — trigger generation once and poll
+    const status = await apiGet(`/api/deals/${dealId}/contract-status`).catch(() => null);
+    if (status && !status.contract_document_id) {
+      await apiPost(`/api/deals/${dealId}/regenerate-contract`, {}).catch(() => {});
+      showToast('Generating contract — please wait…', 'default');
+      await _pollForSigningUrl(dealId, 30);
     } else {
-      throw new Error('no_signing_url');
-    }
-  } catch (_) {
-    // Fallback: render styled HTML contract
-    try {
-      const deal = await apiGet(`/api/deals/${dealId}`);
-      const dealForTemplate = {
-        id:                    deal.id,
-        amount:                deal.amount,
-        creator_name:          deal.creator_name,
-        brand_company:         deal.brand_company_name || deal.brand_name,
-        brand_contact_name:    deal.brand_name,
-        deliverables:          deal.terms || deal.campaign_title || 'As agreed between the parties.',
-        deadline:              deal.deadline,
-        usage_rights_duration: deal.usage_rights_duration,
-        exclusivity_terms:     deal.exclusivity_terms,
-      };
-      frame.srcdoc = buildContractHtml(dealForTemplate);
-      frame.onload = () => {
-        loading.classList.add('hidden');
-        frame.classList.remove('hidden');
-      };
-      setTimeout(() => {
-        loading.classList.add('hidden');
-        frame.classList.remove('hidden');
-      }, 1000);
-    } catch (err2) {
-      closeContractSigning();
-      showToast('Could not load contract: ' + err2.message, 'error');
+      if (loading) loading.classList.add('hidden');
+      showToast('Could not load signing link. Try the Regenerate button.', 'error');
     }
   }
 }
 
+async function _pollForSigningUrl(dealId, maxSeconds) {
+  const loading = document.getElementById('contract-signing-loading');
+  const deadline = Date.now() + maxSeconds * 1000;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 3000));
+    try {
+      const data = await apiGet(`/api/deals/${dealId}/my-signing-url`, { silent: true });
+      if (data.signing_url) { _showContractFrame(data.signing_url); return; }
+    } catch (_) {}
+  }
+  if (loading) loading.classList.add('hidden');
+  showToast('Contract is taking longer than expected. Try reopening in a moment.', 'error');
+}
+
+function _showContractFrame(url) {
+  const loading = document.getElementById('contract-signing-loading');
+  const frame   = document.getElementById('contract-signing-frame');
+  const regenBtn = document.getElementById('contract-regen-btn');
+  if (!frame) return;
+  frame.src = url;
+  const reveal = () => {
+    if (loading) loading.classList.add('hidden');
+    frame.classList.remove('hidden');
+    if (regenBtn) regenBtn.classList.remove('hidden');
+  };
+  frame.onload = reveal;
+  setTimeout(reveal, 4000);
+}
+
 function closeContractSigning() {
-  const modal = document.getElementById('contract-signing-modal');
-  const frame = document.getElementById('contract-signing-frame');
+  const modal    = document.getElementById('contract-signing-modal');
+  const frame    = document.getElementById('contract-signing-frame');
+  const regenBtn = document.getElementById('contract-regen-btn');
   if (modal) modal.classList.add('hidden');
   if (frame) { frame.src = 'about:blank'; frame.srcdoc = ''; }
+  if (regenBtn) regenBtn.classList.add('hidden');
 }
 
 /** @deprecated use viewSignWellContract */
