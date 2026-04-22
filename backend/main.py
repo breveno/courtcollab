@@ -5165,7 +5165,7 @@ async def signwell_auth_debug(user: dict = Depends(current_user)):
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     "https://www.signwell.com/api/v1/document_templates",
-                    headers={"X-Api-Token": key, "Content-Type": "application/json"},
+                    headers={"Authorization": f"Basic {key}", "Content-Type": "application/json"},
                     timeout=10,
                 )
                 info["signwell_status"] = resp.status_code

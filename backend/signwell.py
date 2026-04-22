@@ -18,8 +18,10 @@ def _headers() -> dict:
     api_key = os.environ.get("SIGNWELL_API_KEY", "")
     if not api_key:
         raise RuntimeError("SIGNWELL_API_KEY environment variable is not set")
+    # SignWell uses HTTP Basic Auth — the key shown in their UI is already
+    # base64-encoded "access:<secret>", so pass it as Authorization: Basic <key>
     return {
-        "X-Api-Token": api_key,
+        "Authorization": f"Basic {api_key}",
         "Content-Type": "application/json",
     }
 
