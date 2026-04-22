@@ -5147,6 +5147,34 @@ async def confirm_deal_terms(deal_id: int, request: Request, user: dict = Depend
     }
 
 
+@app.get("/api/debug/signwell-auth")
+async def signwell_auth_debug(user: dict = Depends(current_user)):
+    """Test the SignWell API key and return diagnostic info."""
+    import os, httpx
+    key = os.environ.get("SIGNWELL_API_KEY", "")
+    info = {
+        "key_set": bool(key),
+        "key_length": len(key),
+        "key_first_6": key[:6] if key else "",
+        "key_last_4": key[-4:] if key else "",
+        "has_whitespace": key != key.strip(),
+        "has_quotes": key.startswith('"') or key.startswith("'"),
+    }
+    if key:
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    "https://www.signwell.com/api/v1/document_templates",
+                    headers={"X-Api-Token": key, "Content-Type": "application/json"},
+                    timeout=10,
+                )
+                info["signwell_status"] = resp.status_code
+                info["signwell_response"] = resp.text[:300]
+        except Exception as e:
+            info["signwell_error"] = str(e)
+    return info
+
+
 @app.get("/api/deals/{deal_id}/signwell-doc")
 async def signwell_doc_debug(deal_id: int, user: dict = Depends(current_user)):
     """Return the raw SignWell document object for debugging field detection."""
