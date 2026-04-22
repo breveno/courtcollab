@@ -5149,29 +5149,43 @@ async def confirm_deal_terms(deal_id: int, request: Request, user: dict = Depend
 
 @app.get("/api/debug/signwell-auth")
 async def signwell_auth_debug(user: dict = Depends(current_user)):
-    """Test the SignWell API key and return diagnostic info."""
-    import os, httpx
+    """Try every SignWell auth format and report which one returns 200."""
+    import os, httpx, base64 as _b64
     key = os.environ.get("SIGNWELL_API_KEY", "")
-    info = {
-        "key_set": bool(key),
-        "key_length": len(key),
-        "key_first_6": key[:6] if key else "",
-        "key_last_4": key[-4:] if key else "",
-        "has_whitespace": key != key.strip(),
-        "has_quotes": key.startswith('"') or key.startswith("'"),
+    info = {"key_length": len(key), "key_first_6": key[:6], "key_last_4": key[-4:]}
+
+    # Decode the key — it may be base64("access:secret")
+    try:
+        decoded = _b64.b64decode(key + "==").decode("utf-8")
+        info["decoded"] = decoded[:40]
+        secret = decoded.split(":", 1)[1] if ":" in decoded else decoded
+    except Exception:
+        decoded = key
+        secret = key
+
+    attempts = {
+        "X-Api-Token: raw_key":        {"X-Api-Token": key},
+        "X-Api-Token: decoded":        {"X-Api-Token": decoded},
+        "X-Api-Token: secret_only":    {"X-Api-Token": secret},
+        "Authorization: Basic raw":    {"Authorization": f"Basic {key}"},
+        "Authorization: Bearer raw":   {"Authorization": f"Bearer {key}"},
+        "Authorization: Bearer secret":{"Authorization": f"Bearer {secret}"},
     }
-    if key:
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
+
+    results = {}
+    async with httpx.AsyncClient() as client:
+        for label, headers in attempts.items():
+            try:
+                r = await client.get(
                     "https://www.signwell.com/api/v1/document_templates",
-                    headers={"Authorization": f"Basic {key}", "Content-Type": "application/json"},
+                    headers={**headers, "Content-Type": "application/json"},
                     timeout=10,
                 )
-                info["signwell_status"] = resp.status_code
-                info["signwell_response"] = resp.text[:300]
-        except Exception as e:
-            info["signwell_error"] = str(e)
+                results[label] = {"status": r.status_code, "body": r.text[:120]}
+            except Exception as e:
+                results[label] = {"error": str(e)}
+
+    info["results"] = results
     return info
 
 
