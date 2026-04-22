@@ -337,39 +337,40 @@ function buildContractHtml(deal) {
     }
 
     .contract-header {
-      text-align: center;
-      border-bottom: 3px solid #1a1a2e;
-      padding-bottom: 24px;
-      margin-bottom: 32px;
+      background: #0B1F4A;
+      padding: 36px 48px 0 48px;
+      margin: -48px -48px 32px -48px;
     }
 
-    .contract-header .logo {
+    .contract-header-inner {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding-bottom: 28px;
+    }
+
+    .contract-header .wordmark {
       font-family: "Arial", sans-serif;
-      font-size: 22px;
+      font-size: 36px;
       font-weight: 900;
-      color: #1a1a2e;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+      line-height: 1;
     }
 
-    .contract-header .logo span {
-      color: #C8F135;
-      background: #1a1a2e;
-      padding: 0 4px;
-      border-radius: 3px;
-    }
+    .contract-header .wordmark .court { color: #C8F135; }
+    .contract-header .wordmark .collab { color: #ffffff; }
 
-    .contract-header h1 {
-      font-size: 20px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-bottom: 4px;
-    }
-
-    .contract-header .meta {
+    .contract-header .subtitle {
+      font-family: "Arial", sans-serif;
       font-size: 13px;
-      color: #555;
+      color: rgba(255,255,255,0.55);
+      margin-top: 6px;
+      letter-spacing: 0.2px;
+    }
+
+    .contract-header-bar {
+      height: 5px;
+      background: #C8F135;
     }
 
     .parties {
@@ -591,9 +592,27 @@ function buildContractHtml(deal) {
 <body>
 
   <div class="contract-header">
-    <div class="logo">Court<span>Collab</span></div>
-    <h1>Brand Deal Agreement</h1>
-    <div class="meta">Agreement ID: ${d.dealId || "—"} &nbsp;|&nbsp; Effective Date: ${d.effectiveDate}</div>
+    <div class="contract-header-inner">
+      <!-- Paddle logo SVG -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="64" height="64" style="flex-shrink:0;">
+        <circle r="45" fill="#163a70"/>
+        <circle r="41" fill="none" stroke="#1E6EA6" stroke-width="1.2"/>
+        <g transform="rotate(-30) translate(10,0)">
+          <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#C8F135"/>
+          <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#C8F135"/>
+        </g>
+        <g transform="rotate(30) translate(-10,0)">
+          <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#1E6EA6"/>
+          <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#1E6EA6"/>
+        </g>
+        <circle r="2.8" fill="#163a70" stroke="#C8F135" stroke-width="0.8"/>
+      </svg>
+      <div>
+        <div class="wordmark"><span class="court">Court</span><span class="collab">Collab</span></div>
+        <div class="subtitle">Creator &amp; Brand Collaboration Agreement &nbsp;|&nbsp; courtcollab.com</div>
+      </div>
+    </div>
+    <div class="contract-header-bar"></div>
   </div>
 
   <div class="parties">
