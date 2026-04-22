@@ -1390,9 +1390,9 @@ function _contractBannerHtml(deal) {
             </svg>
             <span class="font-semibold text-yellow-800">Your contract is ready to sign</span>
           </div>
-          <button onclick="openContractSigningTab(${deal.id})"
+          <button onclick="viewSignWellContract(${deal.id})"
             class="bg-[#C8F135] text-gray-900 px-4 py-2 rounded-lg text-sm font-bold hover:bg-lime-400 transition shrink-0">
-            Sign Contract
+            View Contract
           </button>
         </div>
         <div class="flex gap-6 flex-wrap">
@@ -1506,18 +1506,76 @@ function _renderContractSection(containerId, contractDeals, payments) {
     </div>`;
 }
 
-/** Open the SignWell embedded signing URL in a new tab for the current user. */
-async function openContractSigningTab(dealId) {
+/** Open contract fullscreen — SignWell PDF with signing fields if available, styled HTML fallback. */
+async function viewSignWellContract(dealId) {
+  const modal   = document.getElementById('contract-signing-modal');
+  const loading = document.getElementById('contract-signing-loading');
+  const frame   = document.getElementById('contract-signing-frame');
+  if (!modal) return;
+
+  // Show modal with spinner
+  frame.classList.add('hidden');
+  frame.src = 'about:blank';
+  loading.classList.remove('hidden');
+  modal.classList.remove('hidden');
+
   try {
     const data = await apiGet(`/api/deals/${dealId}/my-signing-url`);
     if (data.signing_url) {
-      window.open(data.signing_url, '_blank');
+      frame.src = data.signing_url;
+      frame.onload = () => {
+        loading.classList.add('hidden');
+        frame.classList.remove('hidden');
+      };
+      // Fallback: show after 3s in case onload doesn't fire for cross-origin
+      setTimeout(() => {
+        loading.classList.add('hidden');
+        frame.classList.remove('hidden');
+      }, 3000);
     } else {
-      alert('Signing URL not available. The document may already be signed or expired.');
+      throw new Error('no_signing_url');
     }
-  } catch (err) {
-    alert('Could not get signing URL: ' + err.message);
+  } catch (_) {
+    // Fallback: render styled HTML contract
+    try {
+      const deal = await apiGet(`/api/deals/${dealId}`);
+      const dealForTemplate = {
+        id:                    deal.id,
+        amount:                deal.amount,
+        creator_name:          deal.creator_name,
+        brand_company:         deal.brand_company_name || deal.brand_name,
+        brand_contact_name:    deal.brand_name,
+        deliverables:          deal.terms || deal.campaign_title || 'As agreed between the parties.',
+        deadline:              deal.deadline,
+        usage_rights_duration: deal.usage_rights_duration,
+        exclusivity_terms:     deal.exclusivity_terms,
+      };
+      frame.srcdoc = buildContractHtml(dealForTemplate);
+      frame.onload = () => {
+        loading.classList.add('hidden');
+        frame.classList.remove('hidden');
+      };
+      setTimeout(() => {
+        loading.classList.add('hidden');
+        frame.classList.remove('hidden');
+      }, 1000);
+    } catch (err2) {
+      closeContractSigning();
+      showToast('Could not load contract: ' + err2.message, 'error');
+    }
   }
+}
+
+function closeContractSigning() {
+  const modal = document.getElementById('contract-signing-modal');
+  const frame = document.getElementById('contract-signing-frame');
+  if (modal) modal.classList.add('hidden');
+  if (frame) { frame.src = 'about:blank'; frame.srcdoc = ''; }
+}
+
+/** @deprecated use viewSignWellContract */
+async function openContractSigningTab(dealId) {
+  viewSignWellContract(dealId);
 }
 
 // ---------------------------------------------------------------------------
@@ -4980,7 +5038,7 @@ async function openConversation(partnerId, knownName = null) {
         apiGet(`/api/deals/${deal.id}/contract`).then(c => {
           const badge = c.is_fully_signed ? '✅' : c.i_have_signed ? '⏳' : '✍️';
           const btn = document.querySelector(`[data-contract-btn="${deal.id}"]`);
-          if (btn) btn.innerHTML = `${badge} ${c.is_fully_signed ? 'Contract Signed' : c.i_have_signed ? 'Awaiting Co-Sign' : 'Sign Contract'}`;
+          if (btn) btn.innerHTML = `${badge} ${c.is_fully_signed ? 'Contract Signed' : c.i_have_signed ? 'Awaiting Co-Sign' : 'View Contract'}`;
         }).catch(() => {});
         const contractComplete = deal.contract_status === 'contract_complete';
         const alreadyPaid = ['payment_received','completed','payment_released'].includes(deal.status);
@@ -5001,9 +5059,9 @@ async function openConversation(partnerId, knownName = null) {
         dealActions.innerHTML = state.role === 'brand'
           ? `<button onclick="updateDealStatus(${deal.id}, 'completed')" class="bg-lime-400 text-gray-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-lime-500 transition">Mark Complete</button>
              ${payBtn}
-             <button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>
+             <button data-contract-btn="${deal.id}" onclick="viewSignWellContract(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>
              <button onclick="openDisputeModal(${deal.id})" class="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition" title="File a dispute">🚩</button>`
-          : `<button data-contract-btn="${deal.id}" onclick="openContractModal(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>
+          : `<button data-contract-btn="${deal.id}" onclick="viewSignWellContract(${deal.id})" class="border border-pickle-300 text-pickle-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-pickle-50 transition">📄 View Contract</button>
              <button onclick="openDisputeModal(${deal.id})" class="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition" title="File a dispute">🚩</button>`;
       } else if (deal && deal.status === 'completed') {
         dealActions.classList.remove('hidden');
@@ -5186,7 +5244,7 @@ async function updateDealStatus(dealId, status) {
     await openConversation(state.activePartner);
     if (status === 'active') {
       // Creator accepted — give the backend a moment to write the contract, then open it
-      setTimeout(() => openContractModal(dealId), 600);
+      setTimeout(() => viewSignWellContract(dealId), 600);
     }
     if (status === 'completed') {
       openRatingModal(dealId, 'How was your experience working with this creator?');
@@ -6227,7 +6285,7 @@ async function openContractModal(dealId) {
     if (err.message && err.message.toLowerCase().includes('being generated')) {
       if (msgEl) msgEl.textContent = '⏳ Your contract is being generated, please wait…';
       setTimeout(() => {
-        if (_contractDealId === dealId) openContractModal(dealId);
+        if (_contractDealId === dealId) viewSignWellContract(dealId);
       }, 5000);
     } else {
       if (msgEl) msgEl.textContent = 'Could not load contract: ' + err.message;
