@@ -1518,6 +1518,8 @@ async function viewSignWellContract(dealId) {
   loading.classList.remove('hidden');
   modal.classList.remove('hidden');
   _contractDealId = dealId;
+  const regenBtn = document.getElementById('contract-regen-btn');
+  if (regenBtn) regenBtn.classList.remove('hidden');
 
   await _loadSigningUrl(dealId);
 }
