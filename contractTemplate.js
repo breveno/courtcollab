@@ -593,19 +593,26 @@ function buildContractHtml(deal) {
 
   <div class="contract-header">
     <div class="contract-header-inner">
-      <!-- Paddle logo SVG -->
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="-47 -47 94 94" width="64" height="64" style="flex-shrink:0;">
-        <circle r="45" fill="#163a70"/>
-        <circle r="41" fill="none" stroke="#1E6EA6" stroke-width="1.2"/>
-        <g transform="rotate(-30) translate(10,0)">
-          <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#C8F135"/>
-          <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#C8F135"/>
+      <!-- CourtCollab logo SVG (inlined for iframe/srcdoc compatibility) -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 96" fill="none" width="64" height="62" style="flex-shrink:0;">
+        <!-- Blue paddle (left, behind) -->
+        <g transform="translate(50,47) rotate(-42)">
+          <rect x="-18" y="-52" width="36" height="42" rx="14" fill="#1E6EA6"/>
+          <rect x="-6.5" y="-10" width="13" height="40" rx="4.5" fill="#0d2f5e"/>
+          <line x1="-5" y1="0"  x2="5" y2="0"  stroke="#3a7ab8" stroke-width="2" stroke-linecap="round"/>
+          <line x1="-5" y1="8"  x2="5" y2="8"  stroke="#3a7ab8" stroke-width="2" stroke-linecap="round"/>
+          <line x1="-5" y1="16" x2="5" y2="16" stroke="#3a7ab8" stroke-width="2" stroke-linecap="round"/>
+          <line x1="-5" y1="24" x2="5" y2="24" stroke="#3a7ab8" stroke-width="2" stroke-linecap="round"/>
         </g>
-        <g transform="rotate(30) translate(-10,0)">
-          <rect x="-6.4" y="-18.4" width="12.8" height="18.4" rx="5" fill="#1E6EA6"/>
-          <rect x="-2.4" y="0"     width="4.8"  height="15.2" rx="1.6" fill="#1E6EA6"/>
+        <!-- Lime paddle (right, front) -->
+        <g transform="translate(50,47) rotate(42)">
+          <rect x="-18" y="-52" width="36" height="42" rx="14" fill="#C8F135"/>
+          <rect x="-6.5" y="-10" width="13" height="40" rx="4.5" fill="#2d5c0a"/>
+          <line x1="-5" y1="0"  x2="5" y2="0"  stroke="#6aaa20" stroke-width="2" stroke-linecap="round"/>
+          <line x1="-5" y1="8"  x2="5" y2="8"  stroke="#6aaa20" stroke-width="2" stroke-linecap="round"/>
+          <line x1="-5" y1="16" x2="5" y2="16" stroke="#6aaa20" stroke-width="2" stroke-linecap="round"/>
+          <line x1="-5" y1="24" x2="5" y2="24" stroke="#6aaa20" stroke-width="2" stroke-linecap="round"/>
         </g>
-        <circle r="2.8" fill="#163a70" stroke="#C8F135" stroke-width="0.8"/>
       </svg>
       <div>
         <div class="wordmark"><span class="court">Court</span><span class="collab">Collab</span></div>
