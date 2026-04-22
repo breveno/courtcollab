@@ -2312,18 +2312,19 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         creator_name  = full_deal.get("creator_name", "Creator")
         doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
 
-        # Signature fields placed on the dedicated signature page.
-        # SignWell uses signer_id (matches recipient id), top-left origin, 72 PPI.
-        # A4=595×841px. Coordinates derived from _build_contract_pdf signature page layout.
+        # Signature fields at top-level per SignWell API spec.
+        # recipient_id matches the "id" assigned to each recipient ("1"=brand, "2"=creator).
+        # page is 0-indexed. Coordinates in px at 72 PPI, origin top-left. A4=595×841px.
+        sp = sig_page - 1   # convert 1-indexed FPDF page → 0-indexed SignWell page
         sig_fields = [
-            # Brand signer (id "1") — signature line ~y=64mm, initials ~y=84mm
-            {"type": "signature", "signer_id": "1", "page": sig_page, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
-            {"type": "date",      "signer_id": "1", "page": sig_page, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
-            {"type": "initials",  "signer_id": "1", "page": sig_page, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
-            # Creator signer (id "2") — signature line ~y=117mm, initials ~y=137mm
-            {"type": "signature", "signer_id": "2", "page": sig_page, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
-            {"type": "date",      "signer_id": "2", "page": sig_page, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
-            {"type": "initials",  "signer_id": "2", "page": sig_page, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
+            # Brand (recipient "1") — signature ~y=64mm→159px, initials ~y=84mm→215px
+            {"api_id": "brand_sig",      "type": "signature", "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
+            {"api_id": "brand_date",     "type": "date",      "recipient_id": "1", "file_index": 0, "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
+            {"api_id": "brand_initials", "type": "initials",  "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
+            # Creator (recipient "2") — signature ~y=117mm→309px, initials ~y=137mm→366px
+            {"api_id": "creator_sig",      "type": "signature", "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
+            {"api_id": "creator_date",     "type": "date",      "recipient_id": "2", "file_index": 0, "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
+            {"api_id": "creator_initials", "type": "initials",  "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
         ]
 
         sw_doc = await sw.create_document(
@@ -2336,7 +2337,8 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
                 f"— The CourtCollab Team"
             ),
             signers       = signers,
-            file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf", "fields": sig_fields}],
+            file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
+            fields        = sig_fields,
             send_in_order = True,
         )
         sw_doc_id = sw_doc.get("id", "")
@@ -5279,13 +5281,14 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
     # ── 4 & 5. Signers: brand first (order=1), creator second (order=2) ──
     signers = _get_contract_signers(deal, brand_prof)
 
+    sp = sig_page - 1   # 0-indexed for SignWell
     sig_fields = [
-        {"type": "signature", "recipient_id": "1", "page": sig_page, "x": 57,  "y": 200, "width": 227, "height": 34, "required": True},
-        {"type": "date",      "recipient_id": "1", "page": sig_page, "x": 326, "y": 200, "width": 170, "height": 34, "required": True},
-        {"type": "initials",  "recipient_id": "1", "page": sig_page, "x": 57,  "y": 255, "width": 99,  "height": 28, "required": True},
-        {"type": "signature", "recipient_id": "2", "page": sig_page, "x": 57,  "y": 368, "width": 227, "height": 34, "required": True},
-        {"type": "date",      "recipient_id": "2", "page": sig_page, "x": 326, "y": 368, "width": 170, "height": 34, "required": True},
-        {"type": "initials",  "recipient_id": "2", "page": sig_page, "x": 57,  "y": 425, "width": 99,  "height": 28, "required": True},
+        {"api_id": "brand_sig",        "type": "signature", "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
+        {"api_id": "brand_date",       "type": "date",      "recipient_id": "1", "file_index": 0, "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
+        {"api_id": "brand_initials",   "type": "initials",  "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
+        {"api_id": "creator_sig",      "type": "signature", "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
+        {"api_id": "creator_date",     "type": "date",      "recipient_id": "2", "file_index": 0, "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
+        {"api_id": "creator_initials", "type": "initials",  "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
     ]
 
     # ── 6 & 7. Create SignWell document; send_in_order enforces sequence ─
@@ -5300,7 +5303,8 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
                 f"— The CourtCollab Team"
             ),
             signers      = signers,
-            file_base64  = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf", "fields": sig_fields}],
+            file_base64  = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
+            fields       = sig_fields,
             send_in_order= True,
         )
     except httpx.HTTPStatusError as e:

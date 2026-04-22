@@ -1526,7 +1526,7 @@ async function viewSignWellContract(dealId) {
     if (neitherSigned) {
       await apiPost(`/api/deals/${dealId}/regenerate-contract`, {}, { silent: true }).catch(() => {});
       // Wait for SignWell to process the new document
-      await new Promise(r => setTimeout(r, 4000));
+      await new Promise(r => setTimeout(r, 8000));
     }
 
     const data = await apiGet(`/api/deals/${dealId}/my-signing-url`);

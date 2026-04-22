@@ -34,7 +34,8 @@ async def create_document(
     message: str,
     signers: list[dict],           # [{"name": "...", "email": "...", "signing_order"?: int}]
     file_urls: list[str] = None,   # list of public PDF URLs
-    file_base64: list[dict] = None,# [{"data": "<base64>", "name": "contract.pdf"}]
+    file_base64: list[dict] = None,# [{"data": "<base64>", "name": "contract.pdf", "fields"?: [...]}]
+    fields: list[dict] = None,     # top-level fields array (preferred by SignWell API)
     redirect_url: str = None,
     send_in_order: bool = False,   # enforce sequential signing when True
 ) -> dict:
@@ -57,12 +58,9 @@ async def create_document(
 
     files = []
     for i, url in enumerate(file_urls or []):
-        files.append({"file_url": url, "file_name": f"contract_{i+1}.pdf"})
+        files.append({"file_url": url, "name": f"contract_{i+1}.pdf"})
     for entry in (file_base64 or []):
-        f = {"file_base64": entry["data"], "file_name": entry["name"]}
-        if entry.get("fields"):
-            f["fields"] = entry["fields"]
-        files.append(f)
+        files.append({"file_base64": entry["data"], "name": entry["name"]})
 
     payload = {
         "test_mode": SIGNWELL_TEST_MODE,
@@ -72,6 +70,9 @@ async def create_document(
         "recipients": recipients,
         "files": files,
     }
+    # Fields go at top level per SignWell API spec, with api_id required per field
+    if fields:
+        payload["fields"] = fields
     if send_in_order:
         payload["send_in_order"] = True
     if redirect_url:
