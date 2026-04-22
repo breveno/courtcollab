@@ -2731,6 +2731,54 @@ def rate_deal(deal_id: int, body: RatingIn, user: dict = Depends(current_user)):
     return {"ok": True}
 
 
+@app.post("/api/deals/{deal_id}/regenerate-contract", status_code=200)
+async def regenerate_contract(deal_id: int, user: dict = Depends(current_user)):
+    """
+    Reset and regenerate the SignWell contract for a deal.
+    Only allowed when neither party has signed yet.
+    """
+    with get_conn() as conn:
+        deal = _row(conn, "SELECT * FROM deals WHERE id = ?", (deal_id,))
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+        raise HTTPException(403, "Not your deal")
+    if deal.get("brand_signed") or deal.get("creator_signed"):
+        raise HTTPException(409, "Cannot regenerate — at least one party has already signed")
+    if deal.get("status") != "active":
+        raise HTTPException(409, "Deal must be active to regenerate contract")
+
+    # Cancel old SignWell document if it exists
+    old_doc_id = deal.get("contract_document_id")
+    if old_doc_id:
+        try:
+            await sw.cancel_document(old_doc_id)
+        except Exception:
+            pass  # best-effort; document may already be cancelled/expired
+
+    # Clear all contract state so _trigger_contract_for_deal starts fresh
+    with get_conn() as conn:
+        conn.execute("""
+            UPDATE deals
+               SET contract_document_id  = NULL,
+                   contract_status       = NULL,
+                   contract_sent_at      = NULL,
+                   brand_signed          = 0,
+                   brand_signed_at       = NULL,
+                   creator_signed        = 0,
+                   creator_signed_at     = NULL,
+                   contract_completed_url = NULL,
+                   updated_at            = datetime('now')
+             WHERE id = ?
+        """, (deal_id,))
+        conn.execute("DELETE FROM contracts WHERE deal_id = ?", (deal_id,))
+        conn.commit()
+
+    import asyncio as _asyncio
+    _asyncio.create_task(_trigger_contract_for_deal(deal_id))
+    return {"ok": True, "message": "Contract regeneration started"}
+
+
 @app.get("/api/deals/{deal_id}/contract")
 async def get_contract(deal_id: int, request: Request, user: dict = Depends(current_user)):
     """Return the contract for a deal, including signing status."""

@@ -1520,6 +1520,15 @@ async function viewSignWellContract(dealId) {
   modal.classList.remove('hidden');
 
   try {
+    // If neither party has signed yet, regenerate to ensure fields are present
+    const dealStatus = await apiGet(`/api/deals/${dealId}/contract-status`, { silent: true }).catch(() => null);
+    const neitherSigned = dealStatus && !dealStatus.brand_signed && !dealStatus.creator_signed;
+    if (neitherSigned) {
+      await apiPost(`/api/deals/${dealId}/regenerate-contract`, {}, { silent: true }).catch(() => {});
+      // Wait for SignWell to process the new document
+      await new Promise(r => setTimeout(r, 4000));
+    }
+
     const data = await apiGet(`/api/deals/${dealId}/my-signing-url`);
     if (data.signing_url) {
       frame.src = data.signing_url;
