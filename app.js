@@ -4301,34 +4301,53 @@ function campaignBackStep() {
   _campSetDot(1, 'active'); _campSetDot(2, 'inactive'); _campSetDot(3, 'inactive');
 }
 
-function previewCampaignContract() {
-  const title       = document.getElementById('camp-title')?.value.trim()    || '';
-  const desc        = document.getElementById('camp-desc')?.value.trim()     || '';
-  const budget      = parseFloat(document.getElementById('camp-budget')?.value || '0') || 0;
-  const deadline    = document.getElementById('camp-deadline')?.value         || '';
-  const brandName   = state.currentUser?.company_name || state.currentUser?.name || 'Your Company';
-  const contactName = state.currentUser?.name || 'Brand Representative';
+async function previewCampaignContract() {
+  // Open a blank tab immediately (must happen in the click handler before any await,
+  // otherwise browsers block it as a popup)
+  const win = window.open('', '_blank');
+  if (!win) { showToast('Please allow pop-ups for this site to preview the contract.', 'error'); return; }
 
-  const mockDeal = {
-    id:                    'PREVIEW',
-    amount:                budget,
-    deliverables:          desc || 'As agreed between the parties.',
-    num_posts:             1,
-    deadline:              deadline,
-    usage_rights_duration: '12 months',
-    exclusivity_terms:     'None',
-    creator_name:          '[Creator Name]',
-    creator_handle:        '[creator_handle]',
-    creator_platform:      'Instagram / TikTok / YouTube',
-    brand_company:         brandName,
-    brand_contact_name:    contactName,
-  };
+  // Show the loading screen while we fetch brand profile data
+  showLoading('Preparing contract preview…');
 
-  const html = buildContractHtml(mockDeal);
-  const win  = window.open('', '_blank');
-  if (win) {
+  try {
+    const title    = document.getElementById('camp-title')?.value.trim()  || '';
+    const desc     = document.getElementById('camp-desc')?.value.trim()   || '';
+    const budget   = parseFloat(document.getElementById('camp-budget')?.value || '0') || 0;
+    const deadline = document.getElementById('camp-deadline')?.value       || '';
+
+    // Fetch the latest brand profile so company name / contact are accurate
+    let brandName   = state.currentUser?.company_name || state.currentUser?.name || 'Your Company';
+    let contactName = state.currentUser?.name || 'Brand Representative';
+    try {
+      const profile = await apiGet('/api/brand/profile', { silent: true });
+      if (profile?.company_name) brandName   = profile.company_name;
+      if (profile?.contact_name) contactName = profile.contact_name;
+    } catch (_) { /* fall back to state values */ }
+
+    const deal = {
+      id:                    'PREVIEW',
+      amount:                budget,
+      deliverables:          desc || title || 'As agreed between the parties.',
+      num_posts:             parseInt(document.getElementById('camp-creators-needed')?.value || '1') || 1,
+      deadline:              deadline,
+      usage_rights_duration: '12 months',
+      exclusivity_terms:     'None',
+      creator_name:          '[Creator Name]',
+      creator_handle:        '[creator_handle]',
+      creator_platform:      'Instagram / TikTok / YouTube',
+      brand_company:         brandName,
+      brand_contact_name:    contactName,
+    };
+
+    const html = buildContractHtml(deal);
     win.document.write(html);
     win.document.close();
+  } catch (err) {
+    win.close();
+    showToast('Could not generate contract preview.', 'error');
+  } finally {
+    hideLoading();
   }
 }
 
