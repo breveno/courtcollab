@@ -2010,8 +2010,9 @@
       </div>
 
       <!-- Contract text -->
-      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 overflow-y-auto" style="max-height: 340px;">
-        <pre id="contract-body" class="text-xs text-gray-700 font-mono whitespace-pre-wrap leading-relaxed"></pre>
+      <div class="border border-gray-200 rounded-xl mb-4 overflow-hidden" style="height: 380px;">
+        <iframe id="contract-body-frame" class="w-full h-full border-none" src="about:blank"></iframe>
+        <div id="contract-body-msg" class="hidden p-4 text-sm text-gray-500 text-center"></div>
       </div>
 
       <!-- Agreement checkbox + sign button -->
@@ -4046,6 +4047,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
   </div>
 
   <script src="contractTemplate.js?v=1"></script>
-  <script src="app.js?v=220"></script>
+  <script src="app.js?v=221"></script>
 </body>
 </html>

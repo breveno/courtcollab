@@ -6165,7 +6165,10 @@ let _contractDealId = null;
 async function openContractModal(dealId) {
   _contractDealId = dealId;
   // Reset modal state
-  document.getElementById('contract-body').textContent        = 'Loading contract…';
+  const frame = document.getElementById('contract-body-frame');
+  const msgEl = document.getElementById('contract-body-msg');
+  if (frame) { frame.srcdoc = ''; frame.classList.remove('hidden'); }
+  if (msgEl)  { msgEl.textContent = ''; msgEl.classList.add('hidden'); }
   document.getElementById('contract-deal-label').textContent  = `Deal #${dealId}`;
   document.getElementById('contract-agree-check').checked     = false;
   document.getElementById('contract-brand-sig-icon').textContent    = '⬜';
@@ -6177,8 +6180,24 @@ async function openContractModal(dealId) {
   openModal('contract-modal');
 
   try {
-    const c = await apiGet(`/api/deals/${dealId}/contract`);
-    document.getElementById('contract-body').textContent = c.content || '(No contract content)';
+    const [c, deal] = await Promise.all([
+      apiGet(`/api/deals/${dealId}/contract`),
+      apiGet(`/api/deals/${dealId}`),
+    ]);
+
+    // Build styled HTML using the same template as the campaign wizard preview
+    const dealForTemplate = {
+      id:                   deal.id,
+      amount:               deal.amount,
+      creator_name:         deal.creator_name,
+      brand_company:        deal.brand_company_name || deal.brand_name,
+      brand_contact_name:   deal.brand_name,
+      deliverables:         deal.terms || deal.campaign_title || 'As agreed between the parties.',
+      deadline:             deal.deadline,
+      usage_rights_duration: deal.usage_rights_duration,
+      exclusivity_terms:    deal.exclusivity_terms,
+    };
+    if (frame) frame.srcdoc = buildContractHtml(dealForTemplate);
 
     // Brand signing status
     if (c.is_brand_signed) {
@@ -6203,15 +6222,15 @@ async function openContractModal(dealId) {
         : '⏳ Waiting for the other party to sign.';
     }
   } catch (err) {
-    const bodyEl = document.getElementById('contract-body');
+    if (frame) frame.classList.add('hidden');
+    if (msgEl) { msgEl.classList.remove('hidden'); }
     if (err.message && err.message.toLowerCase().includes('being generated')) {
-      bodyEl.textContent = '⏳ Your contract is being generated, please wait…';
-      // Auto-retry after 5 seconds
+      if (msgEl) msgEl.textContent = '⏳ Your contract is being generated, please wait…';
       setTimeout(() => {
         if (_contractDealId === dealId) openContractModal(dealId);
       }, 5000);
     } else {
-      bodyEl.textContent = 'Could not load contract: ' + err.message;
+      if (msgEl) msgEl.textContent = 'Could not load contract: ' + err.message;
     }
   }
 }
