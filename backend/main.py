@@ -2106,15 +2106,15 @@ def _build_contract_pdf(
         pdf.cell(35, 4, "Initials", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.ln(10)
 
-    _sig_block("1.  BRAND REPRESENTATIVE", pdf.get_y())
-    _sig_block("2.  CREATOR", pdf.get_y())
+    _sig_block("1.  CREATOR", pdf.get_y())
+    _sig_block("2.  BRAND REPRESENTATIVE", pdf.get_y())
 
     return bytes(pdf.output()), sig_page
 
 
 def _get_contract_signers(deal: dict, brand_profile: dict) -> list[dict]:
     """
-    Return the two signers in signing order: brand first, creator second.
+    Return the two signers in signing order: creator first, brand second.
     Pulls names and emails from the enriched deal dict.
     """
     brand_display = (
@@ -2122,13 +2122,13 @@ def _get_contract_signers(deal: dict, brand_profile: dict) -> list[dict]:
     ).strip()
     return [
         {
-            "name":          brand_display,
-            "email":         deal["brand_email"],
+            "name":          (deal.get("creator_name") or "Creator").strip(),
+            "email":         deal["creator_email"],
             "signing_order": 1,
         },
         {
-            "name":          (deal.get("creator_name") or "Creator").strip(),
-            "email":         deal["creator_email"],
+            "name":          brand_display,
+            "email":         deal["brand_email"],
             "signing_order": 2,
         },
     ]
@@ -2313,18 +2313,18 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
 
         # Signature fields at top-level per SignWell API spec.
-        # recipient_id matches the "id" assigned to each recipient ("1"=brand, "2"=creator).
+        # Creator signs first (recipient "1", top block). Brand countersigns (recipient "2", bottom block).
         # page is 0-indexed. Coordinates in px at 72 PPI, origin top-left. A4=595×841px.
         sp = sig_page - 1   # convert 1-indexed FPDF page → 0-indexed SignWell page
         sig_fields = [
-            # Brand (recipient "1") — signature ~y=64mm→159px, initials ~y=84mm→215px
-            {"api_id": "brand_sig",      "type": "signature", "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
-            {"api_id": "brand_date",     "type": "date",      "recipient_id": "1", "file_index": 0, "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
-            {"api_id": "brand_initials", "type": "initials",  "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
-            # Creator (recipient "2") — signature ~y=117mm→309px, initials ~y=137mm→366px
-            {"api_id": "creator_sig",      "type": "signature", "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
-            {"api_id": "creator_date",     "type": "date",      "recipient_id": "2", "file_index": 0, "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
-            {"api_id": "creator_initials", "type": "initials",  "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
+            # Creator (recipient "1") — first block on sig page, y≈159px
+            {"api_id": "creator_sig",    "type": "signature", "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
+            {"api_id": "creator_date",   "type": "date",      "recipient_id": "1", "file_index": 0, "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
+            {"api_id": "creator_initials","type": "initials",  "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
+            # Brand (recipient "2") — second block on sig page, y≈309px
+            {"api_id": "brand_sig",      "type": "signature", "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
+            {"api_id": "brand_date",     "type": "date",      "recipient_id": "2", "file_index": 0, "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
+            {"api_id": "brand_initials", "type": "initials",  "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
         ]
 
         sw_doc = await sw.create_document(
@@ -5278,17 +5278,19 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
     pdf_b64    = base64.b64encode(pdf_bytes).decode("ascii")
     doc_name   = f"CourtCollab Deal #{deal_id} — {brand_prof.get('company_name') or deal['brand_name']} × {deal['creator_name']}"
 
-    # ── 4 & 5. Signers: brand first (order=1), creator second (order=2) ──
+    # ── 4 & 5. Signers: creator first (order=1), brand countersigns (order=2) ──
     signers = _get_contract_signers(deal, brand_prof)
 
     sp = sig_page - 1   # 0-indexed for SignWell
     sig_fields = [
-        {"api_id": "brand_sig",        "type": "signature", "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
-        {"api_id": "brand_date",       "type": "date",      "recipient_id": "1", "file_index": 0, "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
-        {"api_id": "brand_initials",   "type": "initials",  "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
-        {"api_id": "creator_sig",      "type": "signature", "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
-        {"api_id": "creator_date",     "type": "date",      "recipient_id": "2", "file_index": 0, "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
-        {"api_id": "creator_initials", "type": "initials",  "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
+        # Creator (recipient "1") — first block on sig page
+        {"api_id": "creator_sig",      "type": "signature", "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
+        {"api_id": "creator_date",     "type": "date",      "recipient_id": "1", "file_index": 0, "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
+        {"api_id": "creator_initials", "type": "initials",  "recipient_id": "1", "file_index": 0, "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
+        # Brand (recipient "2") — second block on sig page
+        {"api_id": "brand_sig",        "type": "signature", "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
+        {"api_id": "brand_date",       "type": "date",      "recipient_id": "2", "file_index": 0, "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
+        {"api_id": "brand_initials",   "type": "initials",  "recipient_id": "2", "file_index": 0, "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
     ]
 
     # ── 6 & 7. Create SignWell document; send_in_order enforces sequence ─
