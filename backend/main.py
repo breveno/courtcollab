@@ -5222,8 +5222,8 @@ async def get_my_signing_url(deal_id: int, user: dict = Depends(current_user)):
     if not doc_id:
         raise HTTPException(404, "No contract document found for this deal")
 
-    # Brand = recipient "1", Creator = recipient "2" (matches create_deal_contract signing order)
-    recipient_id = "1" if user["id"] == deal["brand_id"] else "2"
+    # Creator = recipient "1" (signs first), Brand = recipient "2" (countersigns)
+    recipient_id = "1" if user["id"] == deal["creator_id"] else "2"
 
     try:
         url = await sw.get_embedded_signing_url(doc_id, recipient_id)
