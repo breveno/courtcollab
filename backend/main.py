@@ -2334,20 +2334,18 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         creator_name  = full_deal.get("creator_name", "Creator")
         doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
 
-        # fields is a 2D array: fields[0] = creator (recipient 1), fields[1] = brand (recipient 2).
-        # page is 0-indexed. Coordinates in points at 72dpi, origin top-left.
+        # fields: 2D array, outer = per file (one file), inner = all fields for that file.
+        # recipient_id on each field links it to a recipient. page is 0-indexed.
         sp = sig_page - 1
         sig_fields = [
-            [   # Creator signs first (recipient 1) — top sig block on signature page
-                {"api_id": "creator_sig",      "type": "signature", "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
-                {"api_id": "creator_date",     "type": "date",      "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
-                {"api_id": "creator_initials", "type": "initials",  "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
-            ],
-            [   # Brand countersigns (recipient 2) — bottom sig block
-                {"api_id": "brand_sig",      "type": "signature", "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
-                {"api_id": "brand_date",     "type": "date",      "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
-                {"api_id": "brand_initials", "type": "initials",  "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
-            ],
+            [   # file 0 — all fields for both recipients
+                {"api_id": "creator_sig",      "type": "signature", "recipient_id": "1", "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
+                {"api_id": "creator_date",     "type": "date",      "recipient_id": "1", "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
+                {"api_id": "creator_initials", "type": "initials",  "recipient_id": "1", "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
+                {"api_id": "brand_sig",        "type": "signature", "recipient_id": "2", "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
+                {"api_id": "brand_date",       "type": "date",      "recipient_id": "2", "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
+                {"api_id": "brand_initials",   "type": "initials",  "recipient_id": "2", "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
+            ]
         ]
         sw_doc = await sw.create_document(
             name    = doc_name,
@@ -5142,6 +5140,25 @@ async def confirm_deal_terms(deal_id: int, request: Request, user: dict = Depend
     }
 
 
+@app.get("/api/deals/{deal_id}/signwell-doc")
+async def signwell_doc_debug(deal_id: int, user: dict = Depends(current_user)):
+    """Return the raw SignWell document object for debugging field detection."""
+    with get_conn() as conn:
+        deal = _row(conn, "SELECT id, brand_id, creator_id, contract_document_id FROM deals WHERE id = ?", (deal_id,))
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    if user["id"] not in (deal["brand_id"], deal["creator_id"]):
+        raise HTTPException(403, "Not your deal")
+    doc_id = deal.get("contract_document_id", "")
+    if not doc_id:
+        return {"error": "no contract_document_id in DB"}
+    try:
+        doc = await sw.get_document(doc_id)
+        return doc
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/api/deals/{deal_id}/contract-status")
 async def get_deal_contract_status(deal_id: int, user: dict = Depends(current_user)):
     """
@@ -5308,16 +5325,14 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
     # fields is a 2D array: [0]=creator (recipient 1), [1]=brand (recipient 2).
     sp = sig_page - 1
     sig_fields = [
-        [
-            {"api_id": "creator_sig",      "type": "signature", "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
-            {"api_id": "creator_date",     "type": "date",      "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
-            {"api_id": "creator_initials", "type": "initials",  "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
-        ],
-        [
-            {"api_id": "brand_sig",      "type": "signature", "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
-            {"api_id": "brand_date",     "type": "date",      "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
-            {"api_id": "brand_initials", "type": "initials",  "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
-        ],
+        [   # file 0
+            {"api_id": "creator_sig",      "type": "signature", "recipient_id": "1", "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
+            {"api_id": "creator_date",     "type": "date",      "recipient_id": "1", "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
+            {"api_id": "creator_initials", "type": "initials",  "recipient_id": "1", "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
+            {"api_id": "brand_sig",        "type": "signature", "recipient_id": "2", "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
+            {"api_id": "brand_date",       "type": "date",      "recipient_id": "2", "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
+            {"api_id": "brand_initials",   "type": "initials",  "recipient_id": "2", "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
+        ]
     ]
     try:
         sw_doc = await sw.create_document(
