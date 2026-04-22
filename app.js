@@ -119,8 +119,9 @@ async function _pollMessages() {
     newMsgs.forEach(m => {
       if (m.sender_id !== myId) _appendIncomingMessage(m);
     });
-    // Refresh the conversation list sidebar too
+    // Refresh the conversation list sidebar and notification dots
     renderConversations();
+    refreshNotifDots();
   } catch (_) {}
 
   // Also check typing indicator (cache-bust to prevent Netlify CDN caching)
@@ -900,7 +901,7 @@ async function refreshNotifDots() {
 
 function startNotifPolling() {
   refreshNotifDots();
-  _notifPollTimer = setInterval(refreshNotifDots, 30000);
+  _notifPollTimer = setInterval(refreshNotifDots, 5000);
 }
 function stopNotifPolling() {
   if (_notifPollTimer) { clearInterval(_notifPollTimer); _notifPollTimer = null; }
@@ -1170,7 +1171,6 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
     if (page === 'messages')  {
       renderConversations();
       _startConvListPolling();   // keep list live while on messages page
-      document.getElementById('nav-messages-dot')?.classList.add('hidden');
     } else {
       _stopConvListPolling();    // leave messages page — stop the poller
     }
