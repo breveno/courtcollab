@@ -59,7 +59,10 @@ async def create_document(
     for i, url in enumerate(file_urls or []):
         files.append({"file_url": url, "file_name": f"contract_{i+1}.pdf"})
     for entry in (file_base64 or []):
-        files.append({"file_base64": entry["data"], "file_name": entry["name"]})
+        f = {"file_base64": entry["data"], "file_name": entry["name"]}
+        if entry.get("fields"):
+            f["fields"] = entry["fields"]
+        files.append(f)
 
     payload = {
         "test_mode": SIGNWELL_TEST_MODE,

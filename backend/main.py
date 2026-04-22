@@ -1915,7 +1915,7 @@ Deal Reference: #{deal['id']} | Generated: {today}
 
 def _build_contract_pdf(
     deal: dict, campaign: dict, brand_profile: dict, creator_profile: dict
-) -> bytes:
+) -> tuple:
     """
     Render the contract as a PDF using fpdf2 and return raw PDF bytes.
     Falls back gracefully if fpdf2 is not installed.
@@ -1926,7 +1926,7 @@ def _build_contract_pdf(
     except ImportError:
         # fpdf2 not available — return plain-text bytes (SignWell still accepts .txt)
         text = _generate_contract(deal, campaign, brand_profile, creator_profile)
-        return text.encode("utf-8")
+        return text.encode("utf-8"), 1
 
     contract_text = _generate_contract(deal, campaign, brand_profile, creator_profile)
 
@@ -2060,7 +2060,56 @@ def _build_contract_pdf(
             pdf.set_text_color(0, 0, 0)
             pdf.multi_cell(0, 4.5, line if line else " ", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-    return bytes(pdf.output())
+    # ── Signature page ────────────────────────────────────────────────
+    pdf.add_page()
+    sig_page = pdf.page   # 1-indexed
+
+    pdf.set_margins(left=20, top=20, right=20)
+    pdf.set_y(20)
+
+    # Section title
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_fill_color(235, 240, 255)
+    pdf.set_text_color(11, 31, 74)
+    pdf.cell(0, 7, "  EXECUTION / SIGNATURES", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(4)
+
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(80, 80, 80)
+    pdf.multi_cell(0, 4, "By signing below each party agrees to be legally bound by the terms of this agreement.")
+    pdf.ln(8)
+
+    def _sig_block(label, y_start):
+        pdf.set_y(y_start)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(11, 31, 74)
+        pdf.cell(0, 5, label, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(2)
+
+        # Signature line
+        pdf.set_draw_color(100, 110, 130)
+        pdf.set_line_width(0.3)
+        pdf.line(20, pdf.get_y() + 10, 100, pdf.get_y() + 10)
+        pdf.line(115, pdf.get_y() + 10, 190, pdf.get_y() + 10)
+
+        pdf.set_font("Helvetica", "", 7)
+        pdf.set_text_color(120, 120, 120)
+        pdf.set_xy(20, pdf.get_y() + 12)
+        pdf.cell(80, 4, "Signature")
+        pdf.set_xy(115, pdf.get_y())
+        pdf.cell(75, 4, "Date", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(6)
+
+        # Initials line
+        pdf.line(20, pdf.get_y() + 8, 55, pdf.get_y() + 8)
+        pdf.set_xy(20, pdf.get_y() + 10)
+        pdf.cell(35, 4, "Initials", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(10)
+
+    _sig_block("1.  BRAND REPRESENTATIVE", pdf.get_y())
+    _sig_block("2.  CREATOR", pdf.get_y())
+
+    return bytes(pdf.output()), sig_page
 
 
 def _get_contract_signers(deal: dict, brand_profile: dict) -> list[dict]:
@@ -2254,7 +2303,7 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
             conn.commit()
 
         # Build PDF and send via SignWell
-        pdf_bytes = _build_contract_pdf(
+        pdf_bytes, sig_page = _build_contract_pdf(
             full_deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
         )
         pdf_b64   = _base64.b64encode(pdf_bytes).decode("ascii")
@@ -2262,6 +2311,20 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         brand_company = (brand_profile or {}).get("company_name") or full_deal.get("brand_name", "Brand")
         creator_name  = full_deal.get("creator_name", "Creator")
         doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
+
+        # Signature fields placed on the dedicated signature page.
+        # Coordinates in px at 72 PPI (A4 = 595×841px), origin top-left per SignWell.
+        # mm→px factor ≈ 2.8346. Positions match the signature lines drawn in _build_contract_pdf.
+        sig_fields = [
+            # Brand (recipient 1) — signature, date, initials
+            {"type": "signature", "recipient_id": "1", "page": sig_page, "x": 57,  "y": 200, "width": 227, "height": 34, "required": True},
+            {"type": "date",      "recipient_id": "1", "page": sig_page, "x": 326, "y": 200, "width": 170, "height": 34, "required": True},
+            {"type": "initials",  "recipient_id": "1", "page": sig_page, "x": 57,  "y": 255, "width": 99,  "height": 28, "required": True},
+            # Creator (recipient 2) — signature, date, initials
+            {"type": "signature", "recipient_id": "2", "page": sig_page, "x": 57,  "y": 368, "width": 227, "height": 34, "required": True},
+            {"type": "date",      "recipient_id": "2", "page": sig_page, "x": 326, "y": 368, "width": 170, "height": 34, "required": True},
+            {"type": "initials",  "recipient_id": "2", "page": sig_page, "x": 57,  "y": 425, "width": 99,  "height": 28, "required": True},
+        ]
 
         sw_doc = await sw.create_document(
             name    = doc_name,
@@ -2273,7 +2336,7 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
                 f"— The CourtCollab Team"
             ),
             signers       = signers,
-            file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
+            file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf", "fields": sig_fields}],
             send_in_order = True,
         )
         sw_doc_id = sw_doc.get("id", "")
@@ -5169,12 +5232,21 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
     creator_prof = creator_prof or {}
 
     # ── 2 & 3. Populate template → generate PDF ─────────────────────────
-    pdf_bytes  = _build_contract_pdf(deal, campaign, brand_prof, creator_prof)
+    pdf_bytes, sig_page = _build_contract_pdf(deal, campaign, brand_prof, creator_prof)
     pdf_b64    = base64.b64encode(pdf_bytes).decode("ascii")
     doc_name   = f"CourtCollab Deal #{deal_id} — {brand_prof.get('company_name') or deal['brand_name']} × {deal['creator_name']}"
 
     # ── 4 & 5. Signers: brand first (order=1), creator second (order=2) ──
     signers = _get_contract_signers(deal, brand_prof)
+
+    sig_fields = [
+        {"type": "signature", "recipient_id": "1", "page": sig_page, "x": 57,  "y": 200, "width": 227, "height": 34, "required": True},
+        {"type": "date",      "recipient_id": "1", "page": sig_page, "x": 326, "y": 200, "width": 170, "height": 34, "required": True},
+        {"type": "initials",  "recipient_id": "1", "page": sig_page, "x": 57,  "y": 255, "width": 99,  "height": 28, "required": True},
+        {"type": "signature", "recipient_id": "2", "page": sig_page, "x": 57,  "y": 368, "width": 227, "height": 34, "required": True},
+        {"type": "date",      "recipient_id": "2", "page": sig_page, "x": 326, "y": 368, "width": 170, "height": 34, "required": True},
+        {"type": "initials",  "recipient_id": "2", "page": sig_page, "x": 57,  "y": 425, "width": 99,  "height": 28, "required": True},
+    ]
 
     # ── 6 & 7. Create SignWell document; send_in_order enforces sequence ─
     try:
@@ -5188,7 +5260,7 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
                 f"— The CourtCollab Team"
             ),
             signers      = signers,
-            file_base64  = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
+            file_base64  = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf", "fields": sig_fields}],
             send_in_order= True,
         )
     except httpx.HTTPStatusError as e:
