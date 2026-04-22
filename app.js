@@ -4301,54 +4301,6 @@ function campaignBackStep() {
   _campSetDot(1, 'active'); _campSetDot(2, 'inactive'); _campSetDot(3, 'inactive');
 }
 
-async function previewCampaignContract() {
-  showLoading('Preparing contract preview…');
-  try {
-    const title    = document.getElementById('camp-title')?.value.trim()  || '';
-    const desc     = document.getElementById('camp-desc')?.value.trim()   || '';
-    const budget   = parseFloat(document.getElementById('camp-budget')?.value || '0') || 0;
-    const deadline = document.getElementById('camp-deadline')?.value       || '';
-
-    let brandName   = state.currentUser?.company_name || state.currentUser?.name || 'Your Company';
-    let contactName = state.currentUser?.name || 'Brand Representative';
-    try {
-      const profile = await apiGet('/api/brand/profile', { silent: true });
-      if (profile?.company_name) brandName   = profile.company_name;
-      if (profile?.contact_name) contactName = profile.contact_name;
-    } catch (_) {}
-
-    const deal = {
-      id:                    'PREVIEW',
-      amount:                budget,
-      deliverables:          desc || title || 'As agreed between the parties.',
-      num_posts:             parseInt(document.getElementById('camp-creators-needed')?.value || '1') || 1,
-      deadline:              deadline,
-      usage_rights_duration: '12 months',
-      exclusivity_terms:     'None',
-      creator_name:          '[Creator Name]',
-      creator_handle:        '[creator_handle]',
-      creator_platform:      'Instagram / TikTok / YouTube',
-      brand_company:         brandName,
-      brand_contact_name:    contactName,
-    };
-
-    const html = buildContractHtml(deal);
-    const frame = document.getElementById('contract-preview-frame');
-    frame.srcdoc = html;
-    document.getElementById('contract-preview-modal')?.classList.remove('hidden');
-  } catch (err) {
-    showToast('Could not generate contract preview.', 'error');
-  } finally {
-    hideLoading();
-  }
-}
-
-function closeContractPreview() {
-  document.getElementById('contract-preview-modal')?.classList.add('hidden');
-  const frame = document.getElementById('contract-preview-frame');
-  if (frame) frame.srcdoc = '';
-}
-
 function campaignGoToReview() {
   if (_campContractType === 'custom') {
     const file = document.getElementById('camp-contract-file')?.files[0];
