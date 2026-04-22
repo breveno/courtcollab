@@ -4301,6 +4301,37 @@ function campaignBackStep() {
   _campSetDot(1, 'active'); _campSetDot(2, 'inactive'); _campSetDot(3, 'inactive');
 }
 
+function previewCampaignContract() {
+  const title       = document.getElementById('camp-title')?.value.trim()    || '';
+  const desc        = document.getElementById('camp-desc')?.value.trim()     || '';
+  const budget      = parseFloat(document.getElementById('camp-budget')?.value || '0') || 0;
+  const deadline    = document.getElementById('camp-deadline')?.value         || '';
+  const brandName   = state.currentUser?.company_name || state.currentUser?.name || 'Your Company';
+  const contactName = state.currentUser?.name || 'Brand Representative';
+
+  const mockDeal = {
+    id:                    'PREVIEW',
+    amount:                budget,
+    deliverables:          desc || 'As agreed between the parties.',
+    num_posts:             1,
+    deadline:              deadline,
+    usage_rights_duration: '12 months',
+    exclusivity_terms:     'None',
+    creator_name:          '[Creator Name]',
+    creator_handle:        '[creator_handle]',
+    creator_platform:      'Instagram / TikTok / YouTube',
+    brand_company:         brandName,
+    brand_contact_name:    contactName,
+  };
+
+  const html = buildContractHtml(mockDeal);
+  const win  = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+}
+
 function campaignGoToReview() {
   if (_campContractType === 'custom') {
     const file = document.getElementById('camp-contract-file')?.files[0];
