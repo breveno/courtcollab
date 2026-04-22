@@ -4564,10 +4564,14 @@ async function postCampaign(status = 'open') {
 
     if (state.currentPage === 'brand-portal') {
       await renderBrandPortal();
+      const pills = Array.from(document.querySelectorAll('.portal-pill'));
       if (isDraft) {
-        const draftPill = Array.from(document.querySelectorAll('.portal-pill'))
-          .find(b => b.textContent.trim() === 'Drafts');
+        const draftPill = pills.find(b => b.textContent.trim() === 'Drafts');
         if (draftPill) filterBrandPortal('draft', draftPill);
+      } else {
+        // Published — switch to Active tab immediately
+        const activePill = pills.find(b => b.textContent.trim() === 'Active');
+        if (activePill) filterBrandPortal('active', activePill);
       }
     }
   } catch (err) {
