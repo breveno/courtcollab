@@ -2748,14 +2748,6 @@ async def regenerate_contract(deal_id: int, user: dict = Depends(current_user)):
     if deal.get("status") != "active":
         raise HTTPException(409, "Deal must be active to regenerate contract")
 
-    # Cancel old SignWell document if it exists
-    old_doc_id = deal.get("contract_document_id")
-    if old_doc_id:
-        try:
-            await sw.cancel_document(old_doc_id)
-        except Exception:
-            pass  # best-effort; document may already be cancelled/expired
-
     # Clear all contract state so _trigger_contract_for_deal starts fresh
     with get_conn() as conn:
         conn.execute("""
