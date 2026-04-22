@@ -1732,7 +1732,12 @@ async function renderBrandPortal() {
       .map(d => d.id);
     _startContractPoller(pendingPoll, 'brand');
 
-    renderBrandPortalGrid(campaigns.filter(c => c.status !== 'draft'));
+    const sorted = [
+      ...campaigns.filter(c => (c.status || 'open') === 'open'),
+      ...campaigns.filter(c => c.status === 'draft'),
+      ...campaigns.filter(c => c.status !== 'draft' && (c.status || 'open') !== 'open'),
+    ];
+    renderBrandPortalGrid(sorted);
   } catch (err) {
     grid.innerHTML = `<div class="col-span-full text-center py-8 text-red-400">${err.message}</div>`;
   }
@@ -2638,7 +2643,13 @@ function filterBrandPortal(filter, btn) {
     btn.classList.add('bg-lime-400', 'text-gray-900');
   }
   let list = _brandPortalAllCampaigns;
-  if (filter === 'all')    list = list.filter(c => c.status !== 'draft');
+  if (filter === 'all') {
+    list = [
+      ...list.filter(c => (c.status || 'open') === 'open'),
+      ...list.filter(c => c.status === 'draft'),
+      ...list.filter(c => c.status !== 'draft' && (c.status || 'open') !== 'open'),
+    ];
+  }
   if (filter === 'active') list = list.filter(c => (c.status || 'open') === 'open');
   if (filter === 'closed') list = list.filter(c => c.status === 'closed');
   if (filter === 'draft')  list = list.filter(c => c.status === 'draft');
