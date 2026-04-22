@@ -443,12 +443,17 @@ def _init_pg():
         conn.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS avatar_url        TEXT")
 
         # campaigns
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS niche         TEXT")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS skills        TEXT DEFAULT '[]'")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS target_age      TEXT")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_followers  INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS max_rate       INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS creators_needed INTEGER DEFAULT 1")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS niche            TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS skills           TEXT DEFAULT '[]'")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS target_age       TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS min_followers    INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS max_rate         INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS creators_needed  INTEGER DEFAULT 1")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS content_type     TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS target_audience  TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS deadline         TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS contract_type    TEXT DEFAULT 'template'")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS cover_image      TEXT")
 
         # deals — SignWell contract tracking + contract terms + per-signer status
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_document_id  TEXT")
@@ -466,6 +471,8 @@ def _init_pg():
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS signed_contract_url  TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_terms_confirmed      INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_terms_confirmed    INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS brand_marked_complete      INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS creator_marked_complete    INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS stripe_payment_intent_id  TEXT")
         conn.execute("ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS social_handles TEXT DEFAULT '{}'")
         conn.execute("ALTER TABLE brand_profiles ADD COLUMN IF NOT EXISTS logo_url       TEXT")
