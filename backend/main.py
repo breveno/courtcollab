@@ -2094,13 +2094,15 @@ def _build_contract_pdf(
         pdf.line(20, sig_y + 10, 100, sig_y + 10)
         pdf.line(115, sig_y + 10, 190, sig_y + 10)
 
-        # SignWell text tags — white (invisible on page) but detected by SignWell's parser
+        # SignWell text tags — white (invisible on page) but detected by SignWell's parser.
+        # Format: {{field_type:signer_number}} — double curly braces, colon separator.
+        # Types: s=signature, d=date, i=initial
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Helvetica", "", 12)
         pdf.set_xy(20, sig_y)
-        pdf.cell(80, 12, f"[[signature|{recipient_id}]]")
+        pdf.cell(80, 12, "{{s:" + str(recipient_id) + "}}")
         pdf.set_xy(115, sig_y)
-        pdf.cell(75, 12, f"[[date_signed|{recipient_id}]]")
+        pdf.cell(75, 12, "{{d:" + str(recipient_id) + "}}")
 
         pdf.set_font("Helvetica", "", 7)
         pdf.set_text_color(120, 120, 120)
@@ -2118,7 +2120,7 @@ def _build_contract_pdf(
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Helvetica", "", 12)
         pdf.set_xy(20, initials_y)
-        pdf.cell(35, 10, f"[[initials|{recipient_id}]]")
+        pdf.cell(35, 10, "{{i:" + str(recipient_id) + "}}")
 
         pdf.set_font("Helvetica", "", 7)
         pdf.set_text_color(120, 120, 120)
