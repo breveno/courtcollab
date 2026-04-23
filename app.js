@@ -1582,7 +1582,7 @@ function _showSignButton(url) {
   const content  = document.getElementById('contract-sign-content');
   const signBtn  = document.getElementById('contract-sign-btn');
   if (loading) loading.classList.add('hidden');
-  if (signBtn) signBtn.href = url;
+  if (signBtn) { signBtn.href = url; signBtn.classList.remove('hidden'); }
   if (content) content.classList.remove('hidden');
 }
 
