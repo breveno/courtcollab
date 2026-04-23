@@ -1554,7 +1554,12 @@ async function _loadSigningUrl(dealId) {
         await _pollForSigningUrl(dealId, 30);
       } catch (regenErr) {
         if (loading) loading.classList.add('hidden');
-        showToast('Contract generation failed: ' + (regenErr.message || 'unknown error'), 'error');
+        const msg = regenErr.message || '';
+        if (msg.includes('already signed')) {
+          showToast('This contract has already been signed. Check your email for the completed copy.', 'default');
+        } else {
+          showToast('Contract generation failed: ' + (msg || 'unknown error'), 'error');
+        }
       }
     } else {
       if (loading) loading.classList.add('hidden');
