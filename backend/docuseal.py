@@ -35,9 +35,12 @@ async def create_submission(
     """
     Create a signing request (submission) from a PDF.
 
-    Signers are sequential: the second signer can only sign after the first
-    completes.  send_email=False means DocuSeal won't send its own emails;
-    signers access the contract via the embedded signing URL.
+    Step 1: POST /templates  — upload the PDF to create a one-off template.
+    Step 2: POST /submissions — create a submission from that template_id.
+
+    Signers are sequential (order="preserved"): second signer can only sign
+    after the first completes.  send_email=False so DocuSeal won't email;
+    signers use the embedded signing URL instead.
 
     Returns:
       {
@@ -45,38 +48,46 @@ async def create_submission(
         "submitters": [{"id", "slug", "email", "role", "status", ...}, ...]
       }
     """
-    payload = {
-        "template": {
-            "name": name,
-            "documents": [{
-                "name": file_name,
-                "file": f"data:application/pdf;base64,{file_base64}",
-            }],
-        },
-        "order": "preserved",   # sequential — second signer waits for first
-        "send_email": send_email,
-        "submitters": [
-            {
-                "name":  s["name"],
-                "email": s["email"],
-                "role":  s.get("role", s["name"]),
-            }
-            for s in signers
-        ],
-    }
-
     async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            f"{DOCUSEAL_BASE_URL}/submissions/init",
+        # Step 1: create template from the PDF
+        t_resp = await client.post(
+            f"{DOCUSEAL_BASE_URL}/templates",
             headers=_headers(),
-            json=payload,
+            json={
+                "name": name,
+                "documents": [{
+                    "name": file_name,
+                    "file": f"data:application/pdf;base64,{file_base64}",
+                }],
+            },
+            timeout=60,
+        )
+        if not t_resp.is_success:
+            raise RuntimeError(f"DocuSeal template {t_resp.status_code}: {t_resp.text[:500]}")
+        template_id = t_resp.json()["id"]
+
+        # Step 2: create submission from that template
+        s_resp = await client.post(
+            f"{DOCUSEAL_BASE_URL}/submissions",
+            headers=_headers(),
+            json={
+                "template_id": template_id,
+                "order": "preserved",
+                "send_email": send_email,
+                "submitters": [
+                    {
+                        "name":  s["name"],
+                        "email": s["email"],
+                        "role":  s.get("role", s["name"]),
+                    }
+                    for s in signers
+                ],
+            },
             timeout=30,
         )
-        if not resp.is_success:
-            raise RuntimeError(
-                f"DocuSeal {resp.status_code}: {resp.text[:500]}"
-            )
-        submitters = resp.json()   # list of submitter objects
+        if not s_resp.is_success:
+            raise RuntimeError(f"DocuSeal submission {s_resp.status_code}: {s_resp.text[:500]}")
+        submitters = s_resp.json()
 
     submission_id = submitters[0]["submission_id"] if submitters else None
     return {
