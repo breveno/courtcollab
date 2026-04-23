@@ -1506,16 +1506,15 @@ function _renderContractSection(containerId, contractDeals, payments) {
     </div>`;
 }
 
-/** Open contract fullscreen — SignWell PDF with signing fields if available, styled HTML fallback. */
+/** Open the contract modal and load the DocuSeal signing link. */
 async function viewSignWellContract(dealId) {
   const modal   = document.getElementById('contract-signing-modal');
   const loading = document.getElementById('contract-signing-loading');
-  const frame   = document.getElementById('contract-signing-frame');
+  const signBtn = document.getElementById('contract-sign-btn');
   if (!modal) return;
 
-  frame.classList.add('hidden');
-  frame.src = 'about:blank';
   loading.classList.remove('hidden');
+  if (signBtn) signBtn.classList.add('hidden');
   modal.classList.remove('hidden');
   _contractDealId = dealId;
   const regenBtn = document.getElementById('contract-regen-btn');
@@ -1526,31 +1525,27 @@ async function viewSignWellContract(dealId) {
 
 async function regenerateContract(dealId) {
   const loading = document.getElementById('contract-signing-loading');
-  const frame   = document.getElementById('contract-signing-frame');
-  frame.classList.add('hidden');
-  frame.src = 'about:blank';
-  loading.classList.remove('hidden');
+  const signBtn = document.getElementById('contract-sign-btn');
+  if (signBtn) signBtn.classList.add('hidden');
+  if (loading) loading.classList.remove('hidden');
 
   try {
     await apiPost(`/api/deals/${dealId}/regenerate-contract`, {});
-    showToast('Regenerating contract — this takes about 15 seconds…', 'default');
+    showToast('Regenerating contract — please wait…', 'default');
     await _pollForSigningUrl(dealId, 30);
   } catch (e) {
     showToast('Could not regenerate: ' + (e.message || 'unknown error'), 'error');
-    const loading2 = document.getElementById('contract-signing-loading');
-    if (loading2) loading2.classList.add('hidden');
+    if (loading) loading.classList.add('hidden');
   }
 }
 
 async function _loadSigningUrl(dealId) {
   const loading = document.getElementById('contract-signing-loading');
-  const frame   = document.getElementById('contract-signing-frame');
   try {
     const data = await apiGet(`/api/deals/${dealId}/my-signing-url`);
     if (!data.signing_url) throw new Error('no_url');
-    _showContractFrame(data.signing_url);
+    _showSignButton(data.signing_url);
   } catch (err) {
-    // No contract yet — trigger generation once and poll
     const status = await apiGet(`/api/deals/${dealId}/contract-status`).catch(() => null);
     if (status && !status.contract_document_id) {
       await apiPost(`/api/deals/${dealId}/regenerate-contract`, {}).catch(() => {});
@@ -1570,38 +1565,32 @@ async function _pollForSigningUrl(dealId, maxSeconds) {
     await new Promise(r => setTimeout(r, 3000));
     try {
       const data = await apiGet(`/api/deals/${dealId}/my-signing-url`, { silent: true });
-      if (data.signing_url) { _showContractFrame(data.signing_url); return; }
+      if (data.signing_url) { _showSignButton(data.signing_url); return; }
     } catch (_) {}
   }
   if (loading) loading.classList.add('hidden');
   showToast('Contract is taking longer than expected. Try reopening in a moment.', 'error');
 }
 
-function _showContractFrame(url) {
+function _showSignButton(url) {
   const loading = document.getElementById('contract-signing-loading');
-  const frame   = document.getElementById('contract-signing-frame');
-  const regenBtn = document.getElementById('contract-regen-btn');
-  if (!frame) return;
-  frame.src = url;
-  const reveal = () => {
-    if (loading) loading.classList.add('hidden');
-    frame.classList.remove('hidden');
-    if (regenBtn) regenBtn.classList.remove('hidden');
-  };
-  frame.onload = reveal;
-  setTimeout(reveal, 4000);
+  const signBtn = document.getElementById('contract-sign-btn');
+  if (loading) loading.classList.add('hidden');
+  if (signBtn) {
+    signBtn.href = url;
+    signBtn.classList.remove('hidden');
+  }
 }
 
 function closeContractSigning() {
   const modal    = document.getElementById('contract-signing-modal');
-  const frame    = document.getElementById('contract-signing-frame');
+  const signBtn  = document.getElementById('contract-sign-btn');
   const regenBtn = document.getElementById('contract-regen-btn');
-  if (modal) modal.classList.add('hidden');
-  if (frame) { frame.src = 'about:blank'; frame.srcdoc = ''; }
+  if (modal)    modal.classList.add('hidden');
+  if (signBtn)  signBtn.classList.add('hidden');
   if (regenBtn) regenBtn.classList.add('hidden');
 }
 
-/** @deprecated use viewSignWellContract */
 async function openContractSigningTab(dealId) {
   viewSignWellContract(dealId);
 }

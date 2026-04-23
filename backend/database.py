@@ -482,6 +482,10 @@ def _init_pg():
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS last_reminder_sent TEXT")
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS needs_review       INTEGER DEFAULT 0")
 
+        # DocuSeal submitter slugs (used to build embedded signing URLs)
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS docuseal_creator_slug TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS docuseal_brand_slug   TEXT")
+
         # Allow 'draft' status on campaigns (constraint originally only had open/paused/closed)
         conn.execute("ALTER TABLE campaigns DROP CONSTRAINT IF EXISTS campaigns_status_check")
         conn.execute("""

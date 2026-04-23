@@ -4031,12 +4031,12 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div>
   </div>
 
-  <!-- SignWell contract signing fullscreen modal -->
+  <!-- Contract signing modal (DocuSeal — opens in new tab) -->
   <div id="contract-signing-modal" class="hidden fixed inset-0 z-50 flex flex-col bg-white">
     <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-white shadow-sm flex-shrink-0">
       <div class="flex items-center gap-2">
         <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        <span class="font-semibold text-gray-800 text-sm">View Contract</span>
+        <span class="font-semibold text-gray-800 text-sm">Sign Contract</span>
       </div>
       <div class="flex items-center gap-2">
         <button id="contract-regen-btn" onclick="regenerateContract(_contractDealId)" class="hidden text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition flex items-center gap-1">
@@ -4052,7 +4052,18 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
       <div class="w-10 h-10 border-4 border-lime-400 border-t-transparent rounded-full animate-spin"></div>
       <p class="text-sm text-gray-500">Loading contract…</p>
     </div>
-    <iframe id="contract-signing-frame" class="hidden flex-1 w-full border-none" src="about:blank"></iframe>
+    <div class="flex-1 flex flex-col items-center justify-center gap-6 px-6">
+      <div class="text-center max-w-sm">
+        <svg class="w-16 h-16 text-lime-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Your contract is ready</h3>
+        <p class="text-sm text-gray-500 mb-6">Click the button below to open your contract in a new tab and sign it. Return here once you're done.</p>
+        <a id="contract-sign-btn" href="#" target="_blank" rel="noopener"
+          class="hidden inline-flex items-center gap-2 bg-[#C8F135] text-gray-900 px-6 py-3 rounded-xl font-bold text-sm hover:bg-lime-400 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          Open Contract to Sign
+        </a>
+      </div>
+    </div>
   </div>
 
   <!-- Contract preview fullscreen modal -->
@@ -4071,6 +4082,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
   </div>
 
   <script src="contractTemplate.js?v=1"></script>
-  <script src="app.js?v=226"></script>
+  <script src="app.js?v=227"></script>
 </body>
 </html>

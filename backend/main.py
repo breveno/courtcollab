@@ -2324,58 +2324,52 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
             )
             conn.commit()
 
-        # Build PDF and send via SignWell
-        pdf_bytes, sig_page = _build_contract_pdf(
+        # Build PDF and send via DocuSeal
+        pdf_bytes, _sig_page = _build_contract_pdf(
             full_deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
         )
-        pdf_b64   = _base64.b64encode(pdf_bytes).decode("ascii")
-        signers   = _get_contract_signers(full_deal, brand_profile or {})
+        pdf_b64       = _base64.b64encode(pdf_bytes).decode("ascii")
         brand_company = (brand_profile or {}).get("company_name") or full_deal.get("brand_name", "Brand")
         creator_name  = full_deal.get("creator_name", "Creator")
-        doc_name  = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
+        doc_name      = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
 
-        # fields: 2D array, outer = per file (one file), inner = all fields for that file.
-        # recipient_id on each field links it to a recipient. page is 0-indexed.
-        sp = sig_page - 1
-        sig_fields = [
-            [   # file 0 — all fields for both recipients
-                {"api_id": "creator_sig",      "type": "signature", "recipient_id": "1", "page": sp, "x": 57,  "y": 159, "width": 227, "height": 43, "required": True},
-                {"api_id": "creator_date",     "type": "date",      "recipient_id": "1", "page": sp, "x": 326, "y": 159, "width": 213, "height": 43, "required": True},
-                {"api_id": "creator_initials", "type": "initials",  "recipient_id": "1", "page": sp, "x": 57,  "y": 215, "width": 99,  "height": 43, "required": True},
-                {"api_id": "brand_sig",        "type": "signature", "recipient_id": "2", "page": sp, "x": 57,  "y": 309, "width": 227, "height": 43, "required": True},
-                {"api_id": "brand_date",       "type": "date",      "recipient_id": "2", "page": sp, "x": 326, "y": 309, "width": 213, "height": 43, "required": True},
-                {"api_id": "brand_initials",   "type": "initials",  "recipient_id": "2", "page": sp, "x": 57,  "y": 366, "width": 99,  "height": 43, "required": True},
-            ]
-        ]
-        sw_doc = await sw.create_document(
-            name    = doc_name,
-            subject = f"Please sign: {doc_name}",
-            message = (
-                f"Hi,\n\nPlease review and sign the brand deal agreement for "
-                f"\"{full_deal.get('campaign_title', 'your campaign')}\" on CourtCollab.\n\n"
-                f"Deal amount: ${full_deal.get('amount', 0):,}\n\n"
-                f"— The CourtCollab Team"
-            ),
-            signers       = signers,
-            file_base64   = [{"data": pdf_b64, "name": f"courtcollab_deal_{deal_id}.pdf"}],
-            fields        = sig_fields,
-            send_in_order = True,
+        # Creator signs first (index 0), brand countersigns (index 1)
+        result = await ds.create_submission(
+            name       = doc_name,
+            signers    = [
+                {"name": creator_name,  "email": full_deal["creator_email"], "role": "Creator"},
+                {"name": brand_company, "email": full_deal["brand_email"],   "role": "Brand"},
+            ],
+            file_base64 = pdf_b64,
+            file_name   = f"courtcollab_deal_{deal_id}.pdf",
         )
-        logging.info("SignWell create_document response for deal #%s: %s", deal_id, sw_doc)
-        sw_doc_id = sw_doc.get("id", "")
-        if sw_doc_id:
+        logging.info("DocuSeal create_submission response for deal #%s: %s", deal_id, result)
+
+        submission_id = str(result["submission_id"]) if result.get("submission_id") else ""
+        creator_slug  = ""
+        brand_slug    = ""
+        for s in result.get("submitters", []):
+            email = (s.get("email") or "").lower()
+            if email == full_deal["creator_email"].lower():
+                creator_slug = s.get("slug", "")
+            elif email == full_deal["brand_email"].lower():
+                brand_slug = s.get("slug", "")
+
+        if submission_id:
             with get_conn() as conn:
                 conn.execute(
                     """UPDATE deals
-                       SET contract_document_id = ?,
-                           contract_status      = 'contract_sent',
-                           contract_sent_at     = datetime('now'),
-                           updated_at           = datetime('now')
+                       SET contract_document_id  = ?,
+                           docuseal_creator_slug = ?,
+                           docuseal_brand_slug   = ?,
+                           contract_status       = 'contract_sent',
+                           contract_sent_at      = datetime('now'),
+                           updated_at            = datetime('now')
                        WHERE id = ?""",
-                    (sw_doc_id, deal_id),
+                    (submission_id, creator_slug, brand_slug, deal_id),
                 )
                 conn.commit()
-            logging.info("Contract triggered for deal #%s — doc %s", deal_id, sw_doc_id)
+            logging.info("Contract triggered for deal #%s — submission %s", deal_id, submission_id)
 
     except Exception as exc:
         logging.warning("_trigger_contract_for_deal failed for deal #%s: %s", deal_id, exc, exc_info=True)
@@ -2777,6 +2771,8 @@ async def regenerate_contract(deal_id: int, user: dict = Depends(current_user)):
         conn.execute("""
             UPDATE deals
                SET contract_document_id  = NULL,
+                   docuseal_creator_slug = NULL,
+                   docuseal_brand_slug   = NULL,
                    contract_status       = NULL,
                    contract_sent_at      = NULL,
                    brand_signed          = 0,
@@ -4581,7 +4577,7 @@ def get_saved_creators(user: dict = Depends(current_user)):
 # ---------------------------------------------------------------------------
 # SignWell — contract signing
 # ---------------------------------------------------------------------------
-import signwell as sw
+import docuseal as ds
 
 @app.post("/api/contracts/send", status_code=201)
 async def send_contract(payload: dict, user: dict = Depends(current_user)):
@@ -5342,13 +5338,12 @@ def get_signed_contracts(user: dict = Depends(current_user)):
 
 @app.get("/api/deals/{deal_id}/my-signing-url")
 async def get_my_signing_url(deal_id: int, user: dict = Depends(current_user)):
-    """
-    Return the embedded SignWell signing URL for the current user.
-    Brand is always recipient "1"; creator is always recipient "2".
-    """
+    """Return the DocuSeal signing URL for the current user."""
     with get_conn() as conn:
         deal = _row(conn,
-            "SELECT id, brand_id, creator_id, contract_document_id FROM deals WHERE id = ?",
+            """SELECT id, brand_id, creator_id, contract_document_id,
+                      docuseal_creator_slug, docuseal_brand_slug
+               FROM deals WHERE id = ?""",
             (deal_id,))
 
     if not deal:
@@ -5356,20 +5351,16 @@ async def get_my_signing_url(deal_id: int, user: dict = Depends(current_user)):
     if user["id"] not in (deal["brand_id"], deal["creator_id"]):
         raise HTTPException(403, "Not your deal")
 
-    doc_id = deal.get("contract_document_id", "")
-    if not doc_id:
+    if not deal.get("contract_document_id"):
         raise HTTPException(404, "No contract document found for this deal")
 
-    # Creator = recipient "1" (signs first), Brand = recipient "2" (countersigns)
-    recipient_id = "1" if user["id"] == deal["creator_id"] else "2"
+    is_creator = user["id"] == deal["creator_id"]
+    slug = deal.get("docuseal_creator_slug") if is_creator else deal.get("docuseal_brand_slug")
 
-    try:
-        url = await sw.get_embedded_signing_url(doc_id, recipient_id)
-        if not url:
-            raise HTTPException(404, "Signing URL not available — document may already be signed or expired")
-        return {"signing_url": url, "recipient_id": recipient_id}
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    if not slug:
+        raise HTTPException(404, "Signing URL not available")
+
+    return {"signing_url": ds.signing_url(slug)}
 
 
 @app.post("/api/contracts/deals/{deal_id}/create", status_code=201)

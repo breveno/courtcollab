@@ -1,12 +1,11 @@
 """
-contractPoller.py — SignWell document status poller for CourtCollab
+contractPoller.py — DocuSeal submission status poller for CourtCollab
 
 Runs as a background asyncio task every 10 minutes.
-Replaces the need for a SignWell webhook (which requires a paid plan).
 
 Flow:
   1. Query deals with status='contract_sent' that have a contract_document_id
-  2. Call SignWell GET /documents/{id} to check per-recipient signing status
+  2. Call DocuSeal GET /submissions/{id} to check per-submitter signing status
   3. Update brand_signed / creator_signed + timestamps as each party signs
   4. When both signed → contract_complete + save completed PDF URL + send emails
 
@@ -24,7 +23,7 @@ from email.mime.text import MIMEText
 
 import httpx
 
-SIGNWELL_BASE_URL     = "https://www.signwell.com/api/v1"
+DOCUSEAL_BASE_URL     = "https://api.docuseal.com"
 POLL_INTERVAL_SECONDS = 600   # 10 minutes
 STORAGE_BUCKET        = "signed-contracts"
 
@@ -33,11 +32,11 @@ STORAGE_BUCKET        = "signed-contracts"
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _signwell_headers() -> dict:
-    api_key = os.environ.get("SIGNWELL_API_KEY", "")
+def _docuseal_headers() -> dict:
+    api_key = os.environ.get("DOCUSEAL_API_KEY", "")
     if not api_key:
-        raise RuntimeError("SIGNWELL_API_KEY is not set")
-    return {"X-Api-Token": api_key, "Content-Type": "application/json"}
+        raise RuntimeError("DOCUSEAL_API_KEY is not set")
+    return {"X-Auth-Token": api_key, "Content-Type": "application/json"}
 
 
 def _now_utc() -> str:
@@ -210,61 +209,64 @@ async def poll_contract_statuses(get_conn) -> None:
 
 
 async def _check_one_deal(deal, client: httpx.AsyncClient, get_conn) -> None:
-    """Fetch the SignWell document status for a single deal and update the DB."""
-    deal_id     = deal["id"]
-    doc_id      = deal["contract_document_id"]
-    brand_email = (deal["brand_email"]   or "").lower().strip()
-    creator_email=(deal["creator_email"] or "").lower().strip()
+    """Fetch the DocuSeal submission status for a single deal and update the DB."""
+    deal_id       = deal["id"]
+    submission_id = deal["contract_document_id"]
+    brand_email   = (deal["brand_email"]   or "").lower().strip()
+    creator_email = (deal["creator_email"] or "").lower().strip()
 
-    # 2. Call SignWell API
     try:
-        headers = _signwell_headers()
+        headers = _docuseal_headers()
     except RuntimeError as exc:
         logging.error("[POLLER] %s", exc)
         return
 
     try:
         resp = await client.get(
-            f"{SIGNWELL_BASE_URL}/documents/{doc_id}",
+            f"{DOCUSEAL_BASE_URL}/submissions/{submission_id}",
             headers=headers,
         )
         resp.raise_for_status()
-        doc = resp.json()
+        submission = resp.json()
     except httpx.HTTPStatusError as exc:
-        logging.warning("[POLLER] SignWell %s for deal #%s doc %s", exc.response.status_code, deal_id, doc_id)
+        logging.warning("[POLLER] DocuSeal %s for deal #%s submission %s",
+                        exc.response.status_code, deal_id, submission_id)
         return
     except Exception as exc:
         logging.warning("[POLLER] Request error for deal #%s: %s", deal_id, exc)
         return
 
-    recipients    = doc.get("recipients") or []
-    doc_status    = doc.get("status", "")
-    completed_url = doc.get("completed_pdf_url") or ""
+    submitters  = submission.get("submitters") or []
+    doc_status  = submission.get("status", "")
+
+    # Completed PDF URL — DocuSeal puts it in documents[0].url or combined_document_url
+    completed_url = submission.get("combined_document_url", "")
+    if not completed_url:
+        docs = submission.get("documents") or []
+        if docs:
+            completed_url = docs[0].get("url", "")
 
     brand_signed   = bool(deal["brand_signed"])
     creator_signed = bool(deal["creator_signed"])
     updates        = {}
 
-    # 3. Check each recipient's signing status
-    for r in recipients:
-        r_email  = (r.get("email") or "").lower().strip()
-        r_status = r.get("status", "")        # "completed" means signed
-        r_signed_at = r.get("signed_at") or _now_utc()
+    for s in submitters:
+        s_email      = (s.get("email") or "").lower().strip()
+        s_status     = s.get("status", "")
+        s_signed_at  = s.get("completed_at") or _now_utc()
 
-        if r_status == "completed":
-            if r_email == brand_email and not brand_signed:
+        if s_status == "completed":
+            if s_email == brand_email and not brand_signed:
                 updates["brand_signed"]    = 1
-                updates["brand_signed_at"] = r_signed_at
+                updates["brand_signed_at"] = s_signed_at
                 brand_signed = True
-                logging.info("[POLLER] Deal #%s — brand signed at %s", deal_id, r_signed_at)
-
-            elif r_email == creator_email and not creator_signed:
+                logging.info("[POLLER] Deal #%s — brand signed at %s", deal_id, s_signed_at)
+            elif s_email == creator_email and not creator_signed:
                 updates["creator_signed"]    = 1
-                updates["creator_signed_at"] = r_signed_at
+                updates["creator_signed_at"] = s_signed_at
                 creator_signed = True
-                logging.info("[POLLER] Deal #%s — creator signed at %s", deal_id, r_signed_at)
+                logging.info("[POLLER] Deal #%s — creator signed at %s", deal_id, s_signed_at)
 
-    # Detect fully signed via document status as fallback
     if doc_status == "completed":
         if not brand_signed:
             updates["brand_signed"]    = 1
