@@ -49,9 +49,8 @@ async def create_submission(
       }
     """
     async with httpx.AsyncClient() as client:
-        # Step 1: create template from the PDF
-        t_resp = await client.post(
-            f"{DOCUSEAL_BASE_URL}/templates",
+        resp = await client.post(
+            f"{DOCUSEAL_BASE_URL}/submissions/pdf",
             headers=_headers(),
             json={
                 "name": name,
@@ -59,20 +58,6 @@ async def create_submission(
                     "name": file_name,
                     "file": f"data:application/pdf;base64,{file_base64}",
                 }],
-            },
-            timeout=60,
-        )
-        if not t_resp.is_success:
-            raise RuntimeError(f"DocuSeal template {t_resp.status_code}: {t_resp.text[:500]}")
-        template_id = t_resp.json()["id"]
-
-        # Step 2: create submission from that template
-        s_resp = await client.post(
-            f"{DOCUSEAL_BASE_URL}/submissions",
-            headers=_headers(),
-            json={
-                "template_id": template_id,
-                "order": "preserved",
                 "send_email": send_email,
                 "submitters": [
                     {
@@ -83,11 +68,11 @@ async def create_submission(
                     for s in signers
                 ],
             },
-            timeout=30,
+            timeout=60,
         )
-        if not s_resp.is_success:
-            raise RuntimeError(f"DocuSeal submission {s_resp.status_code}: {s_resp.text[:500]}")
-        submitters = s_resp.json()
+        if not resp.is_success:
+            raise RuntimeError(f"DocuSeal {resp.status_code}: {resp.text[:500]}")
+        submitters = resp.json()
 
     submission_id = submitters[0]["submission_id"] if submitters else None
     return {
