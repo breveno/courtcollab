@@ -72,9 +72,17 @@ async def create_submission(
         )
         if not resp.is_success:
             raise RuntimeError(f"DocuSeal {resp.status_code}: {resp.text[:500]}")
-        submitters = resp.json()
+        data = resp.json()
 
-    submission_id = submitters[0]["submission_id"] if submitters else None
+    # /submissions/pdf returns {"id": N, "submitters": [...]}
+    if isinstance(data, dict):
+        submission_id = data.get("id")
+        submitters = data.get("submitters", [])
+    else:
+        # fallback: flat list of submitters (older endpoint format)
+        submitters = data
+        submission_id = submitters[0]["submission_id"] if submitters else None
+
     return {
         "submission_id": submission_id,
         "submitters": submitters,
