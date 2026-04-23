@@ -1548,9 +1548,14 @@ async function _loadSigningUrl(dealId) {
   } catch (err) {
     const status = await apiGet(`/api/deals/${dealId}/contract-status`).catch(() => null);
     if (status && !status.contract_document_id) {
-      await apiPost(`/api/deals/${dealId}/regenerate-contract`, {}).catch(() => {});
-      showToast('Generating contract — please wait…', 'default');
-      await _pollForSigningUrl(dealId, 30);
+      try {
+        await apiPost(`/api/deals/${dealId}/regenerate-contract`, {});
+        showToast('Generating contract — please wait…', 'default');
+        await _pollForSigningUrl(dealId, 30);
+      } catch (regenErr) {
+        if (loading) loading.classList.add('hidden');
+        showToast('Contract generation failed: ' + (regenErr.message || 'unknown error'), 'error');
+      }
     } else {
       if (loading) loading.classList.add('hidden');
       showToast('Could not load signing link. Try the Regenerate button.', 'error');
