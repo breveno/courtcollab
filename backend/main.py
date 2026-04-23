@@ -5192,37 +5192,54 @@ async def signwell_auth_debug(user: dict = Depends(current_user)):
 @app.get("/api/debug/signwell-create-test")
 async def signwell_create_test(user: dict = Depends(current_user)):
     """
-    Attempt a real minimal document creation on SignWell and return the full
-    response body — use this to diagnose 401 vs 422 vs plan-limit errors.
+    Try every plausible SignWell auth format against the real documents endpoint
+    and return the status + body for each so we can see which one works.
     """
-    import httpx as _httpx
+    import httpx as _httpx, base64 as _b64, os as _os
+
+    raw = _os.environ.get("SIGNWELL_API_KEY", "")
+
+    # Reconstruct the base64 key from raw secret (in case env var is the decoded secret)
     try:
-        actual_headers = sw._headers()
-        bearer_value = actual_headers.get("Authorization", "")
-    except Exception as e:
-        return {"error": f"_headers() raised: {e}"}
+        decoded = _b64.b64decode(raw + "==").decode("utf-8")
+        secret  = decoded.split(":", 1)[1] if ":" in decoded else raw
+        b64_key = raw if ":" not in decoded else _b64.b64encode(f"access:{secret}".encode()).decode()
+    except Exception:
+        secret  = raw
+        b64_key = _b64.b64encode(f"access:{raw}".encode()).decode()
+
+    formats = {
+        "X-Api-Token raw":        {"X-Api-Token": raw},
+        "X-Api-Token b64":        {"X-Api-Token": b64_key},
+        "Basic b64":              {"Authorization": f"Basic {b64_key}"},
+        "Bearer raw":             {"Authorization": f"Bearer {raw}"},
+        "Bearer secret":          {"Authorization": f"Bearer {secret}"},
+    }
 
     payload = {
         "test_mode": True,
-        "name": "Debug test doc",
-        "subject": "Debug test",
+        "name": "Debug test",
+        "subject": "Debug",
         "message": "Debug",
-        "recipients": [{"id": "1", "name": "Test User", "email": "test@example.com"}],
-        "files": [{"file_url": "https://www.w3.org/WAI/UR/work/pdf/WCAG20.pdf", "name": "test.pdf"}],
+        "recipients": [{"id": "1", "name": "Test", "email": "test@example.com"}],
+        "files": [{"file_url": "https://www.w3.org/WAI/UR/work/pdf/WCAG20.pdf", "name": "t.pdf"}],
     }
 
+    results = {}
     async with _httpx.AsyncClient() as client:
-        r = await client.post(
-            "https://www.signwell.com/api/v1/documents",
-            headers=actual_headers,
-            json=payload,
-            timeout=30,
-        )
+        for label, auth_header in formats.items():
+            r = await client.post(
+                "https://www.signwell.com/api/v1/documents",
+                headers={**auth_header, "Content-Type": "application/json"},
+                json=payload,
+                timeout=15,
+            )
+            results[label] = {"status": r.status_code, "body": r.text[:200]}
 
     return {
-        "bearer_first_20": bearer_value[:27],  # "Bearer " + first 20 chars of secret
-        "status": r.status_code,
-        "body": r.text[:600],
+        "key_first_8": raw[:8],
+        "b64_key_first_8": b64_key[:8],
+        "results": results,
     }
 
 
