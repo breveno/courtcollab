@@ -1573,21 +1573,20 @@ async function _pollForSigningUrl(dealId, maxSeconds) {
 }
 
 function _showSignButton(url) {
-  const loading = document.getElementById('contract-signing-loading');
-  const signBtn = document.getElementById('contract-sign-btn');
+  const loading  = document.getElementById('contract-signing-loading');
+  const content  = document.getElementById('contract-sign-content');
+  const signBtn  = document.getElementById('contract-sign-btn');
   if (loading) loading.classList.add('hidden');
-  if (signBtn) {
-    signBtn.href = url;
-    signBtn.classList.remove('hidden');
-  }
+  if (signBtn) signBtn.href = url;
+  if (content) content.classList.remove('hidden');
 }
 
 function closeContractSigning() {
   const modal    = document.getElementById('contract-signing-modal');
-  const signBtn  = document.getElementById('contract-sign-btn');
+  const content  = document.getElementById('contract-sign-content');
   const regenBtn = document.getElementById('contract-regen-btn');
   if (modal)    modal.classList.add('hidden');
-  if (signBtn)  signBtn.classList.add('hidden');
+  if (content)  content.classList.add('hidden');
   if (regenBtn) regenBtn.classList.add('hidden');
 }
 
