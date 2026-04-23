@@ -4,48 +4,25 @@ All calls go through this module — the API key is read from the
 SIGNWELL_API_KEY environment variable and never hardcoded.
 
 Base URL: https://www.signwell.com/api/v1
-Auth:     Authorization: Bearer <secret>
+Auth:     X-Api-Token header (SignWell's documented format)
 
-SIGNWELL_API_KEY may be stored as:
-  - the raw hex secret:            b66bf7914c1dd2ff133fbdb9db50567b
-  - base64("access:secret"):       YWNjZXNzOmI2NmJmNzkxNGMxZGQyZmYxMzNmYmRiOWRiNTA1Njdi
-Both formats are handled automatically.
+Set SIGNWELL_API_KEY to the exact API key string shown in the SignWell
+dashboard under Settings → API. Do not encode or decode it.
 """
 
 import os
-import base64 as _b64
 import httpx
 
 SIGNWELL_BASE_URL = "https://www.signwell.com/api/v1"
 SIGNWELL_TEST_MODE = os.environ.get("SIGNWELL_TEST_MODE", "true").lower() == "true"
 
 
-def _extract_secret(raw: str) -> str:
-    """
-    Accept either the raw secret or a base64-encoded 'access:secret' pair.
-    Returns just the secret portion for use in the Bearer token.
-    """
-    # If it contains a colon it's already decoded (access:secret form)
-    if ":" in raw:
-        return raw.split(":", 1)[1]
-    # Try base64-decoding; if it yields 'access:secret', extract the secret
-    try:
-        decoded = _b64.b64decode(raw + "==").decode("utf-8")
-        if ":" in decoded:
-            return decoded.split(":", 1)[1]
-    except Exception:
-        pass
-    # Already the raw secret
-    return raw
-
-
 def _headers() -> dict:
-    raw_key = os.environ.get("SIGNWELL_API_KEY", "")
-    if not raw_key:
+    api_key = os.environ.get("SIGNWELL_API_KEY", "")
+    if not api_key:
         raise RuntimeError("SIGNWELL_API_KEY environment variable is not set")
-    secret = _extract_secret(raw_key)
     return {
-        "Authorization": f"Bearer {secret}",
+        "X-Api-Token": api_key,
         "Content-Type": "application/json",
     }
 
