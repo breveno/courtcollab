@@ -2314,7 +2314,7 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
             conn.commit()
 
         # Build PDF and send via DocuSeal
-        pdf_bytes, _sig_page = _build_contract_pdf(
+        pdf_bytes, sig_page = _build_contract_pdf(
             full_deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
         )
         pdf_b64       = _base64.b64encode(pdf_bytes).decode("ascii")
@@ -2322,15 +2322,29 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         creator_name  = full_deal.get("creator_name", "Creator")
         doc_name      = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
 
+        # Signature field coordinates on the sig page (A4: 210x297mm, values are 0-1 ratios).
+        # Positions derived from _sig_block layout: creator block ~y=54mm, brand ~y=107mm.
+        sig_fields = [
+            {"name": "Creator Signature", "role": "Creator", "type": "signature",
+             "areas": [{"x": 0.095, "y": 0.182, "w": 0.381, "h": 0.080, "page": sig_page}]},
+            {"name": "Creator Date",      "role": "Creator", "type": "date",
+             "areas": [{"x": 0.548, "y": 0.182, "w": 0.357, "h": 0.040, "page": sig_page}]},
+            {"name": "Brand Signature",   "role": "Brand",   "type": "signature",
+             "areas": [{"x": 0.095, "y": 0.360, "w": 0.381, "h": 0.080, "page": sig_page}]},
+            {"name": "Brand Date",        "role": "Brand",   "type": "date",
+             "areas": [{"x": 0.548, "y": 0.360, "w": 0.357, "h": 0.040, "page": sig_page}]},
+        ]
+
         # Creator signs first (index 0), brand countersigns (index 1)
         result = await ds.create_submission(
-            name       = doc_name,
-            signers    = [
+            name        = doc_name,
+            signers     = [
                 {"name": creator_name,  "email": full_deal["creator_email"], "role": "Creator"},
                 {"name": brand_company, "email": full_deal["brand_email"],   "role": "Brand"},
             ],
             file_base64 = pdf_b64,
             file_name   = f"courtcollab_deal_{deal_id}.pdf",
+            fields      = sig_fields,
         )
         logging.info("DocuSeal create_submission response for deal #%s: %s", deal_id, result)
 

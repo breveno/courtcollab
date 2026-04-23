@@ -31,6 +31,7 @@ async def create_submission(
     file_base64: str,      # raw base64, no data-URI prefix
     file_name: str = "contract.pdf",
     send_email: bool = False,
+    fields: list[dict] | None = None,  # DocuSeal field definitions with areas/coordinates
 ) -> dict:
     """
     Create a signing request (submission) from a PDF.
@@ -57,6 +58,7 @@ async def create_submission(
                 "documents": [{
                     "name": file_name,
                     "file": f"data:application/pdf;base64,{file_base64}",
+                    **({"fields": fields} if fields else {}),
                 }],
                 "send_email": send_email,
                 "submitters": [
