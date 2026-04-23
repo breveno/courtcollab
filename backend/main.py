@@ -1984,11 +1984,17 @@ def _build_contract_pdf(
     logo_path = _os.path.join(_os.path.dirname(__file__), "logo-transparent.png")
     LOGO_H = 24  # mm tall
     if _os.path.exists(logo_path):
-        # Render at h=LOGO_H; fpdf2 returns ImageInfo with .displayed_width
-        info = pdf.image(logo_path, x=0, y=-9999, h=LOGO_H)  # off-page first call to get dims
-        logo_w = info.displayed_width
+        # Read PNG dimensions from header bytes (no Pillow needed)
+        import struct as _struct
+        with open(logo_path, "rb") as _f:
+            _f.read(8)   # PNG signature
+            _f.read(4)   # IHDR chunk length
+            _f.read(4)   # "IHDR"
+            _px_w = _struct.unpack(">I", _f.read(4))[0]
+            _px_h = _struct.unpack(">I", _f.read(4))[0]
+        logo_w = LOGO_H * _px_w / _px_h
         logo_x = (210 - logo_w) / 2
-        logo_y = (HERO_H - LOGO_H) / 2 - 4  # shift up to leave room for subtitle
+        logo_y = (HERO_H - LOGO_H) / 2 - 4  # shift up slightly for subtitle
         pdf.image(logo_path, x=logo_x, y=logo_y, h=LOGO_H)
     else:
         # Fallback text wordmark if logo file missing
