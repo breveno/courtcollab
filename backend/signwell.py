@@ -15,13 +15,19 @@ SIGNWELL_TEST_MODE = os.environ.get("SIGNWELL_TEST_MODE", "true").lower() == "tr
 
 
 def _headers() -> dict:
+    import base64 as _b64
     api_key = os.environ.get("SIGNWELL_API_KEY", "")
     if not api_key:
         raise RuntimeError("SIGNWELL_API_KEY environment variable is not set")
-    # SignWell uses HTTP Basic Auth — the key shown in their UI is already
-    # base64-encoded "access:<secret>", so pass it as Authorization: Basic <key>
+    # The key in SignWell's UI is base64("access:<secret>").
+    # SignWell expects: Authorization: Bearer <secret>
+    try:
+        decoded = _b64.b64decode(api_key + "==").decode("utf-8")
+        secret = decoded.split(":", 1)[1] if ":" in decoded else api_key
+    except Exception:
+        secret = api_key
     return {
-        "Authorization": f"Basic {api_key}",
+        "Authorization": f"Bearer {secret}",
         "Content-Type": "application/json",
     }
 
