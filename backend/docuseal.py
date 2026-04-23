@@ -72,7 +72,10 @@ async def create_submission(
             json=payload,
             timeout=30,
         )
-        resp.raise_for_status()
+        if not resp.is_success:
+            raise RuntimeError(
+                f"DocuSeal {resp.status_code}: {resp.text[:500]}"
+            )
         submitters = resp.json()   # list of submitter objects
 
     submission_id = submitters[0]["submission_id"] if submitters else None
