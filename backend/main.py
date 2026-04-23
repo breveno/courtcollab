@@ -1971,7 +1971,7 @@ def _build_contract_pdf(
     pdf.add_page()
 
     # ── Hero header — full-bleed navy block ───────────────────────────
-    HERO_H = 46  # mm tall
+    HERO_H = 52  # mm tall
 
     pdf.set_fill_color(*NAVY)
     pdf.rect(0, 0, 210, HERO_H, "F")
@@ -1980,45 +1980,28 @@ def _build_contract_pdf(
     pdf.set_fill_color(*LIME)
     pdf.rect(0, HERO_H, 210, 2, "F")
 
-    # Logo image (paddles PNG, transparent → composited onto navy)
-    logo_path = _os.path.join(_os.path.dirname(__file__), "logo-paddles.png")
-    LOGO_H    = 24   # mm
-    LOGO_W    = LOGO_H * (382 / 366)   # maintain aspect ratio ≈ 25 mm
-
-    # "Court" + "Collab" wordmark width estimate at 26pt Helvetica Bold
-    pdf.set_font("Helvetica", "B", 26)
-    court_w  = pdf.get_string_width("Court")
-    collab_w = pdf.get_string_width("Collab")
-    word_w   = court_w + collab_w
-    GAP      = 4   # mm between logo and text
-
-    GROUP_W  = LOGO_W + GAP + word_w
-    group_x  = (210 - GROUP_W) / 2   # center the logo+wordmark group
-    logo_y   = (HERO_H - LOGO_H) / 2
-
+    # Logo centered in the blue block
+    logo_path = _os.path.join(_os.path.dirname(__file__), "logo-transparent.png")
+    LOGO_H = 24  # mm tall
     if _os.path.exists(logo_path):
-        pdf.image(logo_path, x=group_x, y=logo_y, h=LOGO_H)
+        # Render at h=LOGO_H; fpdf2 returns ImageInfo with .displayed_width
+        info = pdf.image(logo_path, x=0, y=-9999, h=LOGO_H)  # off-page first call to get dims
+        logo_w = info.displayed_width
+        logo_x = (210 - logo_w) / 2
+        logo_y = (HERO_H - LOGO_H) / 2 - 4  # shift up to leave room for subtitle
+        pdf.image(logo_path, x=logo_x, y=logo_y, h=LOGO_H)
+    else:
+        # Fallback text wordmark if logo file missing
+        pdf.set_font("Helvetica", "B", 26)
+        pdf.set_text_color(*LIME)
+        pdf.set_xy(0, (HERO_H - 10) / 2 - 4)
+        pdf.cell(210, 10, "CourtCollab", align="C")
 
-    # Wordmark — vertically centered, sitting beside logo
-    text_x = group_x + LOGO_W + GAP
-    text_y = logo_y + (LOGO_H - 10) / 2   # 10 mm ≈ cap-height at 26pt
-
-    pdf.set_font("Helvetica", "B", 26)
+    # Subtitle centered below logo
+    pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(*LIME)
-    pdf.set_xy(text_x, text_y)
-    pdf.cell(court_w, 10, "Court", ln=False)
-
-    pdf.set_text_color(*WHITE)
-    pdf.set_xy(text_x + court_w, text_y)
-    pdf.cell(collab_w, 10, "Collab", ln=False)
-
-    # Subtitle beneath wordmark
-    pdf.set_font("Helvetica", "", 8)
-    pdf.set_text_color(*GRAY)
-    sub = "Creator & Brand Collaboration Agreement  |  courtcollab.com"
-    sub_w = pdf.get_string_width(sub)
-    pdf.set_xy(text_x, text_y + 11)
-    pdf.cell(sub_w, 5, sub, ln=False)
+    pdf.set_xy(0, HERO_H - 12)
+    pdf.cell(210, 5, "Creator & Brand Collaboration Agreement", align="C")
 
     # ── Meta info row (date / agreement ID) ──────────────────────────
     pdf.set_margins(left=20, top=0, right=20)
