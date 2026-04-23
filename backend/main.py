@@ -5210,6 +5210,7 @@ async def signwell_create_test(user: dict = Depends(current_user)):
 
     formats = {
         "X-Api-Token raw":        {"X-Api-Token": raw},
+        "X-Api-Token secret":     {"X-Api-Token": secret},
         "X-Api-Token b64":        {"X-Api-Token": b64_key},
         "Basic b64":              {"Authorization": f"Basic {b64_key}"},
         "Bearer raw":             {"Authorization": f"Bearer {raw}"},
@@ -5238,7 +5239,9 @@ async def signwell_create_test(user: dict = Depends(current_user)):
 
     return {
         "key_first_8": raw[:8],
-        "b64_key_first_8": b64_key[:8],
+        "key_last_4": raw[-4:],
+        "key_length": len(raw),
+        "secret_first_8": secret[:8],
         "results": results,
     }
 
