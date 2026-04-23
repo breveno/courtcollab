@@ -5337,11 +5337,11 @@ async def get_my_signing_url(deal_id: int, user: dict = Depends(current_user)):
     if user["id"] not in (deal["brand_id"], deal["creator_id"]):
         raise HTTPException(403, "Not your deal")
 
-    if not deal.get("contract_document_id"):
-        raise HTTPException(404, "No contract document found for this deal")
-
     is_creator = user["id"] == deal["creator_id"]
     slug = deal.get("docuseal_creator_slug") if is_creator else deal.get("docuseal_brand_slug")
+
+    if not slug and not deal.get("contract_document_id"):
+        raise HTTPException(404, "No contract document found for this deal")
 
     if not slug:
         raise HTTPException(404, "Signing URL not available")
