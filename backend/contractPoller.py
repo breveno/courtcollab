@@ -160,6 +160,59 @@ def _send_contract_complete_email(
         logging.warning("[POLLER] Email failed for %s: %s", to_email, exc)
 
 
+def _send_brand_turn_to_sign_email(
+    brand_name: str,
+    brand_email: str,
+    creator_name: str,
+    deal_id: int,
+) -> None:
+    """Notify the brand that the creator has signed and it's their turn."""
+    host   = os.environ.get("SMTP_HOST",  "smtp.zoho.com")
+    port   = int(os.environ.get("SMTP_PORT", "587"))
+    user   = os.environ.get("SMTP_USER",  "")
+    passwd = os.environ.get("SMTP_PASS",  "")
+    sender = os.environ.get("FROM_EMAIL", user) or user
+
+    if not user or not passwd:
+        logging.warning("[POLLER] SMTP not configured — skipping brand sign email to %s", brand_email)
+        return
+
+    body = (
+        f"Hi {brand_name},\n\n"
+        f"{creator_name} has signed your CourtCollab deal contract. "
+        f"It's now your turn to countersign to make it official.\n\n"
+        f"  Deal ID : #{deal_id}\n"
+        f"  Creator : {creator_name}\n\n"
+        f"Log in to CourtCollab and open your deal to sign the contract:\n"
+        f"https://courtcollab.com\n\n"
+        f"— The CourtCollab Team\n"
+        f"courtcollab.com\n"
+    )
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Action Required: {creator_name} has signed — your countersignature is needed"
+        msg["From"]    = f"CourtCollab <{sender}>"
+        msg["To"]      = brand_email
+        msg.attach(MIMEText(body, "plain"))
+
+        use_ssl = os.environ.get("SMTP_SSL", "false").lower() == "true" or port == 465
+        if use_ssl:
+            with smtplib.SMTP_SSL(host, port, timeout=15) as srv:
+                srv.login(user, passwd)
+                srv.sendmail(sender, [brand_email], msg.as_string())
+        else:
+            with smtplib.SMTP(host, port, timeout=15) as srv:
+                srv.ehlo()
+                srv.starttls()
+                srv.login(user, passwd)
+                srv.sendmail(sender, [brand_email], msg.as_string())
+
+        logging.info("[POLLER] Brand turn-to-sign email sent to %s for deal #%s", brand_email, deal_id)
+    except Exception as exc:
+        logging.warning("[POLLER] Brand turn-to-sign email failed for %s: %s", brand_email, exc)
+
+
 # ---------------------------------------------------------------------------
 # Core polling logic
 # ---------------------------------------------------------------------------
@@ -181,6 +234,8 @@ async def poll_contract_statuses(get_conn) -> None:
         pending_deals = conn.execute("""
             SELECT d.id,
                    d.contract_document_id,
+                   d.brand_id,
+                   d.creator_id,
                    d.brand_signed,
                    d.creator_signed,
                    ub.name  AS brand_name,
@@ -306,7 +361,36 @@ async def _check_one_deal(deal, client: httpx.AsyncClient, get_conn) -> None:
 
     logging.info("[POLLER] Deal #%s updated: %s", deal_id, list(updates.keys()))
 
-    # 5. Send confirmation emails if contract is now complete
+    # 5a. Creator just signed and brand hasn't yet — notify brand
+    creator_just_signed = "creator_signed" in updates and not deal["brand_signed"]
+    if creator_just_signed and updates.get("contract_status") != "contract_complete":
+        import json as _json
+        brand_display = (deal.get("brand_company") or deal.get("brand_name") or "Brand").strip()
+        creator_name  = (deal.get("creator_name") or "Creator").strip()
+
+        # In-app notification for the brand
+        with get_conn() as conn:
+            conn.execute(
+                "INSERT INTO notifications (user_id, type, title, body, data) VALUES (?,?,?,?,?)",
+                (
+                    deal["brand_id"],
+                    "contract_action_required",
+                    "Contract ready for your signature",
+                    f"{creator_name} has signed the contract — it's your turn to countersign.",
+                    _json.dumps({"deal_id": deal_id}),
+                ),
+            )
+            conn.commit()
+
+        # Email the brand
+        _send_brand_turn_to_sign_email(
+            brand_name   = brand_display,
+            brand_email  = deal["brand_email"],
+            creator_name = creator_name,
+            deal_id      = deal_id,
+        )
+
+    # 5b. Send confirmation emails if contract is now complete
     if updates.get("contract_status") == "contract_complete":
         brand_display = (deal.get("brand_company") or deal.get("brand_name") or "Brand").strip()
         creator_name  = (deal.get("creator_name") or "Creator").strip()
