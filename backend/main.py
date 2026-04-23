@@ -2068,7 +2068,7 @@ def _build_contract_pdf(
     pdf.multi_cell(0, 4, "By signing below each party agrees to be legally bound by the terms of this agreement.")
     pdf.ln(8)
 
-    def _sig_block(label, y_start, recipient_id):
+    def _sig_block(label, y_start):
         pdf.set_y(y_start)
         pdf.set_font("Helvetica", "B", 9)
         pdf.set_text_color(11, 31, 74)
@@ -2077,50 +2077,27 @@ def _build_contract_pdf(
 
         sig_y = pdf.get_y()
 
-        # Drawn guide lines for print / preview
+        # Guide lines
         pdf.set_draw_color(100, 110, 130)
         pdf.set_line_width(0.3)
         pdf.line(20, sig_y + 10, 100, sig_y + 10)
         pdf.line(115, sig_y + 10, 190, sig_y + 10)
 
-        # SignWell text tags — white (invisible on page) but detected by SignWell's parser.
-        # Format: {{field_type:signer_number}} — double curly braces, colon separator.
-        # Types: s=signature, d=date, i=initial
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_font("Helvetica", "", 12)
-        pdf.set_xy(20, sig_y)
-        pdf.cell(80, 12, "{{s:" + str(recipient_id) + "}}")
-        pdf.set_xy(115, sig_y)
-        pdf.cell(75, 12, "{{d:" + str(recipient_id) + "}}")
-
+        # Labels below lines
         pdf.set_font("Helvetica", "", 7)
         pdf.set_text_color(120, 120, 120)
         pdf.set_xy(20, sig_y + 12)
         pdf.cell(80, 4, "Signature")
-        pdf.set_xy(115, pdf.get_y())
+        pdf.set_xy(115, sig_y + 12)
         pdf.cell(75, 4, "Date", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.ln(6)
-
-        # Initials line
-        initials_y = pdf.get_y()
-        pdf.line(20, initials_y + 8, 55, initials_y + 8)
-
-        # Initials text tag
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_font("Helvetica", "", 12)
-        pdf.set_xy(20, initials_y)
-        pdf.cell(35, 10, "{{i:" + str(recipient_id) + "}}")
-
-        pdf.set_font("Helvetica", "", 7)
-        pdf.set_text_color(120, 120, 120)
-        pdf.set_xy(20, initials_y + 10)
-        pdf.cell(35, 4, "Initials", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.ln(10)
 
-    _sig_block("1.  CREATOR", pdf.get_y(), 1)
-    _sig_block("2.  BRAND REPRESENTATIVE", pdf.get_y(), 2)
+        return sig_y   # caller uses this for DocuSeal field coordinates
 
-    return bytes(pdf.output()), sig_page
+    creator_sig_y = _sig_block("1.  CREATOR", pdf.get_y())
+    brand_sig_y   = _sig_block("2.  BRAND REPRESENTATIVE", pdf.get_y())
+
+    return bytes(pdf.output()), sig_page, creator_sig_y, brand_sig_y
 
 
 def _get_contract_signers(deal: dict, brand_profile: dict) -> list[dict]:
@@ -2314,7 +2291,7 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
             conn.commit()
 
         # Build PDF and send via DocuSeal
-        pdf_bytes, sig_page = _build_contract_pdf(
+        pdf_bytes, sig_page, creator_sig_y, brand_sig_y = _build_contract_pdf(
             full_deal, campaign_row or {}, brand_profile or {}, creator_profile or {}
         )
         pdf_b64       = _base64.b64encode(pdf_bytes).decode("ascii")
@@ -2322,17 +2299,23 @@ async def _trigger_contract_for_deal(deal_id: int) -> None:
         creator_name  = full_deal.get("creator_name", "Creator")
         doc_name      = f"CourtCollab Deal #{deal_id} — {brand_company} × {creator_name}"
 
-        # Signature field coordinates on the sig page (A4: 210x297mm, values are 0-1 ratios).
-        # Positions derived from _sig_block layout: creator block ~y=54mm, brand ~y=107mm.
+        # Field coordinates: place each field so its bottom edge sits exactly on the
+        # guide line (line is drawn at sig_y+10). A4 = 210x297mm; values are 0-1 ratios.
+        PAGE_H = 297.0
+        def _field_area(sig_y, page):
+            return {"x": 0.095, "y": sig_y / PAGE_H, "w": 0.381, "h": 10 / PAGE_H, "page": page}
+        def _date_area(sig_y, page):
+            return {"x": 0.548, "y": sig_y / PAGE_H, "w": 0.357, "h": 10 / PAGE_H, "page": page}
+
         sig_fields = [
             {"name": "Creator Signature", "role": "Creator", "type": "signature",
-             "areas": [{"x": 0.095, "y": 0.182, "w": 0.381, "h": 0.080, "page": sig_page}]},
+             "areas": [_field_area(creator_sig_y, sig_page)]},
             {"name": "Creator Date",      "role": "Creator", "type": "date",
-             "areas": [{"x": 0.548, "y": 0.182, "w": 0.357, "h": 0.040, "page": sig_page}]},
+             "areas": [_date_area(creator_sig_y, sig_page)]},
             {"name": "Brand Signature",   "role": "Brand",   "type": "signature",
-             "areas": [{"x": 0.095, "y": 0.360, "w": 0.381, "h": 0.080, "page": sig_page}]},
+             "areas": [_field_area(brand_sig_y, sig_page)]},
             {"name": "Brand Date",        "role": "Brand",   "type": "date",
-             "areas": [{"x": 0.548, "y": 0.360, "w": 0.357, "h": 0.040, "page": sig_page}]},
+             "areas": [_date_area(brand_sig_y, sig_page)]},
         ]
 
         # Creator signs first (index 0), brand countersigns (index 1)
@@ -5414,7 +5397,7 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
     creator_prof = creator_prof or {}
 
     # ── 2 & 3. Populate template → generate PDF ─────────────────────────
-    pdf_bytes, sig_page = _build_contract_pdf(deal, campaign, brand_prof, creator_prof)
+    pdf_bytes, sig_page, _c_sig_y, _b_sig_y = _build_contract_pdf(deal, campaign, brand_prof, creator_prof)
     pdf_b64    = base64.b64encode(pdf_bytes).decode("ascii")
     doc_name   = f"CourtCollab Deal #{deal_id} — {brand_prof.get('company_name') or deal['brand_name']} × {deal['creator_name']}"
 
