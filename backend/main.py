@@ -5189,6 +5189,43 @@ async def signwell_auth_debug(user: dict = Depends(current_user)):
     return info
 
 
+@app.get("/api/debug/signwell-create-test")
+async def signwell_create_test(user: dict = Depends(current_user)):
+    """
+    Attempt a real minimal document creation on SignWell and return the full
+    response body — use this to diagnose 401 vs 422 vs plan-limit errors.
+    """
+    import httpx as _httpx
+    try:
+        actual_headers = sw._headers()
+        bearer_value = actual_headers.get("Authorization", "")
+    except Exception as e:
+        return {"error": f"_headers() raised: {e}"}
+
+    payload = {
+        "test_mode": True,
+        "name": "Debug test doc",
+        "subject": "Debug test",
+        "message": "Debug",
+        "recipients": [{"id": "1", "name": "Test User", "email": "test@example.com"}],
+        "files": [{"file_url": "https://www.w3.org/WAI/UR/work/pdf/WCAG20.pdf", "name": "test.pdf"}],
+    }
+
+    async with _httpx.AsyncClient() as client:
+        r = await client.post(
+            "https://www.signwell.com/api/v1/documents",
+            headers=actual_headers,
+            json=payload,
+            timeout=30,
+        )
+
+    return {
+        "bearer_first_20": bearer_value[:27],  # "Bearer " + first 20 chars of secret
+        "status": r.status_code,
+        "body": r.text[:600],
+    }
+
+
 @app.get("/api/deals/{deal_id}/signwell-doc")
 async def signwell_doc_debug(deal_id: int, user: dict = Depends(current_user)):
     """Return the raw SignWell document object for debugging field detection."""
