@@ -955,6 +955,7 @@ let state = {
   selectedCreator: null,
   activePartner: null,   // partner user_id for messaging
   currentUser: null,
+  activeCampaignDealId: null,  // deal id open in creator campaign detail page
 };
 
 // Saved creators state (brands only)
@@ -1189,6 +1190,7 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
     if (_compEl) _compEl.innerHTML = '';
     if (page === 'creator-profile') { populateCreatorForm(); }
     if (page === 'creator-dashboard') renderCreatorDashboard();
+    if (page === 'creator-campaign-detail') renderCreatorCampaignDetail();
 
     // Restore scroll position for back/forward navigation
     if (_restoreScrollY !== null) {
@@ -1911,7 +1913,7 @@ async function renderCreatorDashboard() {
         declined:       'bg-red-100 text-red-700',
       }[d.status] || 'bg-gray-100 text-gray-600';
       return `
-        <div class="px-6 py-4 hover:bg-gray-50 transition cursor-pointer" onclick="navigate('messages');setTimeout(()=>openConversation(${d.brand_id}),150)">
+        <div class="px-6 py-4 hover:bg-gray-50 transition cursor-pointer" onclick="openCreatorCampaign(${d.id})">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
@@ -5894,6 +5896,306 @@ async function saveBrandProfileModal() {
   }
 }
 
+// --- Creator Campaign Detail Page ---
+
+function openCreatorCampaign(dealId) {
+  state.activeCampaignDealId = dealId;
+  navigate('creator-campaign-detail');
+}
+
+async function renderCreatorCampaignDetail() {
+  const root = document.getElementById('creator-campaign-detail-root');
+  if (!root) return;
+
+  root.innerHTML = `
+    <button onclick="navigateBack()" class="text-sm text-pickle-600 hover:underline mb-6 flex items-center gap-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      Back
+    </button>
+    <div class="flex flex-col gap-4 animate-pulse">
+      <div class="h-24 bg-white rounded-2xl border border-gray-100"></div>
+      <div class="h-20 bg-white rounded-2xl border border-gray-100"></div>
+      <div class="h-32 bg-white rounded-2xl border border-gray-100"></div>
+    </div>`;
+
+  try {
+    const [deals, payments] = await Promise.all([
+      apiGet('/api/deals'),
+      apiGet('/api/payments').catch(() => []),
+    ]);
+    const deal = deals.find(d => d.id === state.activeCampaignDealId);
+    if (!deal) { root.innerHTML = '<p class="text-red-500 text-sm mt-8 text-center">Campaign not found.</p>'; return; }
+
+    let submissions = [];
+    try { submissions = await apiGet(`/api/deals/${deal.id}/submissions`); } catch (_) {}
+    const latest = submissions[0] || null;
+
+    const payment = payments.find(p => p.deal_id === deal.id);
+    const payout  = payment ? payment.creator_payout : Math.round((deal.amount || 0) * 0.85);
+
+    const statusLabels = { pending:'Proposed', active:'In Progress', completed:'Awaiting Approval',
+      payout_complete:'Complete', declined:'Declined' };
+    const statusColors = { pending:'bg-yellow-100 text-yellow-700', active:'bg-blue-100 text-blue-700',
+      completed:'bg-teal-100 text-teal-700', payout_complete:'bg-green-100 text-green-700',
+      declined:'bg-red-100 text-red-700' };
+
+    // --- Due dates helper ---
+    function _fmtDue(dateStr) {
+      if (!dateStr) return null;
+      const d = new Date(dateStr + 'T00:00:00');
+      const now = new Date(); now.setHours(0,0,0,0);
+      const diff = Math.round((d - now) / 86400000);
+      const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (diff < 0)   return { label, badge: `${Math.abs(diff)}d overdue`, cls: 'text-red-600 bg-red-50 border-red-200' };
+      if (diff === 0) return { label, badge: 'Due today', cls: 'text-amber-700 bg-amber-50 border-amber-200' };
+      if (diff <= 3)  return { label, badge: `${diff}d left`, cls: 'text-amber-600 bg-amber-50 border-amber-200' };
+      return { label, badge: `${diff}d left`, cls: 'text-gray-500 bg-gray-50 border-gray-200' };
+    }
+
+    const firstDue    = _fmtDue(deal.first_draft_due);
+    const revisionDue = _fmtDue(deal.revision_due);
+    const finalDue    = _fmtDue(deal.final_due);
+    const hasDueDates = firstDue || revisionDue || finalDue;
+
+    const dueDatesHtml = hasDueDates ? `
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <h3 class="font-semibold text-gray-900 mb-3 text-sm">Content Deadlines</h3>
+        <div class="space-y-2">
+          ${firstDue    ? `<div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">1st Draft</span>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-full border ${firstDue.cls}">${firstDue.label} · ${firstDue.badge}</span>
+          </div>` : ''}
+          ${revisionDue ? `<div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Revision</span>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-full border ${revisionDue.cls}">${revisionDue.label} · ${revisionDue.badge}</span>
+          </div>` : ''}
+          ${finalDue    ? `<div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Final Delivery</span>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-full border ${finalDue.cls}">${finalDue.label} · ${finalDue.badge}</span>
+          </div>` : ''}
+        </div>
+      </div>` : '';
+
+    // --- Content submission section ---
+    let contentHtml = '';
+    if (deal.status === 'active' || deal.status === 'completed') {
+      if (!latest) {
+        // No submission yet — show submit form
+        contentHtml = `
+          <div class="bg-white rounded-2xl border border-gray-100 p-5">
+            <h3 class="font-semibold text-gray-900 mb-1">Submit Your Content</h3>
+            <p class="text-xs text-gray-400 mb-4">Paste the link(s) to your content below. The brand will be notified to review.</p>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Content URL(s)</label>
+                <textarea id="ccd-urls" rows="3" placeholder="https://www.tiktok.com/…&#10;https://www.instagram.com/…"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Note for brand <span class="text-gray-400 font-normal">(optional)</span></label>
+                <textarea id="ccd-note" rows="2" placeholder="Any context you'd like to share…"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
+              </div>
+              <button id="ccd-submit-btn" onclick="submitContentFromDetail(${deal.id})"
+                class="w-full bg-pickle-700 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-pickle-800 transition">
+                Submit for Review →
+              </button>
+            </div>
+          </div>`;
+      } else if (latest.status === 'pending') {
+        const submittedUrls = (latest.content_url || '').split('\n').map(u => u.trim()).filter(Boolean);
+        contentHtml = `
+          <div class="bg-white rounded-2xl border border-gray-100 p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
+              <h3 class="font-semibold text-gray-900 text-sm">Content Submitted — Awaiting Brand Review</h3>
+            </div>
+            <div class="space-y-1.5 mb-3">
+              ${submittedUrls.map(u => `
+                <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
+                  class="flex items-center gap-1.5 text-pickle-600 hover:underline text-sm break-all">
+                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                  </svg>${escHtml(u)}
+                </a>`).join('')}
+            </div>
+            ${latest.note ? `<div class="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2 mt-2">
+              <span class="font-medium text-gray-700">Your note:</span> ${escHtml(latest.note)}
+            </div>` : ''}
+            <p class="text-xs text-gray-400 mt-3">Submitted ${timeSince(latest.submitted_at)}</p>
+          </div>`;
+      } else if (latest.status === 'rejected') {
+        const submittedUrls = (latest.content_url || '').split('\n').map(u => u.trim()).filter(Boolean);
+        contentHtml = `
+          <div class="bg-white rounded-2xl border border-red-100 p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <h3 class="font-semibold text-red-700 text-sm">Revision Requested</h3>
+            </div>
+            ${latest.feedback ? `<div class="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4">
+              <p class="text-xs font-semibold text-red-700 mb-1">Brand's feedback:</p>
+              <p class="text-sm text-red-800">${escHtml(latest.feedback)}</p>
+            </div>` : ''}
+            <p class="text-xs text-gray-500 mb-3">Previous submission:</p>
+            <div class="space-y-1 mb-4">
+              ${submittedUrls.map(u => `
+                <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
+                  class="flex items-center gap-1.5 text-gray-400 hover:text-pickle-600 hover:underline text-xs break-all line-through">
+                  ${escHtml(u)}
+                </a>`).join('')}
+            </div>
+            <div class="space-y-3 border-t border-gray-100 pt-4">
+              <p class="text-xs font-semibold text-gray-700">Submit revised content:</p>
+              <textarea id="ccd-urls" rows="3" placeholder="https://www.tiktok.com/…"
+                class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
+              <textarea id="ccd-note" rows="2" placeholder="Note for brand (optional)"
+                class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
+              <button id="ccd-submit-btn" onclick="submitContentFromDetail(${deal.id})"
+                class="w-full bg-pickle-700 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-pickle-800 transition">
+                Resubmit for Review →
+              </button>
+            </div>
+          </div>`;
+      } else if (latest.status === 'approved') {
+        const submittedUrls = (latest.content_url || '').split('\n').map(u => u.trim()).filter(Boolean);
+        contentHtml = `
+          <div class="bg-white rounded-2xl border border-green-100 p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <h3 class="font-semibold text-green-700 text-sm">Content Approved</h3>
+            </div>
+            <p class="text-xs text-gray-400 mb-3">The brand approved your content. Payment will be released shortly.</p>
+            <div class="space-y-1.5">
+              ${submittedUrls.map(u => `
+                <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
+                  class="flex items-center gap-1.5 text-pickle-600 hover:underline text-sm break-all">
+                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                  </svg>${escHtml(u)}
+                </a>`).join('')}
+            </div>
+          </div>`;
+      }
+    } else if (deal.status === 'payout_complete') {
+      const submittedUrls = (latest?.content_url || '').split('\n').map(u => u.trim()).filter(Boolean);
+      contentHtml = `
+        <div class="bg-white rounded-2xl border border-green-100 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 class="font-semibold text-green-700 text-sm">Campaign Complete — Payout Released</h3>
+          </div>
+          <p class="text-sm font-bold text-green-800 mb-3">$${payout.toLocaleString()} paid to you</p>
+          ${submittedUrls.length ? `<div class="space-y-1.5">
+            ${submittedUrls.map(u => `
+              <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
+                class="flex items-center gap-1.5 text-pickle-600 hover:underline text-sm break-all">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>${escHtml(u)}
+              </a>`).join('')}
+          </div>` : ''}
+        </div>`;
+    }
+
+    // --- Revision history (past rejected submissions) ---
+    const prevRejected = submissions.filter(s => s.id !== (latest?.id) && s.status === 'rejected');
+    const revisionHistoryHtml = prevRejected.length > 0 ? `
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <h3 class="font-semibold text-gray-900 text-sm mb-3">Revision History</h3>
+        <div class="space-y-2">
+          ${prevRejected.map(s => `
+            <div class="text-xs bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+              <span class="text-red-600 font-medium">Revision requested${s.reviewed_at ? ' ' + timeSince(s.reviewed_at) : ''}</span>
+              ${s.feedback ? ` — <em class="text-gray-500">"${escHtml(s.feedback.slice(0, 150))}"</em>` : ''}
+            </div>`).join('')}
+        </div>
+      </div>` : '';
+
+    root.innerHTML = `
+      <button onclick="navigateBack()" class="text-sm text-pickle-600 hover:underline mb-6 flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back
+      </button>
+
+      <!-- Header -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h1 class="text-lg font-bold text-gray-900 truncate">${escHtml(deal.campaign_title || `Deal #${deal.id}`)}</h1>
+            <p class="text-sm text-gray-500 mt-0.5">${escHtml(deal.brand_company_name || 'Brand')}</p>
+          </div>
+          <div class="text-right shrink-0">
+            <p class="font-bold text-gray-900">$${payout.toLocaleString()}</p>
+            <span class="tag text-xs ${statusColors[deal.status] || 'bg-gray-100 text-gray-600'}">${statusLabels[deal.status] || deal.status}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress stepper -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-4">
+        <h3 class="font-semibold text-gray-900 text-sm mb-4">Campaign Progress</h3>
+        ${dealStepperHtml(deal)}
+      </div>
+
+      <!-- Due dates -->
+      ${hasDueDates ? dueDatesHtml + '<div class="mb-4"></div>' : ''}
+
+      <!-- Content delivery -->
+      <div class="mb-4">${contentHtml}</div>
+
+      <!-- Revision history -->
+      ${revisionHistoryHtml ? revisionHistoryHtml + '<div class="mb-4"></div>' : ''}
+
+      <!-- Message brand -->
+      <div class="bg-white rounded-2xl border border-gray-100 p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-semibold text-gray-900 text-sm">Message Brand</h3>
+            <p class="text-xs text-gray-400 mt-0.5">Have a question? Send a message directly.</p>
+          </div>
+          <button onclick="navigate('messages');setTimeout(()=>openConversation(${deal.brand_id}),150)"
+            class="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-700 transition flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+            Open Chat
+          </button>
+        </div>
+      </div>`;
+
+  } catch (err) {
+    root.innerHTML = `
+      <button onclick="navigateBack()" class="text-sm text-pickle-600 hover:underline mb-6 flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back
+      </button>
+      <p class="text-red-500 text-sm text-center mt-8">Could not load campaign details.</p>`;
+  }
+}
+
+async function submitContentFromDetail(dealId) {
+  const urls = (document.getElementById('ccd-urls')?.value || '').trim();
+  const note = (document.getElementById('ccd-note')?.value || '').trim();
+  if (!urls) { showToast('Please enter at least one content URL', 'error'); return; }
+
+  const btn = document.getElementById('ccd-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+  try {
+    await apiPost(`/api/deals/${dealId}/submit-content`, { content_url: urls, note: note || null });
+    showToast('Content submitted! The brand will be notified to review it.', 'success');
+    state.activeCampaignDealId = dealId;
+    renderCreatorCampaignDetail();
+  } catch (err) {
+    showToast(err.message || 'Could not submit content', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit for Review →'; }
+  }
+}
+
 async function renderCreatorDealHistory() {
   const el = document.getElementById('creator-deal-history');
   if (!el || state.role !== 'creator') return;
@@ -5914,7 +6216,7 @@ async function renderCreatorDealHistory() {
           ${completed.map(d => {
             const payout = Math.round((d.amount || 0) * 0.85);
             return `
-            <div class="px-6 py-4 hover:bg-gray-50 transition cursor-pointer" onclick="navigate('messages');setTimeout(()=>openConversation(${d.brand_id}),150)">
+            <div class="px-6 py-4 hover:bg-gray-50 transition cursor-pointer" onclick="openCreatorCampaign(${d.id})">
               <div class="flex items-center justify-between mb-2">
                 <div class="min-w-0 mr-3">
                   <div class="font-medium text-sm">${escHtml(d.campaign_title || `Deal #${d.id}`)}</div>
