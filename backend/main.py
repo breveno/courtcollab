@@ -4672,6 +4672,19 @@ async def send_contract(payload: dict, user: dict = Depends(current_user)):
         raise HTTPException(status_code=503, detail=str(e))
 
 
+@app.get("/api/contracts/signed")
+def _get_signed_contracts_early(user: dict = Depends(current_user)):
+    """Alias registered before the {document_id} wildcard so the route is not shadowed."""
+    return _get_signed_contracts_impl(user)
+
+@app.get("/api/contracts/templates")
+async def _list_contract_templates_early(user: dict = Depends(current_user)):
+    """Alias registered before the {document_id} wildcard so the route is not shadowed."""
+    try:
+        return await sw.list_templates()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+
 @app.get("/api/contracts/{document_id}")
 async def get_contract(document_id: str, user: dict = Depends(current_user)):
     """Return the current status of a SignWell document."""
@@ -4940,15 +4953,6 @@ async def signwell_webhook_legacy(request: Request):
 
     await _handle_signwell_event(event)
     return {"received": True}
-
-
-@app.get("/api/contracts/templates")
-async def list_contract_templates(user: dict = Depends(current_user)):
-    """List all available SignWell document templates."""
-    try:
-        return await sw.list_templates()
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
 
 
 # ---------------------------------------------------------------------------
@@ -5347,13 +5351,7 @@ async def get_deal_contract_status(deal_id: int, user: dict = Depends(current_us
     return {**dict(deal), "my_role": role}
 
 
-@app.get("/api/contracts/signed")
-def get_signed_contracts(user: dict = Depends(current_user)):
-    """
-    Return all fully-signed contracts where the current user is brand or creator.
-    Includes the permanent Supabase Storage URL (signed_contract_url) and
-    a fallback to contract_completed_url if storage upload wasn't available.
-    """
+def _get_signed_contracts_impl(user: dict):
     with get_conn() as conn:
         rows = conn.execute("""
             SELECT d.id               AS deal_id,
@@ -5382,13 +5380,17 @@ def get_signed_contracts(user: dict = Depends(current_user)):
     results = []
     for r in rows:
         row = dict(r)
-        # Prefer permanent Supabase URL; fall back to SignWell temporary URL
         row["download_url"] = row.get("signed_contract_url") or row.get("contract_completed_url") or ""
-        # Determine the user's role in this deal
         row["my_role"] = "brand" if row.get("brand_email", "").lower() == (user.get("email") or "").lower() else "creator"
         results.append(row)
 
     return {"contracts": results}
+
+
+@app.get("/api/contracts/signed")
+def get_signed_contracts(user: dict = Depends(current_user)):
+    """Return all fully-signed contracts for the current user (brand or creator)."""
+    return _get_signed_contracts_impl(user)
 
 
 @app.get("/api/deals/{deal_id}/my-signing-url")
