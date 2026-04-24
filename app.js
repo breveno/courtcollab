@@ -2206,7 +2206,6 @@ async function markDealComplete(dealId, role) {
 // Content Submission — creator submits work, brand reviews
 // ---------------------------------------------------------------------------
 
-let _ccdLinks        = [];     // URLs accumulated in the campaign detail attachment area
 let _submitDealId    = null;   // deal being submitted against
 let _reviewSubId     = null;   // submission being reviewed
 let _reviewDealId    = null;   // deal for the submission being reviewed
@@ -5900,85 +5899,129 @@ async function saveBrandProfileModal() {
 
 // --- Creator Campaign Detail Page ---
 
-function _ccdPlatformIcon(url) {
-  if (/tiktok\.com/i.test(url))     return `<svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.88a8.2 8.2 0 004.79 1.53V7a4.85 4.85 0 01-1.02-.31z"/></svg>`;
-  if (/instagram\.com/i.test(url))  return `<svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor"/></svg>`;
-  if (/youtube\.com|youtu\.be/i.test(url)) return `<svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M23 7s-.3-1.9-1.1-2.7c-1.1-1.1-2.3-1.1-2.8-1.2C16.3 3 12 3 12 3s-4.3 0-7.1.1c-.6.1-1.8.1-2.8 1.2C1.3 5.1 1 7 1 7S.7 9.1.7 11.2v2c0 2 .3 4.1.3 4.1s.3 1.9 1.1 2.7c1.1 1.1 2.5 1 3.1 1.1C7.1 21.2 12 21.2 12 21.2s4.3 0 7.1-.2c.6-.1 1.8-.1 2.8-1.2.8-.8 1.1-2.7 1.1-2.7s.3-2.1.3-4.1v-2C23.3 9.1 23 7 23 7zM9.7 15.5V8.4l7.6 3.6-7.6 3.5z"/></svg>`;
-  return `<svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>`;
+let _ccdFiles = [];  // File objects selected in the attachment area
+
+function _ccdFileUrlHtml(u) {
+  const isVideo = /\.(mp4|mov|webm|avi|m4v)(\?|$)/i.test(u);
+  const isImage = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(u);
+  const fname   = decodeURIComponent(u.split('/').pop().split('?')[0]) || 'file';
+  if (isImage) return `
+    <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer" class="block">
+      <img src="${escHtml(u)}" alt="${escHtml(fname)}"
+        class="rounded-xl max-h-48 object-contain border border-gray-100 hover:opacity-90 transition"/>
+    </a>`;
+  const icon = isVideo
+    ? `<svg class="w-4 h-4 text-pickle-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>`
+    : `<svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>`;
+  return `
+    <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
+      class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 hover:border-pickle-300 transition">
+      ${icon}
+      <span class="text-xs text-gray-700 truncate flex-1">${escHtml(fname)}</span>
+      <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+    </a>`;
 }
 
-function _ccdRenderLinks() {
-  const el = document.getElementById('ccd-link-chips');
+function _ccdFileIcon(file) {
+  if (file.type.startsWith('video/')) return `<svg class="w-4 h-4 text-pickle-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>`;
+  return `<svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`;
+}
+
+function _ccdFmtSize(bytes) {
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function _ccdRenderFiles() {
+  const el = document.getElementById('ccd-file-list');
   if (!el) return;
-  if (_ccdLinks.length === 0) {
-    el.innerHTML = '';
-    return;
-  }
-  el.innerHTML = _ccdLinks.map((u, i) => {
-    const short = u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 45) + (u.length > 50 ? '…' : '');
-    return `<div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-      <span class="text-gray-500">${_ccdPlatformIcon(u)}</span>
-      <span class="text-xs text-gray-700 truncate flex-1">${escHtml(short)}</span>
-      <button onclick="_ccdRemoveLink(${i})" class="text-gray-300 hover:text-red-400 transition flex-shrink-0" title="Remove">
+  if (_ccdFiles.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = _ccdFiles.map((f, i) => `
+    <div class="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+      ${_ccdFileIcon(f)}
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-medium text-gray-800 truncate">${escHtml(f.name)}</p>
+        <p class="text-xs text-gray-400">${_ccdFmtSize(f.size)}</p>
+      </div>
+      <button onclick="_ccdRemoveFile(${i})" class="text-gray-300 hover:text-red-400 transition flex-shrink-0" title="Remove">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
-function _ccdRemoveLink(i) {
-  _ccdLinks.splice(i, 1);
-  _ccdRenderLinks();
+function _ccdRemoveFile(i) {
+  _ccdFiles.splice(i, 1);
+  _ccdRenderFiles();
+  _ccdUpdateDropzone();
 }
 
-function ccdAddLink() {
-  const input = document.getElementById('ccd-link-input');
-  if (!input) return;
-  const val = input.value.trim();
-  if (!val) return;
-  if (!val.startsWith('http')) { showToast('Please enter a valid URL starting with http', 'error'); return; }
-  if (_ccdLinks.includes(val)) { showToast('That link is already added', 'error'); return; }
-  _ccdLinks.push(val);
+function _ccdUpdateDropzone() {
+  const zone = document.getElementById('ccd-dropzone');
+  if (!zone) return;
+  const hasFiles = _ccdFiles.length > 0;
+  zone.classList.toggle('border-pickle-300', hasFiles);
+  zone.classList.toggle('border-gray-200', !hasFiles);
+}
+
+function ccdHandleFiles(input) {
+  const newFiles = Array.from(input.files || []);
+  for (const f of newFiles) {
+    if (!f.type.startsWith('video/') && !f.type.startsWith('image/')) {
+      showToast(`${f.name} is not a supported file type`, 'error'); continue;
+    }
+    if (f.size > 500 * 1024 * 1024) { showToast(`${f.name} exceeds 500 MB`, 'error'); continue; }
+    if (_ccdFiles.length >= 10) { showToast('Maximum 10 files', 'error'); break; }
+    _ccdFiles.push(f);
+  }
   input.value = '';
-  input.focus();
-  _ccdRenderLinks();
+  _ccdRenderFiles();
+  _ccdUpdateDropzone();
+}
+
+function ccdDropHandler(e) {
+  e.preventDefault();
+  document.getElementById('ccd-dropzone')?.classList.remove('border-pickle-400', 'bg-pickle-50');
+  const input = { files: e.dataTransfer.files };
+  ccdHandleFiles(input);
+}
+
+function ccdDragOver(e) {
+  e.preventDefault();
+  document.getElementById('ccd-dropzone')?.classList.add('border-pickle-400', 'bg-pickle-50');
+}
+
+function ccdDragLeave() {
+  document.getElementById('ccd-dropzone')?.classList.remove('border-pickle-400', 'bg-pickle-50');
 }
 
 function _ccdSubmitFormHtml(dealId, title, btnLabel) {
   return `
     <div class="bg-white rounded-2xl border border-gray-100 p-5">
       <h3 class="font-semibold text-gray-900 mb-1">${escHtml(title)}</h3>
-      <p class="text-xs text-gray-400 mb-4">Attach your content link(s) and add your proposed caption below.</p>
+      <p class="text-xs text-gray-400 mb-4">Attach your photo(s) or video(s), then add your caption.</p>
 
-      <!-- Attachment area -->
-      <div class="border-2 border-dashed border-gray-200 rounded-2xl p-4 mb-3 hover:border-pickle-300 transition">
-        <div class="flex items-center gap-2 mb-3">
-          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-          </svg>
-          <span class="text-xs font-medium text-gray-500">Attach Content Links</span>
-        </div>
-        <div class="flex gap-2">
-          <input id="ccd-link-input" type="url" placeholder="https://www.tiktok.com/…"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();ccdAddLink();}"
-            class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 min-w-0"/>
-          <button onclick="ccdAddLink()"
-            class="bg-gray-900 text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-gray-700 transition flex-shrink-0 flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Add
-          </button>
-        </div>
-        <div id="ccd-link-chips" class="mt-3 space-y-1.5"></div>
+      <!-- Drop zone -->
+      <div id="ccd-dropzone"
+        class="border-2 border-dashed border-gray-200 rounded-2xl p-6 mb-3 transition cursor-pointer text-center hover:border-pickle-300 hover:bg-gray-50"
+        ondragover="ccdDragOver(event)" ondragleave="ccdDragLeave()" ondrop="ccdDropHandler(event)"
+        onclick="document.getElementById('ccd-file-input').click()">
+        <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <p class="text-sm font-medium text-gray-600">Drop files here or <span class="text-pickle-600 underline">browse</span></p>
+        <p class="text-xs text-gray-400 mt-1">Photos &amp; videos · up to 10 files · 500 MB each</p>
+        <input id="ccd-file-input" type="file" accept="image/*,video/*" multiple class="hidden"
+          onchange="ccdHandleFiles(this)"/>
       </div>
+      <div id="ccd-file-list" class="space-y-1.5 mb-4"></div>
 
-      <!-- Caption -->
+      <!-- Caption (required) -->
       <div class="mb-4">
         <label class="block text-xs font-medium text-gray-700 mb-1">
-          Proposed Caption
-          <span class="text-gray-400 font-normal ml-1">(optional)</span>
+          Caption <span class="text-red-400">*</span>
         </label>
         <textarea id="ccd-caption" rows="3"
-          placeholder="Write your proposed caption for the post…"
+          placeholder="Write your caption for the post…"
           class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
       </div>
 
@@ -6071,7 +6114,7 @@ async function renderCreatorCampaignDetail() {
     let contentHtml = '';
     if (deal.status === 'active' || deal.status === 'completed') {
       if (!latest) {
-        _ccdLinks = [];
+        _ccdFiles = [];
         contentHtml = _ccdSubmitFormHtml(deal.id, 'Submit Your Content', 'Submit for Review');
       } else if (latest.status === 'pending') {
         const submittedUrls = (latest.content_url || '').split('\n').map(u => u.trim()).filter(Boolean);
@@ -6081,22 +6124,16 @@ async function renderCreatorCampaignDetail() {
               <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
               <h3 class="font-semibold text-gray-900 text-sm">Content Submitted — Awaiting Brand Review</h3>
             </div>
-            <div class="space-y-1.5 mb-3">
-              ${submittedUrls.map(u => `
-                <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
-                  class="flex items-center gap-1.5 text-pickle-600 hover:underline text-sm break-all">
-                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                  </svg>${escHtml(u)}
-                </a>`).join('')}
+            <div class="space-y-2 mb-3">
+              ${submittedUrls.map(u => _ccdFileUrlHtml(u)).join('')}
             </div>
             ${latest.note ? `<div class="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2 mt-2">
-              <span class="font-medium text-gray-700">Proposed caption:</span> ${escHtml(latest.note)}
+              <span class="font-medium text-gray-700">Caption:</span> ${escHtml(latest.note)}
             </div>` : ''}
             <p class="text-xs text-gray-400 mt-3">Submitted ${timeSince(latest.submitted_at)}</p>
           </div>`;
       } else if (latest.status === 'rejected') {
-        _ccdLinks = [];
+        _ccdFiles = [];
         const submittedUrls = (latest.content_url || '').split('\n').map(u => u.trim()).filter(Boolean);
         contentHtml = `
           <div class="bg-white rounded-2xl border border-red-100 p-5">
@@ -6110,13 +6147,9 @@ async function renderCreatorCampaignDetail() {
               <p class="text-xs font-semibold text-red-700 mb-1">Brand's feedback:</p>
               <p class="text-sm text-red-800">${escHtml(latest.feedback)}</p>
             </div>` : ''}
-            <p class="text-xs text-gray-500 mb-3">Previous submission:</p>
-            <div class="space-y-1 mb-4">
-              ${submittedUrls.map(u => `
-                <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
-                  class="flex items-center gap-1.5 text-gray-400 hover:text-pickle-600 hover:underline text-xs break-all line-through">
-                  ${escHtml(u)}
-                </a>`).join('')}
+            <p class="text-xs text-gray-500 mb-2">Previous submission:</p>
+            <div class="space-y-1.5 mb-4 opacity-50">
+              ${submittedUrls.map(u => _ccdFileUrlHtml(u)).join('')}
             </div>
             <div class="border-t border-gray-100 pt-4">
               ${_ccdSubmitFormHtml(deal.id, 'Submit Revised Content', 'Resubmit for Review')}
@@ -6133,15 +6166,7 @@ async function renderCreatorCampaignDetail() {
               <h3 class="font-semibold text-green-700 text-sm">Content Approved</h3>
             </div>
             <p class="text-xs text-gray-400 mb-3">The brand approved your content. Payment will be released shortly.</p>
-            <div class="space-y-1.5">
-              ${submittedUrls.map(u => `
-                <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
-                  class="flex items-center gap-1.5 text-pickle-600 hover:underline text-sm break-all">
-                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                  </svg>${escHtml(u)}
-                </a>`).join('')}
-            </div>
+            <div class="space-y-2">${submittedUrls.map(u => _ccdFileUrlHtml(u)).join('')}</div>
           </div>`;
       }
     } else if (deal.status === 'payout_complete') {
@@ -6155,15 +6180,7 @@ async function renderCreatorCampaignDetail() {
             <h3 class="font-semibold text-green-700 text-sm">Campaign Complete — Payout Released</h3>
           </div>
           <p class="text-sm font-bold text-green-800 mb-3">$${payout.toLocaleString()} paid to you</p>
-          ${submittedUrls.length ? `<div class="space-y-1.5">
-            ${submittedUrls.map(u => `
-              <a href="${escHtml(u)}" target="_blank" rel="noopener noreferrer"
-                class="flex items-center gap-1.5 text-pickle-600 hover:underline text-sm break-all">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                </svg>${escHtml(u)}
-              </a>`).join('')}
-          </div>` : ''}
+          ${submittedUrls.length ? `<div class="space-y-2">${submittedUrls.map(u => _ccdFileUrlHtml(u)).join('')}</div>` : ''}
         </div>`;
     }
 
@@ -6242,22 +6259,37 @@ async function renderCreatorCampaignDetail() {
 }
 
 async function submitContentFromDetail(dealId) {
-  // Also add any URL typed but not yet added via the button
-  const linkInput = document.getElementById('ccd-link-input');
-  if (linkInput?.value.trim()) ccdAddLink();
-
-  if (_ccdLinks.length === 0) { showToast('Please attach at least one content link', 'error'); return; }
+  if (_ccdFiles.length === 0) { showToast('Please attach at least one photo or video', 'error'); return; }
   const caption = (document.getElementById('ccd-caption')?.value || '').trim();
+  if (!caption) { showToast('Please add a caption', 'error'); return; }
 
   const btn = document.getElementById('ccd-submit-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
 
   try {
-    await apiPost(`/api/deals/${dealId}/submit-content`, {
-      content_url: _ccdLinks.join('\n'),
-      note: caption || null,
+    // 1. Upload files
+    const formData = new FormData();
+    _ccdFiles.forEach(f => formData.append('files', f));
+    const token = localStorage.getItem('cc_jwt') || sessionStorage.getItem('cc_jwt') || '';
+    const uploadRes = await fetch('/api/upload/content', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
     });
-    _ccdLinks = [];
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json().catch(() => ({}));
+      throw new Error(err.detail || 'Upload failed');
+    }
+    const { urls } = await uploadRes.json();
+
+    // 2. Submit deal content
+    if (btn) btn.textContent = 'Submitting…';
+    await apiPost(`/api/deals/${dealId}/submit-content`, {
+      content_url: urls.join('\n'),
+      note: caption,
+    });
+
+    _ccdFiles = [];
     showToast('Content submitted! The brand will be notified to review it.', 'success');
     state.activeCampaignDealId = dealId;
     renderCreatorCampaignDetail();

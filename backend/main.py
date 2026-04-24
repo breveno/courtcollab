@@ -92,8 +92,10 @@ if _env_path.exists():
             _k, _v = _line.split("=", 1)
             os.environ.setdefault(_k.strip(), _v.strip())
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
+import uuid
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -136,6 +138,12 @@ STRIPE_CANCEL_URL         = os.environ.get("STRIPE_CANCEL_URL",  "https://www.co
 # ---------------------------------------------------------------------------
 SIGNWELL_API_KEY   = os.environ.get("SIGNWELL_API_KEY", "")
 SIGNWELL_TEST_MODE = os.environ.get("SIGNWELL_TEST_MODE", "true").lower() == "true"
+
+# ---------------------------------------------------------------------------
+# Supabase Storage config (optional — used for content file uploads in prod)
+# ---------------------------------------------------------------------------
+SUPABASE_URL         = os.environ.get("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 
 # ---------------------------------------------------------------------------
 # Email config
@@ -2903,6 +2911,69 @@ def sign_contract(deal_id: int, request: Request, user: dict = Depends(current_u
 # ---------------------------------------------------------------------------
 # Content Submissions — creator submits work, brand approves / rejects
 # ---------------------------------------------------------------------------
+
+_ALLOWED_CONTENT_TYPES = {
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "video/mp4", "video/quicktime", "video/webm", "video/x-msvideo",
+}
+_MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB
+
+
+@app.post("/api/upload/content", status_code=201)
+async def upload_content_files(
+    files: List[UploadFile] = File(...),
+    user: dict = Depends(current_user),
+):
+    """Upload content files (images/videos) and return public URLs."""
+    if len(files) > 10:
+        raise HTTPException(400, "Maximum 10 files per submission")
+
+    urls: List[str] = []
+    for f in files:
+        ct = f.content_type or ""
+        if ct not in _ALLOWED_CONTENT_TYPES:
+            raise HTTPException(400, f"File type not allowed: {ct}. Upload images or videos only.")
+        data = await f.read()
+        if len(data) > _MAX_FILE_SIZE:
+            raise HTTPException(400, f"{f.filename} exceeds the 500 MB limit.")
+
+        ext = (f.filename or "file").rsplit(".", 1)[-1].lower() if "." in (f.filename or "") else "bin"
+        unique = f"content/{user['id']}/{uuid.uuid4().hex}.{ext}"
+
+        if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+            bucket = "content-submissions"
+            upload_url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{unique}"
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(
+                    upload_url,
+                    content=data,
+                    headers={
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        "Content-Type": ct,
+                    },
+                )
+                if resp.status_code not in (200, 201):
+                    raise HTTPException(500, f"Storage upload failed: {resp.text}")
+            urls.append(f"{SUPABASE_URL}/storage/v1/object/public/{bucket}/{unique}")
+        else:
+            upload_dir = Path(__file__).parent / "uploads"
+            upload_dir.mkdir(exist_ok=True)
+            fname = f"{uuid.uuid4().hex}.{ext}"
+            (upload_dir / fname).write_bytes(data)
+            base = APP_URL.rstrip("/")
+            urls.append(f"{base}/api/uploads/{fname}")
+
+    return {"urls": urls}
+
+
+@app.get("/api/uploads/{filename}")
+async def serve_local_upload(filename: str):
+    """Dev-only static file serving for locally uploaded content."""
+    path = Path(__file__).parent / "uploads" / filename
+    if not path.exists():
+        raise HTTPException(404, "File not found")
+    return FileResponse(path)
+
 
 class ContentSubmitIn(BaseModel):
     content_url: str = Field(min_length=1, max_length=4000)
