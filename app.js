@@ -1931,32 +1931,13 @@ async function renderCreatorDashboard() {
         </div>`;
     }).join('');
 
-    // Contracts section — deals with an active or completed contract (render first)
-    const contractStatuses = new Set(['contract_sent','brand_signed','creator_signed','contract_complete']);
-    const contractDeals    = deals.filter(d => contractStatuses.has(d.contract_status));
-    if (contractDeals.length > 0) {
-      _renderContractSection('creator-dash-contracts', contractDeals, payments);
+    // My Contracts button — show count badge if any signed contracts exist
+    const signedCount = deals.filter(d => d.contract_status === 'contract_complete').length;
+    const contractsBtn = document.getElementById('creator-contracts-btn');
+    if (contractsBtn && signedCount > 0) {
+      const badge = contractsBtn.querySelector('.contracts-count');
+      if (badge) { badge.textContent = signedCount; badge.classList.remove('hidden'); }
     }
-
-    // Terms confirmation banner — active deals awaiting term confirmations (prepended above contracts)
-    const awaitingConfirmation = deals.filter(d =>
-      d.status === 'active' &&
-      (!d.contract_status || d.contract_status === 'none' || d.contract_status === '') &&
-      !d.creator_terms_confirmed
-    );
-    _renderTermsConfirmationBanner('creator-dash-contracts', awaitingConfirmation, 'creator');
-
-    // Mark-complete section — deals with a held payment awaiting delivery confirmation
-    const heldDealIdsCreator = new Set(
-      (payments || []).filter(p => p.status === 'held').map(p => p.deal_id)
-    );
-    const awaitingCreatorComplete = deals.filter(d =>
-      heldDealIdsCreator.has(d.id) && !d.creator_marked_complete
-    );
-    const alreadyCreatorMarked = deals.filter(d =>
-      heldDealIdsCreator.has(d.id) && d.creator_marked_complete && !d.brand_marked_complete
-    );
-    _renderMarkCompleteSection('creator-dash-contracts', [...awaitingCreatorComplete, ...alreadyCreatorMarked], 'creator');
 
     // Due dates panel — active deals with signed contract that have at least one due date set
     const dueDateDeals = deals.filter(d =>
@@ -1965,12 +1946,6 @@ async function renderCreatorDashboard() {
       (d.first_draft_due || d.revision_due || d.final_due)
     );
     _renderCreatorDueDatesPanel(dueDateDeals);
-
-    // Start 30-second poller for any deals still awaiting signatures
-    const pendingPoll = contractDeals
-      .filter(d => d.contract_status !== 'contract_complete')
-      .map(d => d.id);
-    _startContractPoller(pendingPoll, 'creator');
 
   } catch (err) {
     statsEl.innerHTML = '';
