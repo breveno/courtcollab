@@ -1801,15 +1801,30 @@ def _generate_contract(deal: dict, campaign: dict, brand_profile: dict, creator_
     Render a plain-text collaboration agreement pre-filled with deal data.
     Stored once when the creator accepts; both parties sign digitally.
     """
-    today         = datetime.now().strftime("%B %d, %Y")
-    brand_name    = (brand_profile.get("company_name") or deal.get("brand_name") or "Brand").strip()
-    creator_name  = (creator_profile.get("name") or deal.get("creator_name") or "Creator").strip()
+    today          = datetime.now().strftime("%B %d, %Y")
+    brand_name     = (brand_profile.get("company_name") or deal.get("brand_name") or "Brand").strip()
+    creator_name   = (creator_profile.get("name") or deal.get("creator_name") or "Creator").strip()
     campaign_title = campaign.get("title") or deal.get("campaign_title") or "—"
-    deliverables  = (deal.get("terms") or "As mutually agreed upon by both parties").strip()
-    amount        = deal.get("amount") or 0
+    niche          = campaign.get("niche") or "—"
+
+    # Amount — prefer deal amount, fall back to campaign budget
+    amount         = deal.get("amount") or campaign.get("budget") or 0
     creator_payout = round(amount * 0.85)
     platform_fee   = amount - creator_payout
-    niche          = campaign.get("niche") or "—"
+
+    # Deliverables — build from deal terms + campaign description + deal metadata
+    _deliv_parts = []
+    if deal.get("terms"):
+        _deliv_parts.append(deal["terms"].strip())
+    if campaign.get("description"):
+        _deliv_parts.append(campaign["description"].strip())
+    if campaign.get("content_type"):
+        _deliv_parts.append(f"Content Type: {campaign['content_type']}")
+    if deal.get("num_posts") and deal["num_posts"] != 1:
+        _deliv_parts.append(f"Number of Posts: {deal['num_posts']}")
+    if deal.get("deadline"):
+        _deliv_parts.append(f"Deadline: {deal['deadline']}")
+    deliverables = "\n".join(_deliv_parts) if _deliv_parts else "As mutually agreed upon by both parties"
 
     return f"""CONTENT CREATOR COLLABORATION AGREEMENT
 ════════════════════════════════════════════════════════
