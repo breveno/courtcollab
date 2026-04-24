@@ -1931,12 +1931,22 @@ async function renderCreatorDashboard() {
         </div>`;
     }).join('');
 
-    // My Contracts button — show count badge if any signed contracts exist
+    // My Contracts badge — only show for contracts the user hasn't viewed yet
     const signedCount = deals.filter(d => d.contract_status === 'contract_complete').length;
+    const _seenKey = `cc_contracts_seen_${state.currentUser?.id || 0}`;
+    const seenCount = parseInt(localStorage.getItem(_seenKey) || '0');
+    const newContracts = Math.max(0, signedCount - seenCount);
     const contractsBtn = document.getElementById('creator-contracts-btn');
-    if (contractsBtn && signedCount > 0) {
+    if (contractsBtn) {
       const badge = contractsBtn.querySelector('.contracts-count');
-      if (badge) { badge.textContent = signedCount; badge.classList.remove('hidden'); }
+      if (badge) {
+        if (newContracts > 0) {
+          badge.textContent = newContracts;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
     }
 
     // Due dates panel — active deals with signed contract that have at least one due date set
@@ -2033,6 +2043,13 @@ async function renderSignedContractsTab() {
   try {
     const res = await apiFetch('/api/contracts/signed');
     const { contracts = [] } = await res.json();
+
+    // Mark all current contracts as seen — clears the dashboard badge
+    const _seenKey = `cc_contracts_seen_${state.currentUser?.id || 0}`;
+    localStorage.setItem(_seenKey, String(contracts.length));
+    // Hide badge on the My Contracts button immediately
+    const _btn = document.getElementById('creator-contracts-btn');
+    if (_btn) _btn.querySelector('.contracts-count')?.classList.add('hidden');
 
     if (contracts.length === 0) {
       listEl.innerHTML = `
@@ -5884,31 +5901,34 @@ async function renderCreatorDealHistory() {
 
   try {
     const deals = await apiGet('/api/deals');
-    const active = deals.filter(d => d.status !== 'declined');
-    if (!active.length) return;
+    const completed = deals.filter(d =>
+      d.status === 'completed' || d.status === 'payout_complete'
+    );
+    if (!completed.length) return;
 
-    const completed = active.filter(d => d.status === 'completed').length;
     el.innerHTML = `
       <div class="bg-white rounded-2xl border border-gray-200 p-6 mt-6">
-        <h2 class="font-bold text-lg mb-1">My Deals</h2>
+        <h2 class="font-bold text-lg mb-1">Campaign History</h2>
         <p class="text-sm text-gray-500 mb-4">
-          ${active.length} deal${active.length !== 1 ? 's' : ''} · ${completed} completed
+          ${completed.length} completed campaign${completed.length !== 1 ? 's' : ''}
         </p>
         <div class="divide-y divide-gray-100">
-          ${active.map(d => `
+          ${completed.map(d => {
+            const payout = Math.round((d.amount || 0) * 0.85);
+            return `
             <div class="py-3">
               <div class="flex items-center justify-between mb-2">
                 <div class="min-w-0 mr-3">
-                  <div class="font-medium text-sm">${escHtml(d.brand_company_name || 'Brand')}</div>
-                  <div class="text-xs text-gray-500 truncate">${escHtml(d.campaign_title || '')}</div>
+                  <div class="font-medium text-sm">${escHtml(d.campaign_title || `Deal #${d.id}`)}</div>
+                  <div class="text-xs text-gray-500 truncate">${escHtml(d.brand_company_name || 'Brand')}</div>
                 </div>
-                <span class="font-semibold text-pickle-700 text-sm flex-shrink-0">$${(d.amount || 0).toLocaleString()}</span>
+                <span class="font-semibold text-green-700 text-sm flex-shrink-0">$${payout.toLocaleString()} earned</span>
               </div>
               <div class="flex items-center gap-1">
                 ${dealStepperMiniHtml(d)}
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       </div>
     `;
