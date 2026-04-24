@@ -6361,7 +6361,7 @@ async function renderStripeHealth() {
     <div class="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
       <span class="text-xs text-gray-600">${label}</span>
       <div class="flex items-center gap-1.5">
-        ${detail ? `<span class="text-xs text-gray-400">${escHtml(detail)}</span>` : ''}
+        ${detail ? `<code class="text-xs text-gray-400 font-mono">${escHtml(detail)}</code>` : ''}
         <span class="inline-block w-2 h-2 rounded-full ${ok ? 'bg-green-400' : 'bg-red-400'}"></span>
       </div>
     </div>`;
@@ -6379,8 +6379,8 @@ async function renderStripeHealth() {
         </div>
       </div>
       <div class="space-y-0.5">
-        ${row('Secret key', h.has_secret_key)}
-        ${row('Publishable key', h.has_publishable_key)}
+        ${row('Secret key', h.has_secret_key, h.secret_key_preview || '')}
+        ${row('Publishable key', h.has_publishable_key, h.pub_key_preview || '')}
         ${row('Webhook secret', h.has_webhook_secret)}
         ${row('Stripe API reachable', h.account_reachable, h.account_error || '')}
       </div>
