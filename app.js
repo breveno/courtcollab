@@ -1147,7 +1147,8 @@ function navigate(page, activeNavId = null, _restoreScrollY = null) {
       state.currentPage = page;
       // Push a history entry so the browser back button stays in-app
       if (history.state?.page !== page) {
-        history.pushState({ page }, '', page === 'landing' ? '/' : '/' + page);
+        const extra = page === 'creator-campaign-detail' ? { dealId: state.activeCampaignDealId } : {};
+        history.pushState({ page, ...extra }, '', page === 'landing' ? '/' : '/' + page);
       }
     } else {
       // Unknown page — fall back to landing instead of showing 404
@@ -5989,7 +5990,7 @@ function _ccdSubmitFormHtml(dealId, title, btnLabel) {
 }
 
 function openCreatorCampaign(dealId) {
-  state.activeCampaignDealId = dealId;
+  state.activeCampaignDealId = Number(dealId);
   navigate('creator-campaign-detail');
 }
 
@@ -6013,7 +6014,7 @@ async function renderCreatorCampaignDetail() {
       apiGet('/api/deals'),
       apiGet('/api/payments').catch(() => []),
     ]);
-    const deal = deals.find(d => d.id === state.activeCampaignDealId);
+    const deal = deals.find(d => Number(d.id) === Number(state.activeCampaignDealId));
     if (!deal) { root.innerHTML = '<p class="text-red-500 text-sm mt-8 text-center">Campaign not found.</p>'; return; }
 
     let submissions = [];
@@ -7710,6 +7711,7 @@ async function apiDelete(path, body, opts = {}) {
 window.addEventListener('popstate', (e) => {
   const page = e.state?.page || window.location.pathname.replace(/^\//, '') || 'landing';
   const scrollY = e.state?.scrollY ?? null;
+  if (e.state?.dealId) state.activeCampaignDealId = Number(e.state.dealId);
   if (getToken()) navigate(page, null, scrollY);
 });
 
