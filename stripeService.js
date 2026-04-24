@@ -45,7 +45,7 @@ export let PLATFORM_FEE_PERCENT = null;  // fetched from /api/stripe/config
  * Attach the auth token and parse JSON; throw on non-2xx.
  */
 async function _req(method, path, body = null) {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("cc_jwt") || sessionStorage.getItem("cc_jwt");
   const opts = {
     method,
     headers: {

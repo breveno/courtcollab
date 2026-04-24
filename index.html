@@ -2073,6 +2073,26 @@
         </div>
       </div>
 
+      <!-- Test card hints (shown in Stripe test mode only) -->
+      <div id="stripe-test-cards" class="hidden mb-4 rounded-xl border border-dashed border-yellow-300 bg-yellow-50 px-4 py-3">
+        <p class="text-xs font-semibold text-yellow-800 mb-2">⚠️ Test Mode — use these card numbers:</p>
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-yellow-900 font-mono">4242 4242 4242 4242</span>
+            <span class="text-xs text-yellow-700">✓ Succeeds</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-yellow-900 font-mono">4000 0025 0000 3155</span>
+            <span class="text-xs text-yellow-700">3D Secure required</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-yellow-900 font-mono">4000 0000 0000 9995</span>
+            <span class="text-xs text-yellow-700">✗ Declined</span>
+          </div>
+        </div>
+        <p class="text-xs text-yellow-700 mt-2">Any future expiry · any 3-digit CVC · any ZIP</p>
+      </div>
+
       <!-- Error message -->
       <div id="payment-modal-error" class="hidden mb-4 rounded-xl px-4 py-3 text-sm text-red-700 bg-red-50 border border-red-200"></div>
 
@@ -2730,6 +2750,9 @@
           <span>Your card is charged, <strong>85%</strong> is held in escrow for the creator, and <strong>15%</strong> goes to CourtCollab. Funds release to the creator once you confirm content delivery.</span>
         </div>
 
+        <!-- Stripe Health Panel -->
+        <div id="stripe-health-brand" class="mb-6"></div>
+
         <!-- Transaction History -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100">
           <h2 class="text-lg font-bold mb-5">Transaction History</h2>
@@ -2754,6 +2777,9 @@
             <p class="text-xs mt-0.5" style="color:#3a5a0a">CourtCollab collects a 15% agency fee from each payment to cover platform, contracts, and support. Your payout is calculated automatically before funds are released.</p>
           </div>
         </div>
+
+        <!-- Stripe Health Panel -->
+        <div id="stripe-health-creator" class="mb-6"></div>
 
         <!-- Stripe Connect Payout Setup -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 mb-6">
@@ -4108,6 +4134,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
   </div>
 
   <script src="contractTemplate.js?v=1"></script>
-  <script src="app.js?v=238"></script>
+  <script src="app.js?v=239"></script>
 </body>
 </html>

@@ -6348,6 +6348,60 @@ async function renderCreatorDealHistory() {
 }
 
 // --- Payments ---
+async function renderStripeHealth() {
+  const brandEl   = document.getElementById('stripe-health-brand');
+  const creatorEl = document.getElementById('stripe-health-creator');
+  const el = state.role === 'brand' ? brandEl : creatorEl;
+  if (!el) return;
+
+  let h;
+  try { h = await apiGet('/api/stripe/health'); } catch { return; }
+
+  const row = (label, ok, detail = '') => `
+    <div class="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+      <span class="text-xs text-gray-600">${label}</span>
+      <div class="flex items-center gap-1.5">
+        ${detail ? `<span class="text-xs text-gray-400">${escHtml(detail)}</span>` : ''}
+        <span class="inline-block w-2 h-2 rounded-full ${ok ? 'bg-green-400' : 'bg-red-400'}"></span>
+      </div>
+    </div>`;
+
+  const isTestMode = h.is_test_mode;
+  const allGood    = h.has_secret_key && h.has_publishable_key && h.has_webhook_secret && h.account_reachable;
+
+  el.innerHTML = `
+    <div class="rounded-2xl border ${allGood ? 'border-gray-100 bg-white' : 'border-red-100 bg-red-50'} p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold text-sm text-gray-900">Stripe Configuration</h3>
+        <div class="flex items-center gap-2">
+          ${isTestMode ? '<span class="text-xs font-semibold bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Test Mode</span>' : '<span class="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Live Mode</span>'}
+          ${allGood ? '<span class="text-xs text-green-600 font-medium">All systems go</span>' : '<span class="text-xs text-red-600 font-medium">Setup required</span>'}
+        </div>
+      </div>
+      <div class="space-y-0.5">
+        ${row('Secret key', h.has_secret_key)}
+        ${row('Publishable key', h.has_publishable_key)}
+        ${row('Webhook secret', h.has_webhook_secret)}
+        ${row('Stripe API reachable', h.account_reachable, h.account_error || '')}
+      </div>
+      ${!allGood ? `<p class="text-xs text-red-600 mt-3">
+        Set <code class="bg-red-100 px-1 rounded">STRIPE_SECRET_KEY</code>,
+        <code class="bg-red-100 px-1 rounded">STRIPE_PUBLISHABLE_KEY</code>, and
+        <code class="bg-red-100 px-1 rounded">STRIPE_WEBHOOK_SECRET</code> in Railway env vars,
+        then redeploy.
+      </p>` : ''}
+      ${isTestMode ? `<div class="mt-3 pt-3 border-t border-yellow-200">
+        <p class="text-xs font-semibold text-yellow-800 mb-2">Test Card Numbers</p>
+        <div class="space-y-1">
+          <div class="flex justify-between"><code class="text-xs font-mono text-yellow-900">4242 4242 4242 4242</code><span class="text-xs text-yellow-700">✓ Succeeds instantly</span></div>
+          <div class="flex justify-between"><code class="text-xs font-mono text-yellow-900">4000 0025 0000 3155</code><span class="text-xs text-yellow-700">Requires 3D Secure</span></div>
+          <div class="flex justify-between"><code class="text-xs font-mono text-yellow-900">4000 0000 0000 9995</code><span class="text-xs text-yellow-700">✗ Always declines</span></div>
+        </div>
+        <p class="text-xs text-yellow-700 mt-1.5">Any future expiry · any 3-digit CVC · any ZIP</p>
+      </div>` : ''}
+    </div>`;
+}
+
 async function renderPayments() {
   // Show/hide role sections
   document.querySelectorAll('.brand-only').forEach(el => {
@@ -6356,6 +6410,8 @@ async function renderPayments() {
   document.querySelectorAll('.creator-only').forEach(el => {
     el.style.display = state.role === 'creator' ? 'block' : 'none';
   });
+
+  renderStripeHealth();
 
   // Fee calculator listener
   const dealAmountInput = document.getElementById('deal-amount-pay');
@@ -6601,7 +6657,17 @@ async function stripeCheckout(dealId) {
       creatorPayout: intent.creator_payout,
     };
 
-    // 3. Init Stripe.js and mount Payment Element
+    // 3. Show test card hints when in Stripe test mode
+    const testCardsEl = document.getElementById('stripe-test-cards');
+    if (testCardsEl) {
+      if ((config.publishable_key || '').startsWith('pk_test_')) {
+        testCardsEl.classList.remove('hidden');
+      } else {
+        testCardsEl.classList.add('hidden');
+      }
+    }
+
+    // 4. Init Stripe.js and mount Payment Element
     await _ensureStripeJs();
     _stripeInstance = window.Stripe(config.publishable_key);
     _stripeElements = _stripeInstance.elements({ clientSecret: intent.client_secret });
