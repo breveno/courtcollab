@@ -500,6 +500,34 @@ def _init_pg():
             CHECK(status IN ('pending','active','declined','completed','payout_complete'))
         """)
 
+        # Due dates for content delivery milestones
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS first_draft_due TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS revision_due     TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS final_due        TEXT")
+
+        # DocuSeal submitter slugs (also handled via ALTER above but may be missing on fresh DBs)
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS docuseal_creator_slug TEXT")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS docuseal_brand_slug   TEXT")
+
+        # Content submissions — creator submits work, brand reviews
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS content_submissions (
+                id           SERIAL PRIMARY KEY,
+                deal_id      INTEGER NOT NULL REFERENCES deals(id)  ON DELETE CASCADE,
+                creator_id   INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                brand_id     INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                content_url  TEXT    NOT NULL,
+                note         TEXT,
+                status       TEXT    NOT NULL DEFAULT 'pending'
+                                 CHECK(status IN ('pending','approved','rejected')),
+                feedback     TEXT,
+                submitted_at TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                reviewed_at  TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_cs_deal    ON content_submissions(deal_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_cs_creator ON content_submissions(creator_id)")
+
         conn.commit()
 
 
@@ -817,6 +845,11 @@ def _init_sqlite():
     _add_column_if_missing("deals",          "reminders_sent",           "INTEGER DEFAULT 0")
     _add_column_if_missing("deals",          "last_reminder_sent",       "TEXT")
     _add_column_if_missing("deals",          "needs_review",             "INTEGER DEFAULT 0")
+    _add_column_if_missing("deals",          "first_draft_due",          "TEXT")
+    _add_column_if_missing("deals",          "revision_due",             "TEXT")
+    _add_column_if_missing("deals",          "final_due",                "TEXT")
+    _add_column_if_missing("deals",          "docuseal_creator_slug",    "TEXT")
+    _add_column_if_missing("deals",          "docuseal_brand_slug",      "TEXT")
 
 
 def _migrate_deal_statuses():
