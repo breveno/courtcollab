@@ -3123,7 +3123,7 @@ function _dealCurrentStep(deal) {
 // Full horizontal stepper — used in the chat header area
 function dealStepperHtml(deal) {
   if (!deal) return '';
-  const step = _dealCurrentStep(deal.status);
+  const step = _dealCurrentStep(deal);
 
   if (step === -1) {
     return `<div class="flex items-center gap-2 text-sm text-red-500 py-0.5">
