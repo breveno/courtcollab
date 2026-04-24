@@ -3708,10 +3708,11 @@ def stripe_connect_onboard(user: dict = Depends(current_user)):
             conn.commit()
 
     # Generate a fresh onboarding link (links expire after ~24 h)
+    base = APP_URL.rstrip("/")
     link = stripe.AccountLink.create(
         account=acct_id,
-        refresh_url=f"{STRIPE_CANCEL_URL}?reason=refresh",
-        return_url=f"{STRIPE_SUCCESS_URL}?stripe_onboard=1",
+        refresh_url=f"{base}/?reason=refresh",
+        return_url=f"{base}/?stripe_onboard=1",
         type="account_onboarding",
     )
     return {"url": link["url"], "stripe_account_id": acct_id}
