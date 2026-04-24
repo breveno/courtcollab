@@ -3641,19 +3641,26 @@ def stripe_health():
     """Returns Stripe configuration status — no secret values exposed.
     Used by the frontend test panel to surface config problems early."""
     secret_key = stripe.api_key or ""
-    has_secret      = bool(secret_key) and not secret_key.startswith("mk_")
-    has_publishable = bool(STRIPE_PUBLISHABLE_KEY)
-    has_webhook     = bool(STRIPE_WEBHOOK_SECRET)
-    is_test_mode    = secret_key.startswith("sk_test_") or STRIPE_PUBLISHABLE_KEY.startswith("pk_test_")
+    pub_key    = STRIPE_PUBLISHABLE_KEY or ""
 
-    account_ok = False
+    # Show only the safe prefix (e.g. "sk_test_Ab12" — never the full key)
+    def _key_preview(k):
+        return k[:12] + "…" if len(k) > 12 else (k or "—")
+
+    has_secret      = bool(secret_key)
+    has_publishable = bool(pub_key)
+    has_webhook     = bool(STRIPE_WEBHOOK_SECRET)
+    is_test_mode    = secret_key.startswith("sk_test_") or pub_key.startswith("pk_test_")
+
+    # Validate the secret key by listing balance (lightweight, no side effects)
+    account_ok    = False
     account_error = None
     if has_secret:
         try:
-            stripe.Account.retrieve()
+            stripe.Balance.retrieve()
             account_ok = True
-        except stripe.error.AuthenticationError as e:
-            account_error = "Invalid Stripe secret key"
+        except stripe.error.AuthenticationError:
+            account_error = "Key rejected by Stripe — check it matches Dashboard"
         except Exception as e:
             account_error = str(e)[:120]
 
@@ -3664,6 +3671,8 @@ def stripe_health():
         "is_test_mode":        is_test_mode,
         "account_reachable":   account_ok,
         "account_error":       account_error,
+        "secret_key_preview":  _key_preview(secret_key),
+        "pub_key_preview":     _key_preview(pub_key),
         "success_url":         STRIPE_SUCCESS_URL,
         "cancel_url":          STRIPE_CANCEL_URL,
     }
