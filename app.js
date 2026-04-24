@@ -6357,6 +6357,9 @@ async function renderStripeHealth() {
   let h;
   try { h = await apiGet('/api/stripe/health'); } catch { return; }
 
+  // Only show the panel in test mode — hide it completely in production
+  if (!h.is_test_mode) { el.innerHTML = ''; return; }
+
   const row = (label, ok, detail = '') => `
     <div class="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
       <span class="text-xs text-gray-600">${label}</span>
