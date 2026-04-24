@@ -2205,6 +2205,7 @@ async function markDealComplete(dealId, role) {
 // Content Submission — creator submits work, brand reviews
 // ---------------------------------------------------------------------------
 
+let _ccdLinks        = [];     // URLs accumulated in the campaign detail attachment area
 let _submitDealId    = null;   // deal being submitted against
 let _reviewSubId     = null;   // submission being reviewed
 let _reviewDealId    = null;   // deal for the submission being reviewed
@@ -5898,6 +5899,95 @@ async function saveBrandProfileModal() {
 
 // --- Creator Campaign Detail Page ---
 
+function _ccdPlatformIcon(url) {
+  if (/tiktok\.com/i.test(url))     return `<svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.88a8.2 8.2 0 004.79 1.53V7a4.85 4.85 0 01-1.02-.31z"/></svg>`;
+  if (/instagram\.com/i.test(url))  return `<svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor"/></svg>`;
+  if (/youtube\.com|youtu\.be/i.test(url)) return `<svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M23 7s-.3-1.9-1.1-2.7c-1.1-1.1-2.3-1.1-2.8-1.2C16.3 3 12 3 12 3s-4.3 0-7.1.1c-.6.1-1.8.1-2.8 1.2C1.3 5.1 1 7 1 7S.7 9.1.7 11.2v2c0 2 .3 4.1.3 4.1s.3 1.9 1.1 2.7c1.1 1.1 2.5 1 3.1 1.1C7.1 21.2 12 21.2 12 21.2s4.3 0 7.1-.2c.6-.1 1.8-.1 2.8-1.2.8-.8 1.1-2.7 1.1-2.7s.3-2.1.3-4.1v-2C23.3 9.1 23 7 23 7zM9.7 15.5V8.4l7.6 3.6-7.6 3.5z"/></svg>`;
+  return `<svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>`;
+}
+
+function _ccdRenderLinks() {
+  const el = document.getElementById('ccd-link-chips');
+  if (!el) return;
+  if (_ccdLinks.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = _ccdLinks.map((u, i) => {
+    const short = u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 45) + (u.length > 50 ? '…' : '');
+    return `<div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+      <span class="text-gray-500">${_ccdPlatformIcon(u)}</span>
+      <span class="text-xs text-gray-700 truncate flex-1">${escHtml(short)}</span>
+      <button onclick="_ccdRemoveLink(${i})" class="text-gray-300 hover:text-red-400 transition flex-shrink-0" title="Remove">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function _ccdRemoveLink(i) {
+  _ccdLinks.splice(i, 1);
+  _ccdRenderLinks();
+}
+
+function ccdAddLink() {
+  const input = document.getElementById('ccd-link-input');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+  if (!val.startsWith('http')) { showToast('Please enter a valid URL starting with http', 'error'); return; }
+  if (_ccdLinks.includes(val)) { showToast('That link is already added', 'error'); return; }
+  _ccdLinks.push(val);
+  input.value = '';
+  input.focus();
+  _ccdRenderLinks();
+}
+
+function _ccdSubmitFormHtml(dealId, title, btnLabel) {
+  return `
+    <div class="bg-white rounded-2xl border border-gray-100 p-5">
+      <h3 class="font-semibold text-gray-900 mb-1">${escHtml(title)}</h3>
+      <p class="text-xs text-gray-400 mb-4">Attach your content link(s) and add your proposed caption below.</p>
+
+      <!-- Attachment area -->
+      <div class="border-2 border-dashed border-gray-200 rounded-2xl p-4 mb-3 hover:border-pickle-300 transition">
+        <div class="flex items-center gap-2 mb-3">
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+          </svg>
+          <span class="text-xs font-medium text-gray-500">Attach Content Links</span>
+        </div>
+        <div class="flex gap-2">
+          <input id="ccd-link-input" type="url" placeholder="https://www.tiktok.com/…"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();ccdAddLink();}"
+            class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 min-w-0"/>
+          <button onclick="ccdAddLink()"
+            class="bg-gray-900 text-white px-3 py-2 rounded-xl text-sm font-medium hover:bg-gray-700 transition flex-shrink-0 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add
+          </button>
+        </div>
+        <div id="ccd-link-chips" class="mt-3 space-y-1.5"></div>
+      </div>
+
+      <!-- Caption -->
+      <div class="mb-4">
+        <label class="block text-xs font-medium text-gray-700 mb-1">
+          Proposed Caption
+          <span class="text-gray-400 font-normal ml-1">(optional)</span>
+        </label>
+        <textarea id="ccd-caption" rows="3"
+          placeholder="Write your proposed caption for the post…"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
+      </div>
+
+      <button id="ccd-submit-btn" onclick="submitContentFromDetail(${dealId})"
+        class="w-full bg-pickle-700 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-pickle-800 transition">
+        ${escHtml(btnLabel)} →
+      </button>
+    </div>`;
+}
+
 function openCreatorCampaign(dealId) {
   state.activeCampaignDealId = dealId;
   navigate('creator-campaign-detail');
@@ -5980,28 +6070,8 @@ async function renderCreatorCampaignDetail() {
     let contentHtml = '';
     if (deal.status === 'active' || deal.status === 'completed') {
       if (!latest) {
-        // No submission yet — show submit form
-        contentHtml = `
-          <div class="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 class="font-semibold text-gray-900 mb-1">Submit Your Content</h3>
-            <p class="text-xs text-gray-400 mb-4">Paste the link(s) to your content below. The brand will be notified to review.</p>
-            <div class="space-y-3">
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Content URL(s)</label>
-                <textarea id="ccd-urls" rows="3" placeholder="https://www.tiktok.com/…&#10;https://www.instagram.com/…"
-                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Note for brand <span class="text-gray-400 font-normal">(optional)</span></label>
-                <textarea id="ccd-note" rows="2" placeholder="Any context you'd like to share…"
-                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
-              </div>
-              <button id="ccd-submit-btn" onclick="submitContentFromDetail(${deal.id})"
-                class="w-full bg-pickle-700 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-pickle-800 transition">
-                Submit for Review →
-              </button>
-            </div>
-          </div>`;
+        _ccdLinks = [];
+        contentHtml = _ccdSubmitFormHtml(deal.id, 'Submit Your Content', 'Submit for Review');
       } else if (latest.status === 'pending') {
         const submittedUrls = (latest.content_url || '').split('\n').map(u => u.trim()).filter(Boolean);
         contentHtml = `
@@ -6020,11 +6090,12 @@ async function renderCreatorCampaignDetail() {
                 </a>`).join('')}
             </div>
             ${latest.note ? `<div class="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2 mt-2">
-              <span class="font-medium text-gray-700">Your note:</span> ${escHtml(latest.note)}
+              <span class="font-medium text-gray-700">Proposed caption:</span> ${escHtml(latest.note)}
             </div>` : ''}
             <p class="text-xs text-gray-400 mt-3">Submitted ${timeSince(latest.submitted_at)}</p>
           </div>`;
       } else if (latest.status === 'rejected') {
+        _ccdLinks = [];
         const submittedUrls = (latest.content_url || '').split('\n').map(u => u.trim()).filter(Boolean);
         contentHtml = `
           <div class="bg-white rounded-2xl border border-red-100 p-5">
@@ -6046,16 +6117,8 @@ async function renderCreatorCampaignDetail() {
                   ${escHtml(u)}
                 </a>`).join('')}
             </div>
-            <div class="space-y-3 border-t border-gray-100 pt-4">
-              <p class="text-xs font-semibold text-gray-700">Submit revised content:</p>
-              <textarea id="ccd-urls" rows="3" placeholder="https://www.tiktok.com/…"
-                class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
-              <textarea id="ccd-note" rows="2" placeholder="Note for brand (optional)"
-                class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-400 resize-none"></textarea>
-              <button id="ccd-submit-btn" onclick="submitContentFromDetail(${deal.id})"
-                class="w-full bg-pickle-700 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-pickle-800 transition">
-                Resubmit for Review →
-              </button>
+            <div class="border-t border-gray-100 pt-4">
+              ${_ccdSubmitFormHtml(deal.id, 'Submit Revised Content', 'Resubmit for Review')}
             </div>
           </div>`;
       } else if (latest.status === 'approved') {
@@ -6178,15 +6241,22 @@ async function renderCreatorCampaignDetail() {
 }
 
 async function submitContentFromDetail(dealId) {
-  const urls = (document.getElementById('ccd-urls')?.value || '').trim();
-  const note = (document.getElementById('ccd-note')?.value || '').trim();
-  if (!urls) { showToast('Please enter at least one content URL', 'error'); return; }
+  // Also add any URL typed but not yet added via the button
+  const linkInput = document.getElementById('ccd-link-input');
+  if (linkInput?.value.trim()) ccdAddLink();
+
+  if (_ccdLinks.length === 0) { showToast('Please attach at least one content link', 'error'); return; }
+  const caption = (document.getElementById('ccd-caption')?.value || '').trim();
 
   const btn = document.getElementById('ccd-submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
 
   try {
-    await apiPost(`/api/deals/${dealId}/submit-content`, { content_url: urls, note: note || null });
+    await apiPost(`/api/deals/${dealId}/submit-content`, {
+      content_url: _ccdLinks.join('\n'),
+      note: caption || null,
+    });
+    _ccdLinks = [];
     showToast('Content submitted! The brand will be notified to review it.', 'success');
     state.activeCampaignDealId = dealId;
     renderCreatorCampaignDetail();
