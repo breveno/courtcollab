@@ -1755,15 +1755,23 @@ def discover(
 # ---------------------------------------------------------------------------
 
 class DealIn(BaseModel):
-    campaign_id:   int
-    creator_id:    int
-    amount:        Optional[int] = Field(default=0, ge=0)
-    terms:         Optional[str] = None
-    contract_type: Optional[str] = None   # "template" | "custom"
-    status:        Optional[str] = 'pending'  # allow 'active' when brand accepts an application
+    campaign_id:    int
+    creator_id:     int
+    amount:         Optional[int] = Field(default=0, ge=0)
+    terms:          Optional[str] = None
+    contract_type:  Optional[str] = None
+    status:         Optional[str] = 'pending'
+    first_draft_due: Optional[str] = None
+    revision_due:    Optional[str] = None
+    final_due:       Optional[str] = None
 
 class DealStatusIn(BaseModel):
     status: str
+
+class DealDueDatesIn(BaseModel):
+    first_draft_due: Optional[str] = None  # ISO date YYYY-MM-DD
+    revision_due:    Optional[str] = None
+    final_due:       Optional[str] = None
 
 class RatingIn(BaseModel):
     score:   int            = Field(ge=1, le=5)
@@ -2171,8 +2179,12 @@ async def create_deal(request: Request, body: DealIn, user: dict = Depends(curre
 
         initial_status = body.status if body.status in ('pending', 'active') else 'pending'
         cur = conn.execute(
-            "INSERT INTO deals (campaign_id, creator_id, brand_id, amount, terms, status) VALUES (?,?,?,?,?,?)",
-            (body.campaign_id, body.creator_id, user["id"], body.amount, body.terms, initial_status),
+            """INSERT INTO deals
+               (campaign_id, creator_id, brand_id, amount, terms, status,
+                first_draft_due, revision_due, final_due)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (body.campaign_id, body.creator_id, user["id"], body.amount, body.terms, initial_status,
+             body.first_draft_due, body.revision_due, body.final_due),
         )
         conn.commit()
         did = cur.lastrowid
@@ -2240,7 +2252,9 @@ def list_deals(
                    uc.name        AS creator_name,
                    uc.initials    AS creator_initials,
                    r_mine.score   AS my_rating,
-                   CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END AS payment_held
+                   CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END AS payment_held,
+                   CASE WHEN cs_any.id IS NOT NULL THEN 1 ELSE 0 END AS content_submitted,
+                   CASE WHEN cs_appr.id IS NOT NULL THEN 1 ELSE 0 END AS content_approved
             FROM deals d
             JOIN campaigns c ON c.id  = d.campaign_id
             JOIN users ub    ON ub.id = d.brand_id
@@ -2248,12 +2262,34 @@ def list_deals(
             LEFT JOIN brand_profiles bp ON bp.user_id = d.brand_id
             LEFT JOIN ratings r_mine ON r_mine.deal_id = d.id AND r_mine.reviewer_id = ?
             LEFT JOIN payments p     ON p.deal_id = d.id AND p.status = 'held'
+            LEFT JOIN content_submissions cs_any  ON cs_any.deal_id = d.id
+            LEFT JOIN content_submissions cs_appr ON cs_appr.deal_id = d.id AND cs_appr.status = 'approved'
             WHERE d.{field} = ?
+            GROUP BY d.id
             ORDER BY d.updated_at DESC
         """, (uid, uid))
     if deal_status:
         rows = [r for r in rows if r["status"] == deal_status]
     return rows
+
+
+@app.patch("/api/deals/{deal_id}/due-dates", status_code=200)
+def set_due_dates(deal_id: int, body: DealDueDatesIn, user: dict = Depends(current_user)):
+    """Brand sets content delivery due dates for a deal."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        deal = _row(conn, "SELECT * FROM deals WHERE id = ? AND brand_id = ?", (deal_id, user["id"]))
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    updates = {k: v for k, v in body.dict().items() if v is not None}
+    if not updates:
+        return {"ok": True}
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    vals = list(updates.values()) + [deal_id]
+    with get_conn() as conn:
+        conn.execute(f"UPDATE deals SET {set_clause}, updated_at = datetime('now') WHERE id = ?", vals)
+        conn.commit()
+    return {"ok": True}
 
 
 @app.get("/api/deals/{deal_id}")
@@ -2938,6 +2974,23 @@ async def submit_content(
         )
         conn.commit()
         sub = _row(conn, "SELECT * FROM content_submissions WHERE id = ?", (sub_id,))
+
+    # Post a message in the deal conversation so brand sees the submission in chat
+    urls = body.content_url.strip()
+    msg_lines = [f"📎 Content submitted for review:"]
+    for u in urls.splitlines():
+        u = u.strip()
+        if u:
+            msg_lines.append(u)
+    if body.note:
+        msg_lines.append(f"\nNote: {body.note.strip()}")
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO messages (sender_id, receiver_id, body, deal_id)
+               VALUES (?, ?, ?, ?)""",
+            (deal["creator_id"], deal["brand_id"], "\n".join(msg_lines), deal_id),
+        )
+        conn.commit()
 
     # Notify brand
     await _notify(

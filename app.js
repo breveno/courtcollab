@@ -1919,7 +1919,7 @@ async function renderCreatorDashboard() {
                 <span class="tag ${statusColor} text-xs">${{pending:'Proposed',active:'In Progress',paid:'Paid',deal_complete:'Confirming',payout_complete:'Complete',completed:'Complete',declined:'Declined'}[d.status] || (d.status.charAt(0).toUpperCase() + d.status.slice(1))}</span>
               </div>
               <p class="text-sm text-gray-500 mt-0.5">${escHtml(d.brand_company_name || 'Brand')} · ${fmtDateUTC(d.created_at)}</p>
-              <div class="mt-2">${dealStepperMiniHtml(d.status)}</div>
+              <div class="mt-2">${dealStepperMiniHtml(d)}</div>
             </div>
             <div class="text-right shrink-0">
               <p class="font-bold text-gray-900">$${payout.toLocaleString()}</p>
@@ -1958,6 +1958,14 @@ async function renderCreatorDashboard() {
     );
     _renderMarkCompleteSection('creator-dash-contracts', [...awaitingCreatorComplete, ...alreadyCreatorMarked], 'creator');
 
+    // Due dates panel — active deals with signed contract that have at least one due date set
+    const dueDateDeals = deals.filter(d =>
+      d.status === 'active' &&
+      d.contract_status === 'contract_complete' &&
+      (d.first_draft_due || d.revision_due || d.final_due)
+    );
+    _renderCreatorDueDatesPanel(dueDateDeals);
+
     // Start 30-second poller for any deals still awaiting signatures
     const pendingPoll = contractDeals
       .filter(d => d.contract_status !== 'contract_complete')
@@ -1968,6 +1976,70 @@ async function renderCreatorDashboard() {
     statsEl.innerHTML = '';
     dealsEl.innerHTML = `<p class="p-6 text-red-500 text-sm">Could not load dashboard data.</p>`;
   }
+}
+
+function _renderCreatorDueDatesPanel(deals) {
+  const el = document.getElementById('creator-dash-duedates');
+  if (!el) return;
+  if (!deals || deals.length === 0) { el.innerHTML = ''; return; }
+
+  function _fmtDue(dateStr) {
+    if (!dateStr) return null;
+    const d = new Date(dateStr + 'T00:00:00');
+    const now = new Date(); now.setHours(0,0,0,0);
+    const diff = Math.round((d - now) / 86400000);
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (diff < 0)   return { label, badge: `${Math.abs(diff)}d overdue`, cls: 'text-red-600 bg-red-50 border-red-200' };
+    if (diff === 0) return { label, badge: 'Due today',                  cls: 'text-amber-700 bg-amber-50 border-amber-200' };
+    if (diff <= 3)  return { label, badge: `${diff}d left`,              cls: 'text-amber-600 bg-amber-50 border-amber-200' };
+    return           { label, badge: `${diff}d left`,                    cls: 'text-gray-600 bg-gray-50 border-gray-200' };
+  }
+
+  const rows = deals.map(d => {
+    const first    = _fmtDue(d.first_draft_due);
+    const revision = _fmtDue(d.revision_due);
+    const final    = _fmtDue(d.final_due);
+    if (!first && !revision && !final) return '';
+
+    const milestones = [
+      first    ? `<div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <span class="text-xs text-gray-600 font-medium">1st Draft Due</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full border ${first.cls}">${first.label} · ${first.badge}</span>
+                  </div>` : '',
+      revision ? `<div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <span class="text-xs text-gray-600 font-medium">Revision Due</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full border ${revision.cls}">${revision.label} · ${revision.badge}</span>
+                  </div>` : '',
+      final    ? `<div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <span class="text-xs text-gray-600 font-medium">Final Due</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full border ${final.cls}">${final.label} · ${final.badge}</span>
+                  </div>` : '',
+    ].filter(Boolean).join('');
+
+    return `
+      <div class="mb-3 last:mb-0">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          ${escHtml(d.campaign_title || `Deal #${d.id}`)}
+          <span class="text-gray-300 font-normal mx-1">·</span>
+          <span class="text-gray-400 font-normal normal-case">${escHtml(d.brand_company_name || 'Brand')}</span>
+        </p>
+        ${milestones}
+      </div>`;
+  }).filter(Boolean).join('');
+
+  if (!rows) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
+      <div class="flex items-center gap-2 mb-4">
+        <svg class="w-5 h-5 text-pickle-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <h2 class="font-bold text-gray-900">Content Deadlines</h2>
+      </div>
+      ${rows}
+    </div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -3025,14 +3097,27 @@ function creatorSkeletonHtml() {
 }
 
 // --- Deal Status Stepper ---
-const _DEAL_STEPS = ['Proposed', 'Accepted', 'In Progress', 'Complete'];
+const _DEAL_STEPS = ['Accepted', 'Contract Signed', '1st Draft', 'Draft Accepted', 'Payout Complete'];
 
-function _dealCurrentStep(status) {
-  if (status === 'pending')                                  return 0;
-  if (status === 'active')                                   return 2;
-  if (status === 'paid' || status === 'deal_complete')       return 2;
-  if (status === 'completed' || status === 'payout_complete') return 3;
-  return -1; // declined or unknown
+function _dealCurrentStep(deal) {
+  if (!deal) return 0;
+  // String fallback for legacy callers (payments page passes a derived status string)
+  if (typeof deal === 'string') {
+    const s = deal;
+    if (s === 'declined')        return -1;
+    if (s === 'payout_complete') return 5;
+    if (s === 'completed')       return 4;
+    if (s === 'active')          return 1;
+    return 0;
+  }
+  const s = deal.status;
+  if (s === 'declined')                                           return -1;
+  if (s === 'payout_complete')                                    return 5;
+  if (deal.content_approved)                                      return 4;
+  if (deal.content_submitted)                                     return 3;
+  if (deal.contract_status === 'contract_complete')               return 2;
+  if (s === 'active' || s === 'completed')                        return 1;
+  return 0; // pending → Accepted is upcoming
 }
 
 // Full horizontal stepper — used in the chat header area
@@ -3091,9 +3176,9 @@ function dealStepperHtml(deal) {
   return html;
 }
 
-// Compact mini stepper — 4 dots + labels for use in list rows
-function dealStepperMiniHtml(status) {
-  const step = _dealCurrentStep(status);
+// Compact mini stepper — 5 dots + labels for use in list rows
+function dealStepperMiniHtml(deal) {
+  const step = _dealCurrentStep(deal);
   if (step === -1) return `<span class="tag bg-red-100 text-red-600">Declined</span>`;
 
   const dots = _DEAL_STEPS.map((label, i) => {
@@ -3104,21 +3189,22 @@ function dealStepperMiniHtml(status) {
   });
 
   const connectors = _DEAL_STEPS.slice(0, -1).map((_, i) =>
-    `<div class="flex-1 h-0.5 max-w-[12px] ${i < step ? 'bg-pickle-500' : 'bg-gray-200'}"></div>`
+    `<div class="flex-1 h-0.5 max-w-[10px] ${i < step ? 'bg-pickle-500' : 'bg-gray-200'}"></div>`
   );
 
-  // Interleave dots and connectors
   let inner = '';
   dots.forEach((d, i) => {
     inner += d;
     if (i < connectors.length) inner += connectors[i];
   });
 
-  const label = _DEAL_STEPS[step] || '';
-  const labelColor = (status === 'completed' || status === 'payout_complete') ? 'text-green-600'
-                   : (status === 'paid' || status === 'deal_complete')        ? 'text-lime-700'
-                   : status === 'active'                                      ? 'text-yellow-700'
-                   : 'text-blue-600';
+  const clampedStep = Math.min(step, _DEAL_STEPS.length - 1);
+  const label = step >= _DEAL_STEPS.length ? _DEAL_STEPS[_DEAL_STEPS.length - 1] : (_DEAL_STEPS[clampedStep] || '');
+  const s = typeof deal === 'string' ? deal : (deal?.status || '');
+  const labelColor = (s === 'payout_complete' || step >= _DEAL_STEPS.length) ? 'text-green-600'
+                   : step >= 3                                                ? 'text-teal-600'
+                   : step >= 1                                                ? 'text-pickle-600'
+                   :                                                            'text-blue-600';
   return `<div class="flex items-center gap-0.5">${inner}</div><span class="text-xs font-medium ${labelColor} ml-1.5">${label}</span>`;
 }
 
@@ -5225,12 +5311,19 @@ async function proposeDeal(e) {
     return;
   }
 
+  const firstDraftDue = (document.getElementById('deal-first-draft-due')?.value || '').trim() || null;
+  const revisionDue   = (document.getElementById('deal-revision-due')?.value    || '').trim() || null;
+  const finalDue      = (document.getElementById('deal-final-due')?.value        || '').trim() || null;
+
   try {
     await apiPost('/api/deals', {
-      campaign_id: campaignId,
-      creator_id:  state.activePartner,
+      campaign_id:     campaignId,
+      creator_id:      state.activePartner,
       amount,
-      terms: `${deliverables} — ${timeline}`
+      terms:           `${deliverables} — ${timeline}`,
+      first_draft_due: firstDraftDue,
+      revision_due:    revisionDue,
+      final_due:       finalDue,
     });
     // Also send a system-style message
     await apiPost('/api/messages', {
@@ -5837,7 +5930,7 @@ async function renderCreatorDealHistory() {
                 <span class="font-semibold text-pickle-700 text-sm flex-shrink-0">$${(d.amount || 0).toLocaleString()}</span>
               </div>
               <div class="flex items-center gap-1">
-                ${dealStepperMiniHtml(d.status)}
+                ${dealStepperMiniHtml(d)}
               </div>
             </div>
           `).join('')}
