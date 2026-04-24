@@ -130,8 +130,9 @@ PLATFORM_FEE         = PLATFORM_FEE_PERCENT / 100  # decimal form used in calcul
 stripe.api_key            = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY    = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET     = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_SUCCESS_URL        = os.environ.get("STRIPE_SUCCESS_URL", "https://www.courtcollab.com")
-STRIPE_CANCEL_URL         = os.environ.get("STRIPE_CANCEL_URL",  "https://www.courtcollab.com")
+# Default success/cancel URLs to APP_URL so local dev doesn't redirect to prod
+STRIPE_SUCCESS_URL        = os.environ.get("STRIPE_SUCCESS_URL", APP_URL)
+STRIPE_CANCEL_URL         = os.environ.get("STRIPE_CANCEL_URL",  APP_URL)
 
 # ---------------------------------------------------------------------------
 # SignWell config
@@ -3632,6 +3633,39 @@ def stripe_config():
     return {
         "publishable_key":    STRIPE_PUBLISHABLE_KEY,
         "platform_fee_percent": PLATFORM_FEE_PERCENT,
+    }
+
+
+@app.get("/api/stripe/health")
+def stripe_health():
+    """Returns Stripe configuration status — no secret values exposed.
+    Used by the frontend test panel to surface config problems early."""
+    secret_key = stripe.api_key or ""
+    has_secret      = bool(secret_key) and not secret_key.startswith("mk_")
+    has_publishable = bool(STRIPE_PUBLISHABLE_KEY)
+    has_webhook     = bool(STRIPE_WEBHOOK_SECRET)
+    is_test_mode    = secret_key.startswith("sk_test_") or STRIPE_PUBLISHABLE_KEY.startswith("pk_test_")
+
+    account_ok = False
+    account_error = None
+    if has_secret:
+        try:
+            stripe.Account.retrieve()
+            account_ok = True
+        except stripe.error.AuthenticationError as e:
+            account_error = "Invalid Stripe secret key"
+        except Exception as e:
+            account_error = str(e)[:120]
+
+    return {
+        "has_secret_key":      has_secret,
+        "has_publishable_key": has_publishable,
+        "has_webhook_secret":  has_webhook,
+        "is_test_mode":        is_test_mode,
+        "account_reachable":   account_ok,
+        "account_error":       account_error,
+        "success_url":         STRIPE_SUCCESS_URL,
+        "cancel_url":          STRIPE_CANCEL_URL,
     }
 
 
