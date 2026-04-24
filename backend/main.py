@@ -2253,8 +2253,12 @@ def list_deals(
                    uc.initials    AS creator_initials,
                    r_mine.score   AS my_rating,
                    CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END AS payment_held,
-                   CASE WHEN cs_any.id IS NOT NULL THEN 1 ELSE 0 END AS content_submitted,
-                   CASE WHEN cs_appr.id IS NOT NULL THEN 1 ELSE 0 END AS content_approved
+                   CASE WHEN EXISTS(
+                       SELECT 1 FROM content_submissions cs WHERE cs.deal_id = d.id
+                   ) THEN 1 ELSE 0 END AS content_submitted,
+                   CASE WHEN EXISTS(
+                       SELECT 1 FROM content_submissions cs WHERE cs.deal_id = d.id AND cs.status = 'approved'
+                   ) THEN 1 ELSE 0 END AS content_approved
             FROM deals d
             JOIN campaigns c ON c.id  = d.campaign_id
             JOIN users ub    ON ub.id = d.brand_id
@@ -2262,10 +2266,7 @@ def list_deals(
             LEFT JOIN brand_profiles bp ON bp.user_id = d.brand_id
             LEFT JOIN ratings r_mine ON r_mine.deal_id = d.id AND r_mine.reviewer_id = ?
             LEFT JOIN payments p     ON p.deal_id = d.id AND p.status = 'held'
-            LEFT JOIN content_submissions cs_any  ON cs_any.deal_id = d.id
-            LEFT JOIN content_submissions cs_appr ON cs_appr.deal_id = d.id AND cs_appr.status = 'approved'
             WHERE d.{field} = ?
-            GROUP BY d.id
             ORDER BY d.updated_at DESC
         """, (uid, uid))
     if deal_status:
