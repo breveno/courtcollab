@@ -5653,6 +5653,7 @@ async def create_deal_contract(deal_id: int, user: dict = Depends(current_user))
 
 class WaitlistEmailIn(BaseModel):
     email: EmailStr
+    role: str = "creator"
 
 WAITLIST_CONFIRMATION_HTML = """
 <!DOCTYPE html>
@@ -5793,6 +5794,23 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
     import requests as _requests
 
     to_email = payload.email
+    is_brand = payload.role == "brand"
+
+    collab_line_html = (
+        "Get ready to start collaborating with creators!"
+        if is_brand else
+        "Get ready to start collaborating with brands!"
+    )
+    collab_line_text = collab_line_html
+
+    confirmation_html = WAITLIST_CONFIRMATION_HTML.replace(
+        "Get ready to start collaborating with brands!",
+        collab_line_html
+    )
+    confirmation_text = WAITLIST_CONFIRMATION_TEXT.replace(
+        "Get ready to start collaborating with brands!",
+        collab_line_text
+    )
 
     def _resend_send(recipients: list, subject: str, html_body: str, text_body: str):
         """Send email via Resend HTTP API — works on Railway (no SMTP port issues)."""
@@ -5837,8 +5855,8 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
         _resend_send(
             recipients=[to_email],
             subject="You're on the CourtCollab Waitlist!",
-            html_body=WAITLIST_CONFIRMATION_HTML,
-            text_body=WAITLIST_CONFIRMATION_TEXT,
+            html_body=confirmation_html,
+            text_body=confirmation_text,
         )
 
         # 2. Notification email to all admins
