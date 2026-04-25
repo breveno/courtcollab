@@ -5336,6 +5336,16 @@ async function proposeDeal(e) {
 // Populate campaign dropdown when deal modal opens
 async function openDealModal() {
   openModal('deal-modal');
+
+  // Auto-populate amount from creator's rate if available
+  const amountEl = document.getElementById('deal-amount');
+  if (amountEl && state.selectedCreator) {
+    const c = state.selectedCreator;
+    const rates = [c.rate_ig, c.rate_tiktok, c.rate_yt, c.rate_ugc].filter(r => r > 0);
+    const suggestedRate = rates.length ? Math.min(...rates) : 0;
+    if (suggestedRate > 0) amountEl.value = suggestedRate;
+  }
+
   const sel = document.getElementById('deal-campaign-id');
   if (!sel) return;
   sel.innerHTML = '<option value="">Loading campaigns…</option>';
