@@ -5306,6 +5306,12 @@ async function proposeDeal(e) {
     return;
   }
 
+  if (!amount || amount <= 0) {
+    showToast('Please enter a deal amount greater than $0', 'error');
+    document.getElementById('deal-amount').focus();
+    return;
+  }
+
   const firstDraftDue = (document.getElementById('deal-first-draft-due')?.value || '').trim() || null;
   const revisionDue   = (document.getElementById('deal-revision-due')?.value    || '').trim() || null;
   const finalDue      = (document.getElementById('deal-final-due')?.value        || '').trim() || null;
