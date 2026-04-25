@@ -4337,10 +4337,17 @@ async function submitAcceptDeal() {
     await apiPatch(`/api/applications/${_acceptAppId}/status`, { status: 'accepted' });
     // Creator already applied (expressed interest), so create the deal as 'active' directly —
     // no separate pending→active step needed.
+    // Pull the campaign's rate so the deal amount is pre-filled from the campaign
+    let campaignBudget = 0;
+    try {
+      const camp = await apiGet(`/api/campaigns/${_acceptCampaignId}`);
+      campaignBudget = camp.budget || 0;
+    } catch { /* best-effort — fall back to 0 */ }
+
     const deal = await apiPost('/api/deals', {
       campaign_id:   _acceptCampaignId,
       creator_id:    _acceptCreatorId,
-      amount:        0,
+      amount:        campaignBudget,
       contract_type: _acceptContractType,
       status:        'active',
     });
