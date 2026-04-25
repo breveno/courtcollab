@@ -2711,7 +2711,7 @@ async function confirmDealTerms() {
   const resetBtn = () => {
     if (btn) {
       btn.disabled   = false;
-      btn.innerHTML  = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Confirm`;
+      btn.innerHTML  = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Accept & Send Contract`;
     }
   };
   if (btn) { btn.disabled = true; btn.textContent = 'Confirming…'; }
@@ -4362,7 +4362,7 @@ async function submitAcceptDeal() {
     openDealSummaryModal(deal.id);
   } catch (err) {
     showToast(err.message || 'Could not accept application', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Accept & Send Contract'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Accept'; }
   }
 }
 
