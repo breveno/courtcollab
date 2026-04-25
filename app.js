@@ -5350,7 +5350,7 @@ async function openDealModal() {
       sel.innerHTML = '<option value="">No campaigns — post one first</option>';
     } else {
       sel.innerHTML = campaigns.map(c =>
-        `<option value="${c.id}" data-rate="${c.max_rate || c.budget || 0}">${escHtml(c.title)}</option>`
+        `<option value="${c.id}" data-rate="${c.budget || 0}">${escHtml(c.title)}</option>`
       ).join('');
       // Auto-fill amount from the first campaign's rate
       _fillDealAmountFromCampaign(sel);
