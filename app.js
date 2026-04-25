@@ -8305,7 +8305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Dismiss splash after auth resolves
+  // Dismiss splash after auth resolves — guaranteed via finally so it always runs
   const dismissSplash = () => {
     const splash = document.getElementById('app-splash');
     if (!splash) return;
@@ -8313,41 +8313,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => splash.remove(), 420);
   };
 
-  if (getToken()) {
-    try {
-      const user = await apiGet('/api/me', { silent: true });
-      onAuthSuccess(user);
-      // Restore the page from the URL path (e.g. courtcollab.com/messages → messages)
-      const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
-      if (path && document.getElementById('page-' + path)) {
-        navigate(path);
-      } else if (path) {
-        // Unknown path — clean the URL and stay on landing
-        history.replaceState({ page: 'landing' }, '', '/');
+  // Hard fallback: if anything goes wrong, dismiss splash after 8s max
+  const splashGuard = setTimeout(dismissSplash, 8000);
+
+  try {
+    if (getToken()) {
+      try {
+        const user = await apiGet('/api/me', { silent: true });
+        onAuthSuccess(user);
+        // Restore the page from the URL path (e.g. courtcollab.com/messages → messages)
+        const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '');
+        if (path && document.getElementById('page-' + path)) {
+          navigate(path);
+        } else if (path) {
+          // Unknown path — clean the URL and stay on landing
+          history.replaceState({ page: 'landing' }, '', '/');
+        }
+      } catch (err) {
+        // Only wipe the token when the server explicitly rejects it (401).
+        // Network failures (TypeError "Failed to fetch", timeouts, etc.) should
+        // NOT sign the user out — the token is still valid, the connection is just bad.
+        const msg = (err?.message || '').toLowerCase();
+        const is401 = msg.includes('401') || msg.includes('expired') ||
+                      msg.includes('invalid or expired') || msg.includes('unauthorized') ||
+                      msg.includes('not authenticated');
+        const isNetworkError = (err instanceof TypeError) ||
+                               msg.includes('failed to fetch') ||
+                               msg.includes('networkerror') ||
+                               msg.includes('load failed');
+        if (is401 && !isNetworkError) {
+          clearToken();
+        }
+        // Always show auth gate so the user can sign in / retry
+        showAuthGate();
       }
-    } catch (err) {
-      // Only wipe the token when the server explicitly rejects it (401).
-      // Network failures (TypeError "Failed to fetch", timeouts, etc.) should
-      // NOT sign the user out — the token is still valid, the connection is just bad.
-      const msg = (err?.message || '').toLowerCase();
-      const is401 = msg.includes('401') || msg.includes('expired') ||
-                    msg.includes('invalid or expired') || msg.includes('unauthorized') ||
-                    msg.includes('not authenticated');
-      const isNetworkError = (err instanceof TypeError) ||
-                             msg.includes('failed to fetch') ||
-                             msg.includes('networkerror') ||
-                             msg.includes('load failed');
-      if (is401 && !isNetworkError) {
-        clearToken();
-      }
-      // Always show auth gate so the user can sign in / retry
+    } else {
       showAuthGate();
     }
-  } else {
-    showAuthGate();
+  } finally {
+    clearTimeout(splashGuard);
+    dismissSplash();
+    initWhyCarousels();
   }
-  dismissSplash();
-  initWhyCarousels();
 });
 
 // --- Why CourtCollab Carousels ---
