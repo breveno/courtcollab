@@ -5337,14 +5337,9 @@ async function proposeDeal(e) {
 async function openDealModal() {
   openModal('deal-modal');
 
-  // Auto-populate amount from creator's rate if available
+  // Clear amount so it gets filled by campaign selection
   const amountEl = document.getElementById('deal-amount');
-  if (amountEl && state.selectedCreator) {
-    const c = state.selectedCreator;
-    const rates = [c.rate_ig, c.rate_tiktok, c.rate_yt, c.rate_ugc].filter(r => r > 0);
-    const suggestedRate = rates.length ? Math.min(...rates) : 0;
-    if (suggestedRate > 0) amountEl.value = suggestedRate;
-  }
+  if (amountEl) amountEl.value = '';
 
   const sel = document.getElementById('deal-campaign-id');
   if (!sel) return;
@@ -5354,11 +5349,25 @@ async function openDealModal() {
     if (campaigns.length === 0) {
       sel.innerHTML = '<option value="">No campaigns — post one first</option>';
     } else {
-      sel.innerHTML = campaigns.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+      sel.innerHTML = campaigns.map(c =>
+        `<option value="${c.id}" data-rate="${c.budget || 0}">${escHtml(c.title)}</option>`
+      ).join('');
+      // Auto-fill amount from the first campaign's rate
+      _fillDealAmountFromCampaign(sel);
     }
   } catch {
     sel.innerHTML = '<option value="">Could not load campaigns</option>';
   }
+
+  // Re-fill amount whenever brand picks a different campaign
+  sel.onchange = () => _fillDealAmountFromCampaign(sel);
+}
+
+function _fillDealAmountFromCampaign(sel) {
+  const selected = sel.options[sel.selectedIndex];
+  const rate = parseInt(selected?.dataset?.rate || '0');
+  const amountEl = document.getElementById('deal-amount');
+  if (amountEl && rate > 0) amountEl.value = rate;
 }
 
 async function updateDealStatus(dealId, status) {
