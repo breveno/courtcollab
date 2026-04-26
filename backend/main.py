@@ -3828,7 +3828,7 @@ def stripe_payment_intent(request: Request, deal_id: int, user: dict = Depends(c
     with get_conn() as conn:
         if existing and existing.get("status") == "pending":
             conn.execute("""
-                UPDATE payments SET stripe_payment_id = ?, updated_at = datetime('now')
+                UPDATE payments SET stripe_payment_id = ?
                 WHERE deal_id = ? AND status = 'pending'
             """, (intent["id"], deal_id))
         else:
