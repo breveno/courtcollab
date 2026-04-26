@@ -3785,11 +3785,12 @@ def stripe_payment_intent(request: Request, deal_id: int, user: dict = Depends(c
             raise HTTPException(403,
                 "Payment is locked until both parties have signed the contract.")
 
-        # Block duplicate payments
+        # Block duplicate payments, but allow retrying a stale 'pending' record.
+        # (pending = PaymentIntent created but card form never completed)
         existing = _row(conn,
-            "SELECT id FROM payments WHERE deal_id = ? AND status NOT IN ('refunded')",
+            "SELECT * FROM payments WHERE deal_id = ? AND status NOT IN ('refunded')",
             (deal_id,))
-        if existing:
+        if existing and existing.get("status") != "pending":
             raise HTTPException(409, "Payment already initiated for this deal")
 
         creator_profile = _row(conn,
@@ -3803,14 +3804,19 @@ def stripe_payment_intent(request: Request, deal_id: int, user: dict = Depends(c
 
     amount_cents    = int(deal["amount"]) * 100
     platform_fee_c  = int(round(amount_cents * PLATFORM_FEE))
+    amount_dollars   = int(deal["amount"])
+    platform_fee_d   = int(round(amount_dollars * PLATFORM_FEE))
+    creator_payout_d = amount_dollars - platform_fee_d
 
     # Escrow model: charge the brand on the platform account — no transfer_data.
     # Money stays in the platform's Stripe balance until both parties mark complete,
     # at which point mark_deal_complete() manually transfers 85% to the creator.
     # application_fee_amount is omitted for the same reason (it requires transfer_data).
+    # automatic_payment_methods is required for the Payment Element to render the card form.
     intent = stripe.PaymentIntent.create(
         amount=amount_cents,
         currency="usd",
+        automatic_payment_methods={"enabled": True},
         metadata={
             "deal_id":    str(deal_id),
             "brand_id":   str(user["id"]),
@@ -3818,22 +3824,24 @@ def stripe_payment_intent(request: Request, deal_id: int, user: dict = Depends(c
         },
     )
 
-    # Pre-create the payment record in 'pending' state
-    amount_dollars   = int(deal["amount"])
-    platform_fee_d   = int(round(amount_dollars * PLATFORM_FEE))
-    creator_payout_d = amount_dollars - platform_fee_d
-
+    # Pre-create (or replace stale) payment record in 'pending' state
     with get_conn() as conn:
-        conn.execute("""
-            INSERT INTO payments
-              (deal_id, brand_id, creator_id, amount, platform_fee, creator_payout,
-               stripe_payment_id, status)
-            VALUES (?,?,?,?,?,?,?,'pending')
-        """, (
-            deal_id, user["id"], deal["creator_id"],
-            amount_dollars, platform_fee_d, creator_payout_d,
-            intent["id"],
-        ))
+        if existing and existing.get("status") == "pending":
+            conn.execute("""
+                UPDATE payments SET stripe_payment_id = ?, updated_at = datetime('now')
+                WHERE deal_id = ? AND status = 'pending'
+            """, (intent["id"], deal_id))
+        else:
+            conn.execute("""
+                INSERT INTO payments
+                  (deal_id, brand_id, creator_id, amount, platform_fee, creator_payout,
+                   stripe_payment_id, status)
+                VALUES (?,?,?,?,?,?,?,'pending')
+            """, (
+                deal_id, user["id"], deal["creator_id"],
+                amount_dollars, platform_fee_d, creator_payout_d,
+                intent["id"],
+            ))
         conn.commit()
 
     return {
