@@ -6705,11 +6705,15 @@ async function stripeCheckout(dealId) {
     _stripeElements = _stripeInstance.elements({ clientSecret: intent.client_secret });
 
     const paymentEl = _stripeElements.create('payment', { layout: 'tabs' });
-    if (mountEl) mountEl.innerHTML = '';
-    paymentEl.mount('#stripe-payment-element');
+    // Attach listeners BEFORE mount so we never miss the ready event
     paymentEl.on('ready', () => {
       if (submitBtn) submitBtn.disabled = false;
     });
+    paymentEl.on('loaderror', (e) => {
+      showToast((e && e.error && e.error.message) || 'Payment form failed to load', 'error');
+    });
+    if (mountEl) mountEl.innerHTML = '';
+    paymentEl.mount('#stripe-payment-element');
 
   } catch (err) {
     closeModal('payment-modal');
