@@ -1123,6 +1123,8 @@ class CampaignIn(BaseModel):
     deadline:         Optional[str]        = None
     contract_type:    Optional[str]        = None
     cover_image:      Optional[str]        = None   # base64 data URL
+    deal_type:        Optional[str]        = Field(default='flat_fee')
+    commission_rate:  Optional[int]        = None
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
@@ -1145,6 +1147,8 @@ class CampaignUpdateIn(BaseModel):
     deadline:         Optional[str]       = None
     contract_type:    Optional[str]       = None
     cover_image:      Optional[str]       = None
+    deal_type:        Optional[str]       = None
+    commission_rate:  Optional[int]       = None
 
     @field_validator('budget', 'min_followers', 'max_rate', mode='before')
     @classmethod
@@ -1204,8 +1208,9 @@ def create_campaign(body: CampaignIn, background_tasks: BackgroundTasks, user: d
                 INSERT INTO campaigns
                   (brand_id, title, description, budget, niche, skills,
                    target_age, min_followers, max_rate, questions, creators_needed, status,
-                   content_type, target_audience, deadline, contract_type, cover_image)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   content_type, target_audience, deadline, contract_type, cover_image,
+                   deal_type, commission_rate)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (user["id"], body.title, body.description, body.budget,
                   body.niche, json.dumps(body.skills),
                   body.target_age, body.min_followers, body.max_rate,
@@ -1213,7 +1218,8 @@ def create_campaign(body: CampaignIn, background_tasks: BackgroundTasks, user: d
                   body.creators_needed or 1,
                   body.status or 'open',
                   body.content_type, body.target_audience, body.deadline,
-                  body.contract_type or 'template', body.cover_image))
+                  body.contract_type or 'template', body.cover_image,
+                  body.deal_type or 'flat_fee', body.commission_rate))
             conn.commit()
             cid = cur.lastrowid
         if not cid:
@@ -1313,6 +1319,8 @@ async def update_campaign(campaign_id: int, body: CampaignUpdateIn,
         if body.deadline        is not None: updates["deadline"]        = body.deadline
         if body.contract_type   is not None: updates["contract_type"]   = body.contract_type
         if body.cover_image     is not None: updates["cover_image"]     = body.cover_image
+        if body.deal_type       is not None: updates["deal_type"]       = body.deal_type
+        if body.commission_rate is not None: updates["commission_rate"] = body.commission_rate
         if body.status          is not None:
             if body.status not in ('open', 'paused', 'closed', 'draft'):
                 raise HTTPException(400, "Invalid status")
