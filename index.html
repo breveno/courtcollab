@@ -2497,12 +2497,33 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Campaign Description</label>
           <textarea id="camp-desc" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Describe the campaign goals, deliverables, and expectations..." required></textarea>
         </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Deal Type</label>
+          <div class="flex gap-2">
+            <button type="button" id="camp-type-flat" onclick="setCampaignDealType('flat_fee')"
+              class="flex-1 py-2 rounded-lg border-2 border-brand-600 bg-brand-600 text-white text-sm font-semibold transition">
+              Flat Fee
+            </button>
+            <button type="button" id="camp-type-affiliate" onclick="setCampaignDealType('affiliate')"
+              class="flex-1 py-2 rounded-lg border-2 border-gray-300 bg-white text-gray-600 text-sm font-semibold transition">
+              Affiliate Commission
+            </button>
+          </div>
+          <input type="hidden" id="camp-deal-type" value="flat_fee">
+        </div>
         <div class="grid grid-cols-2 gap-4">
-          <div>
+          <div id="camp-flat-fee-field">
             <label class="block text-sm font-medium text-gray-700 mb-1">Rate <span class="text-red-500">*</span></label>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <input type="number" id="camp-budget" min="1" required class="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-sm" placeholder="e.g. 1500">
+            </div>
+          </div>
+          <div id="camp-affiliate-rate-field" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Commission Rate <span class="text-red-500">*</span></label>
+            <div class="relative">
+              <input type="number" id="camp-commission-rate" min="1" max="100" class="w-full border border-gray-300 rounded-lg pl-3 pr-8 py-2 text-sm" placeholder="e.g. 15">
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
             </div>
           </div>
           <div>
@@ -4376,6 +4397,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
   <!-- ── End Affiliate UI ───────────────────────────────────────────────── -->
 
   <script src="contractTemplate.js?v=1"></script>
-  <script src="app.js?v=250"></script>
+  <script src="app.js?v=251"></script>
 </body>
 </html>

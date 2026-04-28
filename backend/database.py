@@ -454,6 +454,8 @@ def _init_pg():
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS deadline         TEXT")
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS contract_type    TEXT DEFAULT 'template'")
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS cover_image      TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS deal_type        TEXT NOT NULL DEFAULT 'flat_fee'")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS commission_rate  INTEGER")
 
         # deals — SignWell contract tracking + contract terms + per-signer status
         conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_document_id  TEXT")
@@ -931,6 +933,8 @@ def _init_sqlite():
     _add_column_if_missing("campaigns",        "deadline",             "TEXT")
     _add_column_if_missing("campaigns",        "contract_type",        "TEXT DEFAULT 'template'")
     _add_column_if_missing("campaigns",        "cover_image",          "TEXT")
+    _add_column_if_missing("campaigns",        "deal_type",            "TEXT NOT NULL DEFAULT 'flat_fee'")
+    _add_column_if_missing("campaigns",        "commission_rate",      "INTEGER")
     _add_column_if_missing("matches",          "match_reasons",        "TEXT DEFAULT '[]'")
     _add_column_if_missing("messages",         "read_at",              "TEXT")
     _add_column_if_missing("creator_profiles", "stripe_account_id",    "TEXT")

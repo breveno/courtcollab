@@ -1292,8 +1292,10 @@ function closeModal(id) {
     // Reset modal title
     const modalTitle = document.querySelector('#campaign-modal h2, #campaign-modal .modal-title');
     if (modalTitle) modalTitle.textContent = 'Create Campaign';
+    // Reset deal type toggle to flat fee
+    setCampaignDealType('flat_fee');
     // Clear all text / number / date / select fields
-    ['camp-title', 'camp-desc', 'camp-budget', 'camp-creators-needed', 'camp-deadline'].forEach(id => {
+    ['camp-title', 'camp-desc', 'camp-budget', 'camp-commission-rate', 'camp-creators-needed', 'camp-deadline'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -2820,8 +2822,11 @@ function openDraftForEditing(campaignId) {
   set('camp-title',           c.title            || '');
   set('camp-desc',            c.description      || '');
   set('camp-budget',          c.budget           || '');
+  set('camp-commission-rate', c.commission_rate  || '');
   set('camp-creators-needed', c.creators_needed  || 1);
   set('camp-deadline',        c.deadline         || '');
+  // Restore deal type toggle
+  setCampaignDealType(c.deal_type === 'affiliate' ? 'affiliate' : 'flat_fee');
 
   // Selects
   const nicheEl    = document.getElementById('camp-niche');
@@ -4511,6 +4516,37 @@ function campaignBackStep() {
   _campSetDot(1, 'active'); _campSetDot(2, 'inactive'); _campSetDot(3, 'inactive');
 }
 
+function setCampaignDealType(type) {
+  const hiddenInput = document.getElementById('camp-deal-type');
+  if (hiddenInput) hiddenInput.value = type;
+
+  const flatBtn   = document.getElementById('camp-type-flat');
+  const affBtn    = document.getElementById('camp-type-affiliate');
+  const flatField = document.getElementById('camp-flat-fee-field');
+  const affField  = document.getElementById('camp-affiliate-rate-field');
+  const budgetInput = document.getElementById('camp-budget');
+  const commInput   = document.getElementById('camp-commission-rate');
+
+  const activeClass   = 'flex-1 py-2 rounded-lg border-2 border-brand-600 bg-brand-600 text-white text-sm font-semibold transition';
+  const inactiveClass = 'flex-1 py-2 rounded-lg border-2 border-gray-300 bg-white text-gray-600 text-sm font-semibold transition';
+
+  if (type === 'flat_fee') {
+    if (flatBtn)  flatBtn.className  = activeClass;
+    if (affBtn)   affBtn.className   = inactiveClass;
+    if (flatField) flatField.classList.remove('hidden');
+    if (affField)  affField.classList.add('hidden');
+    if (budgetInput) budgetInput.required = true;
+    if (commInput)   commInput.required   = false;
+  } else {
+    if (affBtn)   affBtn.className   = activeClass;
+    if (flatBtn)  flatBtn.className  = inactiveClass;
+    if (affField)  affField.classList.remove('hidden');
+    if (flatField) flatField.classList.add('hidden');
+    if (commInput)   commInput.required   = true;
+    if (budgetInput) budgetInput.required = false;
+  }
+}
+
 async function previewCampaignContract() {
   showLoading('Preparing contract preview…');
   try {
@@ -4568,7 +4604,9 @@ function campaignGoToReview() {
   // Populate the review panel
   const title      = document.getElementById('camp-title')?.value.trim() || '—';
   const desc       = document.getElementById('camp-desc')?.value.trim() || '—';
-  const budget     = document.getElementById('camp-budget')?.value;
+  const _reviewDealType = document.getElementById('camp-deal-type')?.value || 'flat_fee';
+  const budget     = _reviewDealType === 'flat_fee' ? document.getElementById('camp-budget')?.value : null;
+  const commRate   = _reviewDealType === 'affiliate' ? document.getElementById('camp-commission-rate')?.value : null;
   const content    = document.getElementById('camp-content')?.value || '—';
   const audience   = document.getElementById('camp-audience')?.value || '—';
   const needed     = document.getElementById('camp-creators-needed')?.value || '1';
@@ -4597,7 +4635,11 @@ function campaignGoToReview() {
     <div class="bg-gray-50 rounded-xl px-4 py-1 mb-2">
       ${row('Title', escHtml(title))}
       ${row('Description', escHtml(desc.length > 100 ? desc.slice(0,100)+'…' : desc))}
-      ${row('Rate', budget ? `$${Number(budget).toLocaleString()}` : 'Not set')}
+      ${_reviewDealType === 'affiliate'
+        ? row('Deal Type', 'Affiliate Commission')
+        + row('Commission Rate', commRate ? `${commRate}%` : 'Not set')
+        : row('Deal Type', 'Flat Fee')
+        + row('Rate', budget ? `$${Number(budget).toLocaleString()}` : 'Not set')}
       ${row('Content Type', escHtml(content))}
       ${row('Target Audience', escHtml(audience))}
       ${row('Creators Needed', escHtml(needed))}
@@ -4657,12 +4699,22 @@ async function _wakeServer() {
 
 async function postCampaign(status = 'open') {
   // Validate required fields before posting (drafts are exempt)
+  const _dealType = document.getElementById('camp-deal-type')?.value || 'flat_fee';
   if (status !== 'draft') {
-    const rateVal = parseInt(document.getElementById('camp-budget').value) || 0;
-    if (rateVal <= 0) {
-      showFieldError('camp-budget', 'Please enter a rate greater than $0.');
-      document.getElementById('camp-budget').focus();
-      return;
+    if (_dealType === 'flat_fee') {
+      const rateVal = parseInt(document.getElementById('camp-budget').value) || 0;
+      if (rateVal <= 0) {
+        showFieldError('camp-budget', 'Please enter a rate greater than $0.');
+        document.getElementById('camp-budget').focus();
+        return;
+      }
+    } else {
+      const commVal = parseInt(document.getElementById('camp-commission-rate')?.value) || 0;
+      if (commVal <= 0 || commVal > 100) {
+        showToast('Please enter a commission rate between 1 and 100%.', 'error');
+        document.getElementById('camp-commission-rate')?.focus();
+        return;
+      }
     }
   }
 
@@ -4670,11 +4722,14 @@ async function postCampaign(status = 'open') {
   const questions = Array.from(document.querySelectorAll('#camp-questions-list .camp-question-input'))
     .map(i => i.value.trim()).filter(Boolean);
   const coverInput = document.getElementById('camp-cover');
+  const _postDealType = document.getElementById('camp-deal-type')?.value || 'flat_fee';
   const body = {
     title:            document.getElementById('camp-title').value,
     description:      document.getElementById('camp-desc').value,
     niche:            document.getElementById('camp-niche')?.value || null,
-    budget:           parseInt(document.getElementById('camp-budget').value) || 0,
+    budget:           _postDealType === 'flat_fee' ? (parseInt(document.getElementById('camp-budget').value) || 0) : 0,
+    commission_rate:  _postDealType === 'affiliate' ? (parseInt(document.getElementById('camp-commission-rate')?.value) || null) : null,
+    deal_type:        _postDealType,
     deadline:         document.getElementById('camp-deadline').value || null,
     creators_needed:  parseInt(document.getElementById('camp-creators-needed')?.value) || 1,
     contract_type:    _campContractType,
