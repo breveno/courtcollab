@@ -800,6 +800,8 @@
           <!-- Explore: brands browse creators, creators browse campaigns -->
           <button onclick="navigate('creators')" class="brand-only nav-link px-4 py-5 text-sm font-medium text-white/80 hover:text-lime-400 border-b-2 border-transparent" data-page="creators">Browse Creators</button>
           <button onclick="navigate('campaigns')" class="creator-only nav-link px-4 py-5 text-sm font-medium text-white/80 hover:text-lime-400 border-b-2 border-transparent" data-page="campaigns">Explore</button>
+          <!-- Affiliate Programs (brand only) -->
+          <button onclick="navigate('affiliate-portal');renderAffiliatePortal()" class="brand-only nav-link px-4 py-5 text-sm font-medium text-white/80 hover:text-lime-400 border-b-2 border-transparent" data-page="affiliate-portal">Affiliates</button>
 
           <!-- Activity dropdown -->
           <div class="nav-dropdown-group" id="dd-activity">
@@ -892,6 +894,7 @@
         <button onclick="navigate('creators');closeMobileMenu()" class="brand-only nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="creators">Browse Creators</button>
         <button onclick="navigate('campaigns');closeMobileMenu()" class="creator-only nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="campaigns">Explore</button>
         <button onclick="navigate('matching');closeMobileMenu()" class="brand-only nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="matching">Discovery</button>
+        <button onclick="navigate('affiliate-portal');renderAffiliatePortal();closeMobileMenu()" class="brand-only nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="affiliate-portal">Affiliates</button>
         <button onclick="navigate('messages');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="messages">Messages</button>
         <button onclick="navigate('payments');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="payments">Payments</button>
         <button onclick="navigate('contact');closeMobileMenu()" class="nav-link text-left px-5 py-3 text-sm font-medium text-white/80 hover:bg-pickle-500 border-b-0 border-transparent" data-page="contact">Contact</button>
@@ -4133,7 +4136,246 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     <iframe id="contract-preview-frame" class="flex-1 w-full border-none" src="about:blank"></iframe>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       AFFILIATE PORTAL — brand-only page + modals
+       All affiliate UI lives here. Zero existing pages/modals were modified.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Affiliate Portal Page -->
+  <div id="page-affiliate-portal" class="page bg-gray-50 min-h-screen brand-only">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Affiliate Programs</h1>
+          <p class="text-gray-500 mt-0.5 text-sm">Create programs, enroll creators, and track commission sales</p>
+        </div>
+        <button onclick="openModal('create-affiliate-modal')" class="flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition" style="background:#0B1F4A;color:white;">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Program
+        </button>
+      </div>
+      <div id="affiliate-portal-list">
+        <div class="flex items-center justify-center gap-2 text-gray-400 text-sm py-16">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+          Loading…
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Create Affiliate Modal ─────────────────────────────────────────── -->
+  <div id="create-affiliate-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('create-affiliate-modal')">
+    <div class="modal-content max-w-md w-full">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-lg font-bold text-gray-900">New Affiliate Program</h2>
+        <button onclick="closeModal('create-affiliate-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <form onsubmit="submitCreateAffiliate(event)" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Program Name <span class="text-red-500">*</span></label>
+          <input id="aff-create-name" type="text" maxlength="200" placeholder="e.g. Summer Paddle Collection" required
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Commission Rate (%) <span class="text-red-500">*</span></label>
+          <input id="aff-create-rate" type="number" min="1" max="100" placeholder="10" required
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+          <p class="text-xs text-gray-400 mt-1">Whole number percentage. Creators earn this % of each sale revenue.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Niche</label>
+          <input id="aff-create-niche" type="text" maxlength="100" placeholder="e.g. Paddles, Apparel, Footwear"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea id="aff-create-desc" rows="3" maxlength="1000" placeholder="What is this program about?"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600 resize-none"></textarea>
+        </div>
+        <button type="submit" id="aff-create-submit" class="w-full py-3 rounded-xl font-semibold text-sm transition" style="background:#0B1F4A;color:white;">
+          Create Program
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Affiliate Detail Modal ─────────────────────────────────────────── -->
+  <div id="affiliate-detail-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('affiliate-detail-modal')">
+    <div class="modal-content max-w-2xl w-full">
+      <!-- Header -->
+      <div class="flex items-start justify-between mb-1">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900" id="aff-detail-name">Program</h2>
+          <p class="text-sm text-gray-500 mt-0.5" id="aff-detail-meta"></p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openEditAffiliateModal()" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50 transition">Edit</button>
+          <button onclick="closeModal('affiliate-detail-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none ml-1">&times;</button>
+        </div>
+      </div>
+      <!-- Tabs -->
+      <div class="flex gap-1 mb-5 border-b border-gray-200 mt-4">
+        <button id="aff-tab-creators" onclick="showAffiliateTab('creators')"
+          class="px-4 py-2 text-sm font-medium border-b-2 border-pickle-600 text-pickle-700 -mb-px transition">
+          Creators
+        </button>
+        <button id="aff-tab-sales" onclick="showAffiliateTab('sales')"
+          class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px transition">
+          Sales
+        </button>
+      </div>
+      <!-- Creators tab -->
+      <div id="aff-panel-creators">
+        <div class="flex justify-end mb-3">
+          <button onclick="openEnrollCreatorModal()" class="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl font-medium transition" style="background:#C8F135;color:#0B1F4A;">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Enroll Creator
+          </button>
+        </div>
+        <div id="aff-creators-list">
+          <div class="text-center py-8 text-gray-400 text-sm">Loading creators…</div>
+        </div>
+      </div>
+      <!-- Sales tab -->
+      <div id="aff-panel-sales" class="hidden">
+        <div class="flex justify-end mb-3">
+          <button onclick="openRecordSaleModal()" class="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl font-medium transition" style="background:#C8F135;color:#0B1F4A;">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Record Sale
+          </button>
+        </div>
+        <div id="aff-sales-list">
+          <div class="text-center py-8 text-gray-400 text-sm">Loading sales…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Edit Affiliate Modal ───────────────────────────────────────────── -->
+  <div id="edit-affiliate-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('edit-affiliate-modal')">
+    <div class="modal-content max-w-md w-full">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-lg font-bold text-gray-900">Edit Program</h2>
+        <button onclick="closeModal('edit-affiliate-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <form onsubmit="submitEditAffiliate(event)" class="space-y-4">
+        <input type="hidden" id="aff-edit-id">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Program Name</label>
+          <input id="aff-edit-name" type="text" maxlength="200"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Commission Rate (%)</label>
+          <input id="aff-edit-rate" type="number" min="1" max="100"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Niche</label>
+          <input id="aff-edit-niche" type="text" maxlength="100"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea id="aff-edit-desc" rows="3" maxlength="1000"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600 resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select id="aff-edit-status" class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+        <button type="submit" id="aff-edit-submit" class="w-full py-3 rounded-xl font-semibold text-sm transition" style="background:#0B1F4A;color:white;">
+          Save Changes
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Enroll Creator Modal ───────────────────────────────────────────── -->
+  <div id="enroll-creator-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('enroll-creator-modal')">
+    <div class="modal-content max-w-md w-full">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Enroll a Creator</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Assign them a unique discount code for this program</p>
+        </div>
+        <button onclick="closeModal('enroll-creator-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <form onsubmit="submitEnrollCreator(event)" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Creator <span class="text-red-500">*</span></label>
+          <input id="enroll-creator-search" type="text" placeholder="Search by name or email…"
+            oninput="searchCreatorsForEnroll(this.value)"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+          <input type="hidden" id="enroll-creator-id">
+          <div id="enroll-creator-results" class="hidden mt-1 border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden max-h-40 overflow-y-auto"></div>
+          <p id="enroll-creator-selected" class="hidden mt-1 text-xs text-pickle-700 font-medium"></p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Discount Code <span class="text-red-500">*</span></label>
+          <input id="enroll-creator-code" type="text" maxlength="50" placeholder="e.g. SARAH10" required
+            oninput="this.value=this.value.toUpperCase()"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-pickle-600">
+          <p class="text-xs text-gray-400 mt-1">Must be unique across all programs. Auto-uppercased.</p>
+        </div>
+        <button type="submit" id="enroll-creator-submit" class="w-full py-3 rounded-xl font-semibold text-sm transition" style="background:#0B1F4A;color:white;">
+          Enroll Creator
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Record Sale Modal ──────────────────────────────────────────────── -->
+  <div id="record-sale-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('record-sale-modal')">
+    <div class="modal-content max-w-md w-full">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Record a Sale</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Commission is calculated automatically from the program rate</p>
+        </div>
+        <button onclick="closeModal('record-sale-modal')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <form onsubmit="submitRecordSale(event)" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Discount Code Used <span class="text-red-500">*</span></label>
+          <input id="sale-code" type="text" maxlength="50" placeholder="e.g. SARAH10" required
+            oninput="this.value=this.value.toUpperCase()"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-pickle-600">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Units Sold <span class="text-red-500">*</span></label>
+            <input id="sale-quantity" type="number" min="1" value="1" required
+              class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Revenue ($) <span class="text-red-500">*</span></label>
+            <input id="sale-revenue" type="number" min="0" step="0.01" placeholder="0.00" required
+              class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Order ID <span class="text-xs text-gray-400">(optional)</span></label>
+          <input id="sale-order-id" type="text" maxlength="200" placeholder="From your store / order system"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pickle-600">
+        </div>
+        <div id="sale-commission-preview" class="hidden rounded-xl px-4 py-3 text-sm" style="background:#f0fdb0;">
+          <span class="text-gray-600">Estimated commission: </span>
+          <span id="sale-commission-amount" class="font-bold" style="color:#0B1F4A;"></span>
+        </div>
+        <button type="submit" id="record-sale-submit" class="w-full py-3 rounded-xl font-semibold text-sm transition" style="background:#0B1F4A;color:white;">
+          Record Sale
+        </button>
+      </form>
+    </div>
+  </div>
+  <!-- ── End Affiliate UI ───────────────────────────────────────────────── -->
+
   <script src="contractTemplate.js?v=1"></script>
-  <script src="app.js?v=249"></script>
+  <script src="app.js?v=250"></script>
 </body>
 </html>
