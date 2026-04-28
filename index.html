@@ -3881,6 +3881,81 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
     </div><!-- /card -->
   </div><!-- /overlay -->
 
+  <!-- ── Affiliate Portal ──────────────────────────────────────────────── -->
+  <div id="page-affiliate-portal" class="page bg-gray-50 min-h-screen brand-only">
+
+    <!-- Welcome Hero -->
+    <div style="background:linear-gradient(135deg,#0B1F4A 0%,#163a70 60%,#0d2a60 100%);" class="text-white">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full" style="background:rgba(200,241,53,0.15);color:#C8F135;">Affiliate Programs</span>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">Welcome to Affiliates! 🎉</h1>
+            <p class="text-white/70 text-base max-w-xl">Turn your creator relationships into a commission-based revenue engine. Create programs, give creators their own discount code, and track every sale — all in one place.</p>
+          </div>
+          <button onclick="openModal('create-affiliate-modal')" class="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition" style="background:#C8F135;color:#0B1F4A;">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            New Program
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it Works -->
+    <div class="border-b border-gray-200 bg-white">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <h2 class="text-lg font-bold text-gray-900 mb-1">How it Works</h2>
+        <p class="text-sm text-gray-500 mb-8">Three simple steps from program creation to commission payout.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+
+          <!-- Step 1 -->
+          <div class="flex gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style="background:#C8F135;color:#0B1F4A;">1</div>
+            <div>
+              <h3 class="font-semibold text-gray-900 text-sm mb-1">Create a Program</h3>
+              <p class="text-xs text-gray-500 leading-relaxed">Set a program name and commission rate (e.g. 15%). This defines how much creators earn on every sale they drive.</p>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="flex gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style="background:#C8F135;color:#0B1F4A;">2</div>
+            <div>
+              <h3 class="font-semibold text-gray-900 text-sm mb-1">Enroll Creators &amp; Assign Codes</h3>
+              <p class="text-xs text-gray-500 leading-relaxed">Add creators to your program and give each one a unique discount code (e.g. SARAH20). Creators share their code with their audience.</p>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="flex gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style="background:#C8F135;color:#0B1F4A;">3</div>
+            <div>
+              <h3 class="font-semibold text-gray-900 text-sm mb-1">Record Sales &amp; Pay Commission</h3>
+              <p class="text-xs text-gray-500 leading-relaxed">Log sales against each creator's code. CourtCollab calculates commission automatically. Approve sales to mark them ready for payout.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Programs List -->
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-bold text-gray-900">Your Programs</h2>
+      </div>
+      <div id="affiliate-portal-list">
+        <div class="flex items-center justify-center gap-2 text-gray-400 text-sm py-16">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+          Loading…
+        </div>
+      </div>
+    </div>
+
+  </div>
+
   <!-- Footer -->
   <footer style="background:#0B1F4A;" class="text-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
@@ -4163,27 +4238,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
        ═══════════════════════════════════════════════════════════════════════ -->
 
   <!-- Affiliate Portal Page -->
-  <div id="page-affiliate-portal" class="page bg-gray-50 min-h-screen brand-only">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Affiliate Programs</h1>
-          <p class="text-gray-500 mt-0.5 text-sm">Create programs, enroll creators, and track commission sales</p>
-        </div>
-        <button onclick="openModal('create-affiliate-modal')" class="flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition" style="background:#0B1F4A;color:white;">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          New Program
-        </button>
-      </div>
-      <div id="affiliate-portal-list">
-        <div class="flex items-center justify-center gap-2 text-gray-400 text-sm py-16">
-          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-          Loading…
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ── Create Affiliate Modal ─────────────────────────────────────────── -->
   <div id="create-affiliate-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('create-affiliate-modal')">
     <div class="modal-content max-w-md w-full">
@@ -4397,6 +4451,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
   <!-- ── End Affiliate UI ───────────────────────────────────────────────── -->
 
   <script src="contractTemplate.js?v=1"></script>
-  <script src="app.js?v=251"></script>
+  <script src="app.js?v=252"></script>
 </body>
 </html>
