@@ -5896,6 +5896,413 @@ def waitlist_confirm_email(payload: WaitlistEmailIn):
 
 
 # ---------------------------------------------------------------------------
+# Routes — Affiliate Programs
+# ---------------------------------------------------------------------------
+#
+# Affiliate deal type sits completely alongside the existing campaign model.
+# None of the existing campaign / Stripe / deal routes are modified here.
+#
+#   POST   /api/affiliates                           — brand creates a program
+#   GET    /api/affiliates                           — brand lists own programs
+#   GET    /api/affiliates/{id}                      — program detail
+#   PATCH  /api/affiliates/{id}                      — edit program
+#   GET    /api/affiliates/{id}/creators             — enrolled creators + codes + totals
+#   POST   /api/affiliates/{id}/creators             — enroll a creator (brand sets code)
+#   DELETE /api/affiliates/{id}/creators/{creator_id}— remove a creator
+#   GET    /api/affiliates/{id}/sales                — sales history for the program
+#   POST   /api/affiliates/{id}/sales                — brand records a sale
+#   PATCH  /api/affiliates/{id}/sales/{sale_id}/approve — mark a sale as paid
+#   GET    /api/affiliate-codes/{code}               — look up a code (for webhooks)
+# ---------------------------------------------------------------------------
+
+class AffiliateIn(BaseModel):
+    name:            str            = Field(min_length=2, max_length=200)
+    description:     Optional[str] = None
+    niche:           Optional[str] = None
+    commission_rate: int            = Field(ge=1, le=100)   # whole-number percent, e.g. 10 = 10%
+
+class AffiliateUpdateIn(BaseModel):
+    name:            Optional[str] = None
+    description:     Optional[str] = None
+    niche:           Optional[str] = None
+    commission_rate: Optional[int] = Field(default=None, ge=1, le=100)
+    status:          Optional[str] = None   # 'active' | 'paused' | 'closed'
+
+class AffiliateCreatorIn(BaseModel):
+    creator_id: int
+    code:       str = Field(min_length=2, max_length=50)   # brand-defined discount code
+
+class AffiliateSaleIn(BaseModel):
+    code:             str            # discount code the customer used
+    quantity:         int            = Field(default=1, ge=1)
+    revenue:          int            = Field(ge=0)          # in cents
+    external_order_id: Optional[str] = None
+
+
+@app.post("/api/affiliates", status_code=201)
+@limiter.limit("30/minute")
+def create_affiliate(request: Request, body: AffiliateIn, user: dict = Depends(current_user)):
+    """Brand creates a new affiliate program."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        cur = conn.execute("""
+            INSERT INTO affiliates (brand_id, name, description, niche, commission_rate, status)
+            VALUES (?, ?, ?, ?, ?, 'active')
+        """, (user["id"], body.name, body.description, body.niche, body.commission_rate))
+        conn.commit()
+        affiliate_id = cur.lastrowid
+        affiliate = _row(conn, "SELECT * FROM affiliates WHERE id = ?", (affiliate_id,))
+    return affiliate
+
+
+@app.get("/api/affiliates")
+@limiter.limit("60/minute")
+def list_affiliates(request: Request, user: dict = Depends(current_user)):
+    """Brand lists their own affiliate programs with enrolled creator count."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        affiliates = _rows(conn, """
+            SELECT a.*,
+                   COUNT(DISTINCT ac.id) AS enrolled_count,
+                   COUNT(DISTINCT s.id)  AS total_sales,
+                   COALESCE(SUM(s.commission_amount), 0) AS total_commission
+            FROM affiliates a
+            LEFT JOIN affiliate_codes ac ON ac.affiliate_id = a.id
+            LEFT JOIN affiliate_sales  s  ON s.affiliate_code_id = ac.id
+            WHERE a.brand_id = ?
+            GROUP BY a.id
+            ORDER BY a.created_at DESC
+        """, (user["id"],))
+    return affiliates
+
+
+@app.get("/api/affiliates/{affiliate_id}")
+@limiter.limit("60/minute")
+def get_affiliate(request: Request, affiliate_id: int, user: dict = Depends(current_user)):
+    """Get a single affiliate program. Accessible by the owning brand only."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        affiliate = _row(conn,
+            "SELECT * FROM affiliates WHERE id = ? AND brand_id = ?",
+            (affiliate_id, user["id"]))
+        if not affiliate:
+            raise HTTPException(404, "Affiliate program not found")
+    return affiliate
+
+
+@app.patch("/api/affiliates/{affiliate_id}")
+@limiter.limit("30/minute")
+def update_affiliate(request: Request, affiliate_id: int, body: AffiliateUpdateIn,
+                     user: dict = Depends(current_user)):
+    """Brand edits an affiliate program."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        affiliate = _row(conn,
+            "SELECT * FROM affiliates WHERE id = ? AND brand_id = ?",
+            (affiliate_id, user["id"]))
+        if not affiliate:
+            raise HTTPException(404, "Affiliate program not found")
+
+        updates = {}
+        if body.name            is not None: updates["name"]            = body.name
+        if body.description     is not None: updates["description"]     = body.description
+        if body.niche           is not None: updates["niche"]           = body.niche
+        if body.commission_rate is not None: updates["commission_rate"] = body.commission_rate
+        if body.status          is not None:
+            if body.status not in ("active", "paused", "closed"):
+                raise HTTPException(422, "status must be active, paused, or closed")
+            updates["status"] = body.status
+
+        if not updates:
+            return affiliate
+
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        values     = list(updates.values()) + [affiliate_id]
+        conn.execute(f"UPDATE affiliates SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
+                     values)
+        conn.commit()
+        updated = _row(conn, "SELECT * FROM affiliates WHERE id = ?", (affiliate_id,))
+    return updated
+
+
+# ── Creators (enrollment) ────────────────────────────────────────────────────
+
+@app.get("/api/affiliates/{affiliate_id}/creators")
+@limiter.limit("60/minute")
+def list_affiliate_creators(request: Request, affiliate_id: int,
+                             user: dict = Depends(current_user)):
+    """List all creators enrolled in a program with their code and sales totals."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        affiliate = _row(conn,
+            "SELECT id FROM affiliates WHERE id = ? AND brand_id = ?",
+            (affiliate_id, user["id"]))
+        if not affiliate:
+            raise HTTPException(404, "Affiliate program not found")
+
+        creators = _rows(conn, """
+            SELECT ac.id         AS code_id,
+                   ac.creator_id,
+                   ac.code,
+                   ac.created_at AS enrolled_at,
+                   u.name        AS creator_name,
+                   u.email       AS creator_email,
+                   cp.avatar_url,
+                   cp.followers_ig,
+                   cp.followers_tt,
+                   cp.followers_yt,
+                   COUNT(s.id)                          AS total_sales,
+                   COALESCE(SUM(s.quantity), 0)         AS total_units,
+                   COALESCE(SUM(s.revenue), 0)          AS total_revenue,
+                   COALESCE(SUM(s.commission_amount), 0) AS total_commission,
+                   COALESCE(SUM(CASE WHEN s.status = 'paid' THEN s.commission_amount ELSE 0 END), 0)
+                                                        AS paid_commission,
+                   COALESCE(SUM(CASE WHEN s.status = 'pending' THEN s.commission_amount ELSE 0 END), 0)
+                                                        AS pending_commission
+            FROM affiliate_codes ac
+            JOIN users           u  ON u.id  = ac.creator_id
+            LEFT JOIN creator_profiles cp ON cp.user_id = ac.creator_id
+            LEFT JOIN affiliate_sales  s  ON s.affiliate_code_id = ac.id
+            WHERE ac.affiliate_id = ?
+            GROUP BY ac.id, ac.creator_id, ac.code, ac.created_at,
+                     u.name, u.email, cp.avatar_url,
+                     cp.followers_ig, cp.followers_tt, cp.followers_yt
+            ORDER BY ac.created_at DESC
+        """, (affiliate_id,))
+    return creators
+
+
+@app.post("/api/affiliates/{affiliate_id}/creators", status_code=201)
+@limiter.limit("30/minute")
+def enroll_affiliate_creator(request: Request, affiliate_id: int, body: AffiliateCreatorIn,
+                              user: dict = Depends(current_user)):
+    """Brand enrolls a creator and assigns them a discount code."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        affiliate = _row(conn,
+            "SELECT * FROM affiliates WHERE id = ? AND brand_id = ?",
+            (affiliate_id, user["id"]))
+        if not affiliate:
+            raise HTTPException(404, "Affiliate program not found")
+
+        creator = _row(conn,
+            "SELECT id, name, email FROM users WHERE id = ? AND role = 'creator'",
+            (body.creator_id,))
+        if not creator:
+            raise HTTPException(404, "Creator not found")
+
+        # Code must be unique across all affiliate programs
+        existing_code = _row(conn,
+            "SELECT id FROM affiliate_codes WHERE code = ?",
+            (body.code.upper(),))
+        if existing_code:
+            raise HTTPException(409, "That discount code is already in use — choose a different one")
+
+        # Creator can only be enrolled once per program
+        already_enrolled = _row(conn,
+            "SELECT id FROM affiliate_codes WHERE affiliate_id = ? AND creator_id = ?",
+            (affiliate_id, body.creator_id))
+        if already_enrolled:
+            raise HTTPException(409, "Creator is already enrolled in this program")
+
+        cur = conn.execute("""
+            INSERT INTO affiliate_codes (affiliate_id, creator_id, code)
+            VALUES (?, ?, ?)
+        """, (affiliate_id, body.creator_id, body.code.upper()))
+        conn.commit()
+        code_id = cur.lastrowid
+        entry = _row(conn, """
+            SELECT ac.*, u.name AS creator_name, u.email AS creator_email
+            FROM affiliate_codes ac
+            JOIN users u ON u.id = ac.creator_id
+            WHERE ac.id = ?
+        """, (code_id,))
+    return entry
+
+
+@app.delete("/api/affiliates/{affiliate_id}/creators/{creator_id}", status_code=200)
+@limiter.limit("30/minute")
+def remove_affiliate_creator(request: Request, affiliate_id: int, creator_id: int,
+                              user: dict = Depends(current_user)):
+    """Brand removes a creator from an affiliate program."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        affiliate = _row(conn,
+            "SELECT id FROM affiliates WHERE id = ? AND brand_id = ?",
+            (affiliate_id, user["id"]))
+        if not affiliate:
+            raise HTTPException(404, "Affiliate program not found")
+
+        code_row = _row(conn,
+            "SELECT id FROM affiliate_codes WHERE affiliate_id = ? AND creator_id = ?",
+            (affiliate_id, creator_id))
+        if not code_row:
+            raise HTTPException(404, "Creator is not enrolled in this program")
+
+        # Block removal if there are unsettled sales
+        pending = _row(conn, """
+            SELECT COUNT(*) AS cnt FROM affiliate_sales
+            WHERE affiliate_code_id = ? AND status IN ('pending', 'approved')
+        """, (code_row["id"],))
+        if pending and pending["cnt"] > 0:
+            raise HTTPException(409,
+                "Cannot remove creator — they have unsettled sales. Approve or refund them first.")
+
+        conn.execute("DELETE FROM affiliate_codes WHERE id = ?", (code_row["id"],))
+        conn.commit()
+    return {"ok": True}
+
+
+# ── Sales ────────────────────────────────────────────────────────────────────
+
+@app.get("/api/affiliates/{affiliate_id}/sales")
+@limiter.limit("60/minute")
+def list_affiliate_sales(request: Request, affiliate_id: int,
+                          creator_id: Optional[int] = None,
+                          status: Optional[str] = None,
+                          user: dict = Depends(current_user)):
+    """Brand views all sales for a program, optionally filtered by creator or status."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        affiliate = _row(conn,
+            "SELECT id FROM affiliates WHERE id = ? AND brand_id = ?",
+            (affiliate_id, user["id"]))
+        if not affiliate:
+            raise HTTPException(404, "Affiliate program not found")
+
+        filters = "WHERE s.brand_id = ? AND ac.affiliate_id = ?"
+        params: list = [user["id"], affiliate_id]
+        if creator_id:
+            filters += " AND s.creator_id = ?"
+            params.append(creator_id)
+        if status:
+            filters += " AND s.status = ?"
+            params.append(status)
+
+        sales = _rows(conn, f"""
+            SELECT s.*,
+                   ac.code          AS discount_code,
+                   u.name           AS creator_name
+            FROM affiliate_sales  s
+            JOIN affiliate_codes  ac ON ac.id  = s.affiliate_code_id
+            JOIN users            u  ON u.id   = s.creator_id
+            {filters}
+            ORDER BY s.recorded_at DESC
+        """, tuple(params))
+    return sales
+
+
+@app.post("/api/affiliates/{affiliate_id}/sales", status_code=201)
+@limiter.limit("30/minute")
+def record_affiliate_sale(request: Request, affiliate_id: int, body: AffiliateSaleIn,
+                           user: dict = Depends(current_user)):
+    """Brand records a sale against a creator's discount code."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        affiliate = _row(conn,
+            "SELECT * FROM affiliates WHERE id = ? AND brand_id = ?",
+            (affiliate_id, user["id"]))
+        if not affiliate:
+            raise HTTPException(404, "Affiliate program not found")
+
+        code_row = _row(conn, """
+            SELECT ac.*, u.name AS creator_name
+            FROM affiliate_codes ac
+            JOIN users u ON u.id = ac.creator_id
+            WHERE ac.code = ? AND ac.affiliate_id = ?
+        """, (body.code.upper(), affiliate_id))
+        if not code_row:
+            raise HTTPException(404, "Discount code not found in this program")
+
+        commission_amount = int(round(body.revenue * (affiliate["commission_rate"] / 100)))
+
+        cur = conn.execute("""
+            INSERT INTO affiliate_sales
+              (affiliate_code_id, creator_id, brand_id,
+               quantity, revenue, commission_amount, external_order_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+        """, (code_row["id"], code_row["creator_id"], user["id"],
+              body.quantity, body.revenue, commission_amount, body.external_order_id))
+        conn.commit()
+        sale_id = cur.lastrowid
+        sale = _row(conn, """
+            SELECT s.*, ac.code AS discount_code, u.name AS creator_name
+            FROM affiliate_sales s
+            JOIN affiliate_codes ac ON ac.id = s.affiliate_code_id
+            JOIN users           u  ON u.id  = s.creator_id
+            WHERE s.id = ?
+        """, (sale_id,))
+    return sale
+
+
+@app.patch("/api/affiliates/{affiliate_id}/sales/{sale_id}/approve")
+@limiter.limit("30/minute")
+def approve_affiliate_sale(request: Request, affiliate_id: int, sale_id: int,
+                            user: dict = Depends(current_user)):
+    """Brand marks a sale as paid (confirmed + commission released to creator)."""
+    require_role("brand", user)
+    with get_conn() as conn:
+        affiliate = _row(conn,
+            "SELECT id FROM affiliates WHERE id = ? AND brand_id = ?",
+            (affiliate_id, user["id"]))
+        if not affiliate:
+            raise HTTPException(404, "Affiliate program not found")
+
+        sale = _row(conn, """
+            SELECT s.* FROM affiliate_sales s
+            JOIN affiliate_codes ac ON ac.id = s.affiliate_code_id
+            WHERE s.id = ? AND ac.affiliate_id = ?
+        """, (sale_id, affiliate_id))
+        if not sale:
+            raise HTTPException(404, "Sale not found")
+        if sale["status"] == "paid":
+            raise HTTPException(409, "Sale is already marked as paid")
+        if sale["status"] == "refunded":
+            raise HTTPException(409, "Cannot approve a refunded sale")
+
+        conn.execute("""
+            UPDATE affiliate_sales
+            SET status = 'paid', paid_at = datetime('now')
+            WHERE id = ?
+        """, (sale_id,))
+        conn.commit()
+        updated = _row(conn, """
+            SELECT s.*, ac.code AS discount_code, u.name AS creator_name
+            FROM affiliate_sales s
+            JOIN affiliate_codes ac ON ac.id = s.affiliate_code_id
+            JOIN users           u  ON u.id  = s.creator_id
+            WHERE s.id = ?
+        """, (sale_id,))
+    return updated
+
+
+# ── Code lookup (for future webhook / ecommerce integration) ─────────────────
+
+@app.get("/api/affiliate-codes/{code}")
+@limiter.limit("60/minute")
+def lookup_affiliate_code(request: Request, code: str, user: dict = Depends(current_user)):
+    """Look up a discount code — returns the program and creator it belongs to."""
+    with get_conn() as conn:
+        row = _row(conn, """
+            SELECT ac.id         AS code_id,
+                   ac.code,
+                   ac.affiliate_id,
+                   ac.creator_id,
+                   a.name        AS affiliate_name,
+                   a.commission_rate,
+                   a.status      AS affiliate_status,
+                   u.name        AS creator_name
+            FROM affiliate_codes ac
+            JOIN affiliates a ON a.id  = ac.affiliate_id
+            JOIN users      u ON u.id  = ac.creator_id
+            WHERE ac.code = ?
+        """, (code.upper(),))
+        if not row:
+            raise HTTPException(404, "Discount code not found")
+    return row
+
+
+# ---------------------------------------------------------------------------
 # Run directly
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
