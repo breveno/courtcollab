@@ -528,6 +528,71 @@ def _init_pg():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_cs_deal    ON content_submissions(deal_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_cs_creator ON content_submissions(creator_id)")
 
+        # ── Affiliate tables ──────────────────────────────────────────────────
+        # Create in FK-dependency order: affiliates → affiliate_codes → affiliate_sales
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS affiliates (
+                id              SERIAL PRIMARY KEY,
+                brand_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name            TEXT    NOT NULL,
+                description     TEXT,
+                niche           TEXT,
+                commission_rate INTEGER NOT NULL DEFAULT 0,
+                status          TEXT    NOT NULL DEFAULT 'active'
+                                    CHECK(status IN ('active','paused','closed')),
+                created_at      TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                updated_at      TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS')
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_affiliates_brand  ON affiliates(brand_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_affiliates_status ON affiliates(status)")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS affiliate_codes (
+                id           SERIAL PRIMARY KEY,
+                affiliate_id INTEGER NOT NULL REFERENCES affiliates(id) ON DELETE CASCADE,
+                creator_id   INTEGER NOT NULL REFERENCES users(id)      ON DELETE CASCADE,
+                code         TEXT    NOT NULL,
+                created_at   TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                UNIQUE(code),
+                UNIQUE(affiliate_id, creator_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_acodes_affiliate ON affiliate_codes(affiliate_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_acodes_creator   ON affiliate_codes(creator_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_acodes_code      ON affiliate_codes(code)")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS affiliate_sales (
+                id                SERIAL PRIMARY KEY,
+                affiliate_code_id INTEGER NOT NULL REFERENCES affiliate_codes(id) ON DELETE CASCADE,
+                creator_id        INTEGER NOT NULL REFERENCES users(id)            ON DELETE CASCADE,
+                brand_id          INTEGER NOT NULL REFERENCES users(id)            ON DELETE CASCADE,
+                quantity          INTEGER NOT NULL DEFAULT 1,
+                revenue           INTEGER NOT NULL DEFAULT 0,
+                commission_amount INTEGER NOT NULL DEFAULT 0,
+                external_order_id TEXT,
+                status            TEXT    NOT NULL DEFAULT 'pending'
+                                      CHECK(status IN ('pending','approved','paid','refunded')),
+                recorded_at       TEXT    NOT NULL DEFAULT to_char(now(),'YYYY-MM-DD HH24:MI:SS'),
+                paid_at           TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_asales_code    ON affiliate_sales(affiliate_code_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_asales_creator ON affiliate_sales(creator_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_asales_status  ON affiliate_sales(status)")
+
+        # deals — affiliate columns (new tables above must exist first for FK refs)
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS deal_type    TEXT NOT NULL DEFAULT 'campaign'")
+        conn.execute("ALTER TABLE deals ADD COLUMN IF NOT EXISTS affiliate_id INTEGER REFERENCES affiliates(id) ON DELETE SET NULL")
+        # Make campaign_id nullable — affiliate deals have no campaign.
+        # DROP NOT NULL is a no-op in PG if the column is already nullable, so safe to repeat.
+        conn.execute("ALTER TABLE deals ALTER COLUMN campaign_id DROP NOT NULL")
+
+        # payments — affiliate columns (affiliate_sales must exist first for FK ref)
+        conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_type      TEXT NOT NULL DEFAULT 'upfront'")
+        conn.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS affiliate_sale_id INTEGER REFERENCES affiliate_sales(id) ON DELETE SET NULL")
+
         conn.commit()
 
 
@@ -800,6 +865,59 @@ def _init_sqlite():
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_cs_deal    ON content_submissions(deal_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_cs_creator ON content_submissions(creator_id)")
+
+        # ── Affiliate tables ──────────────────────────────────────────────────
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS affiliates (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                brand_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name            TEXT    NOT NULL,
+                description     TEXT,
+                niche           TEXT,
+                commission_rate INTEGER NOT NULL DEFAULT 0,
+                status          TEXT    NOT NULL DEFAULT 'active'
+                                    CHECK(status IN ('active','paused','closed')),
+                created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_affiliates_brand  ON affiliates(brand_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_affiliates_status ON affiliates(status)")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS affiliate_codes (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                affiliate_id INTEGER NOT NULL REFERENCES affiliates(id) ON DELETE CASCADE,
+                creator_id   INTEGER NOT NULL REFERENCES users(id)      ON DELETE CASCADE,
+                code         TEXT    NOT NULL UNIQUE,
+                created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(affiliate_id, creator_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_acodes_affiliate ON affiliate_codes(affiliate_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_acodes_creator   ON affiliate_codes(creator_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_acodes_code      ON affiliate_codes(code)")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS affiliate_sales (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                affiliate_code_id INTEGER NOT NULL REFERENCES affiliate_codes(id) ON DELETE CASCADE,
+                creator_id        INTEGER NOT NULL REFERENCES users(id)            ON DELETE CASCADE,
+                brand_id          INTEGER NOT NULL REFERENCES users(id)            ON DELETE CASCADE,
+                quantity          INTEGER NOT NULL DEFAULT 1,
+                revenue           INTEGER NOT NULL DEFAULT 0,
+                commission_amount INTEGER NOT NULL DEFAULT 0,
+                external_order_id TEXT,
+                status            TEXT    NOT NULL DEFAULT 'pending'
+                                      CHECK(status IN ('pending','approved','paid','refunded')),
+                recorded_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+                paid_at           TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_asales_code    ON affiliate_sales(affiliate_code_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_asales_creator ON affiliate_sales(creator_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_asales_status  ON affiliate_sales(status)")
+
         conn.commit()
 
     _migrate_deal_statuses()
@@ -850,6 +968,11 @@ def _init_sqlite():
     _add_column_if_missing("deals",          "final_due",                "TEXT")
     _add_column_if_missing("deals",          "docuseal_creator_slug",    "TEXT")
     _add_column_if_missing("deals",          "docuseal_brand_slug",      "TEXT")
+    # Affiliate support — recreate deals table (makes campaign_id nullable, adds deal_type)
+    # then add new payment columns
+    _migrate_sqlite_affiliate_support()
+    _add_column_if_missing("payments", "payment_type",      "TEXT NOT NULL DEFAULT 'upfront'")
+    _add_column_if_missing("payments", "affiliate_sale_id", "INTEGER")
 
 
 def _migrate_deal_statuses():
@@ -947,6 +1070,73 @@ def _migrate_sqlite_payout_status():
         conn.execute(f"INSERT INTO deals_v3 ({col_list}) SELECT {col_list} FROM deals")
         conn.execute("DROP TABLE deals")
         conn.execute("ALTER TABLE deals_v3 RENAME TO deals")
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.commit()
+
+
+def _migrate_sqlite_affiliate_support():
+    """
+    SQLite only — makes deals.campaign_id nullable and adds deal_type / affiliate_id.
+    Recreates the deals table as deals_v4.  Safe to run multiple times.
+    """
+    with get_conn() as conn:
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(deals)").fetchall()}
+        if "deal_type" in cols:
+            return  # already migrated
+
+        conn.execute("PRAGMA foreign_keys = OFF")
+        # deals_v4: campaign_id is now nullable; new deal_type + affiliate_id columns added.
+        # All columns from deals_v3 are preserved so the INSERT below copies existing data.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS deals_v4 (
+                id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+                campaign_id              INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
+                creator_id               INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+                brand_id                 INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+                status                   TEXT    NOT NULL DEFAULT 'pending'
+                    CHECK(status IN ('pending','active','declined','completed','payout_complete')),
+                amount                   INTEGER NOT NULL DEFAULT 0,
+                terms                    TEXT,
+                deal_type                TEXT    NOT NULL DEFAULT 'campaign',
+                affiliate_id             INTEGER REFERENCES affiliates(id) ON DELETE SET NULL,
+                created_at               TEXT    NOT NULL DEFAULT (datetime('now')),
+                updated_at               TEXT    NOT NULL DEFAULT (datetime('now')),
+                contract_document_id     TEXT,
+                contract_status          TEXT    DEFAULT 'none',
+                num_posts                INTEGER DEFAULT 1,
+                deadline                 TEXT,
+                usage_rights_duration    TEXT    DEFAULT '1 year',
+                exclusivity_terms        TEXT    DEFAULT 'None',
+                brand_signed             INTEGER DEFAULT 0,
+                brand_signed_at          TEXT,
+                creator_signed           INTEGER DEFAULT 0,
+                creator_signed_at        TEXT,
+                contract_completed_url   TEXT,
+                contract_sent_at         TEXT,
+                signed_contract_url      TEXT,
+                brand_terms_confirmed    INTEGER DEFAULT 0,
+                creator_terms_confirmed  INTEGER DEFAULT 0,
+                brand_marked_complete    INTEGER DEFAULT 0,
+                creator_marked_complete  INTEGER DEFAULT 0,
+                stripe_payment_intent_id TEXT,
+                reminders_sent           INTEGER DEFAULT 0,
+                last_reminder_sent       TEXT,
+                needs_review             INTEGER DEFAULT 0,
+                first_draft_due          TEXT,
+                revision_due             TEXT,
+                final_due                TEXT,
+                docuseal_creator_slug    TEXT,
+                docuseal_brand_slug      TEXT
+            )
+        """)
+        # Copy only columns present in both old and new table; new columns get defaults
+        old_cols = [r["name"] for r in conn.execute("PRAGMA table_info(deals)").fetchall()]
+        new_cols = {r["name"] for r in conn.execute("PRAGMA table_info(deals_v4)").fetchall()}
+        shared   = [c for c in old_cols if c in new_cols]
+        col_list = ", ".join(shared)
+        conn.execute(f"INSERT INTO deals_v4 ({col_list}) SELECT {col_list} FROM deals")
+        conn.execute("DROP TABLE deals")
+        conn.execute("ALTER TABLE deals_v4 RENAME TO deals")
         conn.execute("PRAGMA foreign_keys = ON")
         conn.commit()
 
