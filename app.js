@@ -8942,3 +8942,67 @@ async function _loadAllCreatorsForSearch() {
   }
   return _allCreatorsCache;
 }
+
+// ── Creator Affiliate Page ────────────────────────────────────────────────
+async function renderCreatorAffiliates() {
+  const el = document.getElementById('creator-affiliate-list');
+  if (!el) return;
+  el.innerHTML = _affLoadingHtml();
+  try {
+    const programs = await apiGet('/api/affiliates/creator/enrolled');
+    if (!programs || !programs.length) {
+      el.innerHTML = `
+        <div class="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style="background:#f0fdb0;">
+            <svg class="w-7 h-7" fill="none" stroke="#0B1F4A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1">Not enrolled in any programs yet</h3>
+          <p class="text-sm text-gray-500 mb-2">When a brand enrolls you in their affiliate program, it'll show up here along with your discount code and earnings.</p>
+        </div>`;
+      return;
+    }
+    el.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${programs.map(_creatorAffiliateCard).join('')}</div>`;
+  } catch (err) {
+    el.innerHTML = `<div class="text-center py-10 text-red-500 text-sm">${escHtml(err.message)}</div>`;
+  }
+}
+
+function _creatorAffiliateCard(p) {
+  const earned    = ((p.total_earned || 0) / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const pending   = ((p.pending_commission || 0) / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const statusColor = p.status === 'active' ? '#16a34a' : '#6b7280';
+  const statusBg    = p.status === 'active' ? '#f0fdf4'  : '#f9fafb';
+  return `
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition">
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <h3 class="font-bold text-gray-900 text-base leading-tight">${escHtml(p.program_name)}</h3>
+          <p class="text-xs text-gray-500 mt-0.5">${escHtml(p.brand_name || 'Brand')}</p>
+        </div>
+        <span class="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0" style="background:${statusBg};color:${statusColor};">${p.status === 'active' ? 'Active' : 'Inactive'}</span>
+      </div>
+
+      <!-- Discount code -->
+      <div class="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl" style="background:#f0fdb0;">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="#0B1F4A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+        <span class="text-sm font-bold tracking-wide" style="color:#0B1F4A;">${escHtml(p.discount_code || '—')}</span>
+        <span class="text-xs text-gray-500 ml-auto">Your code</span>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div>
+          <p class="text-lg font-extrabold text-gray-900">${p.commission_rate}%</p>
+          <p class="text-xs text-gray-400">Commission</p>
+        </div>
+        <div>
+          <p class="text-lg font-extrabold text-gray-900">${earned}</p>
+          <p class="text-xs text-gray-400">Total Earned</p>
+        </div>
+        <div>
+          <p class="text-lg font-extrabold" style="color:#ca8a04;">${pending}</p>
+          <p class="text-xs text-gray-400">Pending</p>
+        </div>
+      </div>
+    </div>`;
+}
