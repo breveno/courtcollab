@@ -8442,3 +8442,448 @@ function whyCarouselGoto(id, i) {
   _whyCarousel[id].index = i;
   _whyCarouselRender(id);
 }
+
+// =============================================================================
+// AFFILIATE PROGRAMS
+// All affiliate functionality is self-contained here. Zero existing functions
+// were modified. Communicates only with the new /api/affiliates/* endpoints.
+// =============================================================================
+
+let _currentAffiliateId   = null;   // program open in the detail modal
+let _currentAffiliate     = null;   // full program object
+let _affiliateCreatorSearch = [];   // search results for enroll modal
+
+// ── Portal page ───────────────────────────────────────────────────────────────
+
+async function renderAffiliatePortal() {
+  const el = document.getElementById('affiliate-portal-list');
+  if (!el) return;
+  el.innerHTML = _affLoadingHtml();
+  try {
+    const programs = await apiGet('/api/affiliates');
+    if (!programs.length) {
+      el.innerHTML = `
+        <div class="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style="background:#f0fdb0;">
+            <svg class="w-7 h-7" fill="none" stroke="#0B1F4A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          </div>
+          <h3 class="font-bold text-gray-900 mb-1">No affiliate programs yet</h3>
+          <p class="text-sm text-gray-500 mb-5">Create your first program to start enrolling creators and tracking commission sales.</p>
+          <button onclick="openModal('create-affiliate-modal')" class="px-5 py-2.5 rounded-xl font-semibold text-sm transition" style="background:#0B1F4A;color:white;">
+            Create First Program
+          </button>
+        </div>`;
+      return;
+    }
+    el.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${programs.map(_affiliateProgramCard).join('')}</div>`;
+  } catch (err) {
+    el.innerHTML = `<div class="text-center py-10 text-red-500 text-sm">${escHtml(err.message)}</div>`;
+  }
+}
+
+function _affiliateProgramCard(p) {
+  const statusColor = p.status === 'active' ? '#16a34a' : p.status === 'paused' ? '#ca8a04' : '#6b7280';
+  const statusBg    = p.status === 'active' ? '#f0fdf4' : p.status === 'paused' ? '#fefce8' : '#f9fafb';
+  const commission  = ((p.total_commission || 0) / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  return `
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 hover:border-gray-200 transition cursor-pointer"
+         onclick="openAffiliateDetail(${p.id})">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex-1 min-w-0">
+          <h3 class="font-bold text-gray-900 truncate">${escHtml(p.name)}</h3>
+          ${p.niche ? `<p class="text-xs text-gray-400 mt-0.5">${escHtml(p.niche)}</p>` : ''}
+        </div>
+        <span class="ml-3 flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
+              style="background:${statusBg};color:${statusColor};">
+          ${p.status.charAt(0).toUpperCase() + p.status.slice(1)}
+        </span>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <div class="text-center">
+          <p class="font-bold text-gray-900">${p.commission_rate}%</p>
+          <p class="text-xs text-gray-400">Commission</p>
+        </div>
+        <div class="text-center">
+          <p class="font-bold text-gray-900">${p.enrolled_count || 0}</p>
+          <p class="text-xs text-gray-400">Creators</p>
+        </div>
+        <div class="text-center">
+          <p class="font-bold text-gray-900">${p.total_sales || 0}</p>
+          <p class="text-xs text-gray-400">Sales</p>
+        </div>
+        <div class="text-center ml-auto">
+          <p class="font-bold" style="color:#0B1F4A;">${commission}</p>
+          <p class="text-xs text-gray-400">Commission paid</p>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Detail modal ──────────────────────────────────────────────────────────────
+
+async function openAffiliateDetail(affiliateId) {
+  _currentAffiliateId = affiliateId;
+  _currentAffiliate   = null;
+  openModal('affiliate-detail-modal');
+  document.getElementById('aff-detail-name').textContent = 'Loading…';
+  document.getElementById('aff-detail-meta').textContent = '';
+  document.getElementById('aff-creators-list').innerHTML = _affLoadingHtml();
+  document.getElementById('aff-sales-list').innerHTML    = _affLoadingHtml();
+  showAffiliateTab('creators');
+  try {
+    const [program, creators, sales] = await Promise.all([
+      apiGet(`/api/affiliates/${affiliateId}`),
+      apiGet(`/api/affiliates/${affiliateId}/creators`),
+      apiGet(`/api/affiliates/${affiliateId}/sales`),
+    ]);
+    _currentAffiliate = program;
+    document.getElementById('aff-detail-name').textContent = program.name;
+    document.getElementById('aff-detail-meta').textContent =
+      `${program.commission_rate}% commission · ${program.status}${program.niche ? ' · ' + program.niche : ''}`;
+    _renderAffiliateCreators(creators);
+    _renderAffiliateSales(sales, program.commission_rate);
+  } catch (err) {
+    document.getElementById('aff-creators-list').innerHTML =
+      `<p class="text-center text-sm text-red-500 py-6">${escHtml(err.message)}</p>`;
+  }
+}
+
+function showAffiliateTab(tab) {
+  const isCreators = tab === 'creators';
+  document.getElementById('aff-panel-creators').classList.toggle('hidden', !isCreators);
+  document.getElementById('aff-panel-sales').classList.toggle('hidden', isCreators);
+  document.getElementById('aff-tab-creators').className =
+    isCreators
+      ? 'px-4 py-2 text-sm font-medium border-b-2 border-pickle-600 text-pickle-700 -mb-px transition'
+      : 'px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px transition';
+  document.getElementById('aff-tab-sales').className =
+    !isCreators
+      ? 'px-4 py-2 text-sm font-medium border-b-2 border-pickle-600 text-pickle-700 -mb-px transition'
+      : 'px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px transition';
+}
+
+function _renderAffiliateCreators(creators) {
+  const el = document.getElementById('aff-creators-list');
+  if (!creators.length) {
+    el.innerHTML = `<p class="text-center text-sm text-gray-400 py-8">No creators enrolled yet. Click "Enroll Creator" to get started.</p>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs text-gray-400 border-b border-gray-100">
+            <th class="pb-2 font-medium">Creator</th>
+            <th class="pb-2 font-medium">Code</th>
+            <th class="pb-2 font-medium text-right">Sales</th>
+            <th class="pb-2 font-medium text-right">Revenue</th>
+            <th class="pb-2 font-medium text-right">Pending</th>
+            <th class="pb-2 font-medium text-right">Paid</th>
+            <th class="pb-2"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          ${creators.map(c => `
+            <tr class="hover:bg-gray-50">
+              <td class="py-2.5 font-medium text-gray-900">${escHtml(c.creator_name)}</td>
+              <td class="py-2.5">
+                <span class="font-mono text-xs bg-gray-100 rounded px-2 py-1">${escHtml(c.code)}</span>
+              </td>
+              <td class="py-2.5 text-right text-gray-600">${c.total_sales || 0}</td>
+              <td class="py-2.5 text-right text-gray-600">${_fmtCents(c.total_revenue)}</td>
+              <td class="py-2.5 text-right text-yellow-600 font-medium">${_fmtCents(c.pending_commission)}</td>
+              <td class="py-2.5 text-right text-green-600 font-medium">${_fmtCents(c.paid_commission)}</td>
+              <td class="py-2.5 text-right">
+                <button onclick="removeAffiliateCreator(${_currentAffiliateId},${c.creator_id})"
+                  class="text-xs text-red-400 hover:text-red-600 transition">Remove</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function _renderAffiliateSales(sales, commissionRate) {
+  const el = document.getElementById('aff-sales-list');
+  if (!sales.length) {
+    el.innerHTML = `<p class="text-center text-sm text-gray-400 py-8">No sales recorded yet. Click "Record Sale" to add one.</p>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs text-gray-400 border-b border-gray-100">
+            <th class="pb-2 font-medium">Date</th>
+            <th class="pb-2 font-medium">Creator</th>
+            <th class="pb-2 font-medium">Code</th>
+            <th class="pb-2 font-medium text-right">Units</th>
+            <th class="pb-2 font-medium text-right">Revenue</th>
+            <th class="pb-2 font-medium text-right">Commission</th>
+            <th class="pb-2 font-medium">Status</th>
+            <th class="pb-2"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          ${sales.map(s => {
+            const statusColor = s.status === 'paid' ? '#16a34a' : s.status === 'pending' ? '#ca8a04' : '#6b7280';
+            const statusBg    = s.status === 'paid' ? '#f0fdf4' : s.status === 'pending' ? '#fefce8' : '#f9fafb';
+            const date        = s.recorded_at ? s.recorded_at.substring(0, 10) : '—';
+            return `
+              <tr class="hover:bg-gray-50">
+                <td class="py-2.5 text-gray-500 text-xs">${date}</td>
+                <td class="py-2.5 font-medium text-gray-900">${escHtml(s.creator_name)}</td>
+                <td class="py-2.5">
+                  <span class="font-mono text-xs bg-gray-100 rounded px-2 py-1">${escHtml(s.discount_code)}</span>
+                </td>
+                <td class="py-2.5 text-right text-gray-600">${s.quantity}</td>
+                <td class="py-2.5 text-right text-gray-600">${_fmtCents(s.revenue)}</td>
+                <td class="py-2.5 text-right font-medium" style="color:#0B1F4A;">${_fmtCents(s.commission_amount)}</td>
+                <td class="py-2.5">
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                        style="background:${statusBg};color:${statusColor};">
+                    ${s.status.charAt(0).toUpperCase() + s.status.slice(1)}
+                  </span>
+                </td>
+                <td class="py-2.5 text-right">
+                  ${s.status === 'pending'
+                    ? `<button onclick="approveAffiliateSale(${_currentAffiliateId},${s.id})"
+                         class="text-xs text-pickle-600 hover:text-pickle-800 font-medium transition">Approve</button>`
+                    : ''}
+                </td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ── Create program ────────────────────────────────────────────────────────────
+
+async function submitCreateAffiliate(e) {
+  e.preventDefault();
+  const btn  = document.getElementById('aff-create-submit');
+  const name = document.getElementById('aff-create-name').value.trim();
+  const rate = parseInt(document.getElementById('aff-create-rate').value);
+  const niche = document.getElementById('aff-create-niche').value.trim();
+  const desc  = document.getElementById('aff-create-desc').value.trim();
+  if (!name || !rate || rate < 1 || rate > 100) {
+    showToast('Please fill in a name and a commission rate between 1–100%', 'error'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    await apiPost('/api/affiliates', { name, commission_rate: rate, niche: niche || null, description: desc || null });
+    closeModal('create-affiliate-modal');
+    document.getElementById('aff-create-name').value = '';
+    document.getElementById('aff-create-rate').value = '';
+    document.getElementById('aff-create-niche').value = '';
+    document.getElementById('aff-create-desc').value = '';
+    showToast('Affiliate program created!', 'success');
+    renderAffiliatePortal();
+  } catch (err) {
+    showToast(err.message || 'Failed to create program', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Program';
+  }
+}
+
+// ── Edit program ──────────────────────────────────────────────────────────────
+
+function openEditAffiliateModal() {
+  if (!_currentAffiliate) return;
+  document.getElementById('aff-edit-id').value      = _currentAffiliate.id;
+  document.getElementById('aff-edit-name').value    = _currentAffiliate.name || '';
+  document.getElementById('aff-edit-rate').value    = _currentAffiliate.commission_rate || '';
+  document.getElementById('aff-edit-niche').value   = _currentAffiliate.niche || '';
+  document.getElementById('aff-edit-desc').value    = _currentAffiliate.description || '';
+  document.getElementById('aff-edit-status').value  = _currentAffiliate.status || 'active';
+  openModal('edit-affiliate-modal');
+}
+
+async function submitEditAffiliate(e) {
+  e.preventDefault();
+  const btn        = document.getElementById('aff-edit-submit');
+  const id         = parseInt(document.getElementById('aff-edit-id').value);
+  const name       = document.getElementById('aff-edit-name').value.trim();
+  const rate       = parseInt(document.getElementById('aff-edit-rate').value);
+  const niche      = document.getElementById('aff-edit-niche').value.trim();
+  const desc       = document.getElementById('aff-edit-desc').value.trim();
+  const status     = document.getElementById('aff-edit-status').value;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await apiPatch(`/api/affiliates/${id}`, { name, commission_rate: rate, niche: niche || null, description: desc || null, status });
+    closeModal('edit-affiliate-modal');
+    showToast('Program updated', 'success');
+    openAffiliateDetail(id);   // refresh detail modal
+    renderAffiliatePortal();   // refresh list
+  } catch (err) {
+    showToast(err.message || 'Failed to save changes', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  }
+}
+
+// ── Enroll creator ────────────────────────────────────────────────────────────
+
+function openEnrollCreatorModal() {
+  document.getElementById('enroll-creator-search').value  = '';
+  document.getElementById('enroll-creator-id').value      = '';
+  document.getElementById('enroll-creator-code').value    = '';
+  document.getElementById('enroll-creator-results').classList.add('hidden');
+  document.getElementById('enroll-creator-selected').classList.add('hidden');
+  _affiliateCreatorSearch = [];
+  openModal('enroll-creator-modal');
+}
+
+async function searchCreatorsForEnroll(query) {
+  const resultsEl  = document.getElementById('enroll-creator-results');
+  const selectedEl = document.getElementById('enroll-creator-selected');
+  document.getElementById('enroll-creator-id').value = '';
+  selectedEl.classList.add('hidden');
+  if (query.length < 2) { resultsEl.classList.add('hidden'); return; }
+  const all      = await _loadAllCreatorsForSearch();
+  const q        = query.toLowerCase();
+  const matches  = all.filter(c => (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q)).slice(0, 8);
+  if (!matches.length) {
+    resultsEl.innerHTML = '<p class="px-4 py-3 text-sm text-gray-400">No creators found</p>';
+  } else {
+    resultsEl.innerHTML = matches.map(c => `
+      <button type="button" onclick="selectEnrollCreator(${c.user_id || c.id},'${escHtml(c.name)}')"
+        class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2 transition">
+        <span class="w-7 h-7 rounded-full bg-lime-400 flex items-center justify-center text-xs font-bold text-gray-900 flex-shrink-0">
+          ${escHtml((c.name || '?').charAt(0).toUpperCase())}
+        </span>
+        <span class="font-medium text-gray-900">${escHtml(c.name)}</span>
+      </button>`).join('');
+  }
+  resultsEl.classList.remove('hidden');
+}
+
+function selectEnrollCreator(id, name) {
+  document.getElementById('enroll-creator-id').value       = id;
+  document.getElementById('enroll-creator-search').value   = name;
+  document.getElementById('enroll-creator-selected').textContent = `✓ Selected: ${name}`;
+  document.getElementById('enroll-creator-selected').classList.remove('hidden');
+  document.getElementById('enroll-creator-results').classList.add('hidden');
+}
+
+async function submitEnrollCreator(e) {
+  e.preventDefault();
+  const btn       = document.getElementById('enroll-creator-submit');
+  const creatorId = parseInt(document.getElementById('enroll-creator-id').value);
+  const code      = document.getElementById('enroll-creator-code').value.trim().toUpperCase();
+  if (!creatorId) { showToast('Please select a creator from the search results', 'error'); return; }
+  if (!code)      { showToast('Please enter a discount code', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Enrolling…';
+  try {
+    await apiPost(`/api/affiliates/${_currentAffiliateId}/creators`, { creator_id: creatorId, code });
+    closeModal('enroll-creator-modal');
+    showToast('Creator enrolled!', 'success');
+    openAffiliateDetail(_currentAffiliateId);
+  } catch (err) {
+    showToast(err.message || 'Failed to enroll creator', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enroll Creator';
+  }
+}
+
+async function removeAffiliateCreator(affiliateId, creatorId) {
+  if (!confirm('Remove this creator from the program? This cannot be undone if they have no pending sales.')) return;
+  try {
+    await apiDelete(`/api/affiliates/${affiliateId}/creators/${creatorId}`);
+    showToast('Creator removed', 'success');
+    openAffiliateDetail(affiliateId);
+  } catch (err) {
+    showToast(err.message || 'Could not remove creator', 'error');
+  }
+}
+
+// ── Record / approve sales ────────────────────────────────────────────────────
+
+function openRecordSaleModal() {
+  document.getElementById('sale-code').value      = '';
+  document.getElementById('sale-quantity').value  = '1';
+  document.getElementById('sale-revenue').value   = '';
+  document.getElementById('sale-order-id').value  = '';
+  document.getElementById('sale-commission-preview').classList.add('hidden');
+  // Wire up live commission preview
+  const revenueEl = document.getElementById('sale-revenue');
+  revenueEl.oninput = _updateSaleCommissionPreview;
+  openModal('record-sale-modal');
+}
+
+function _updateSaleCommissionPreview() {
+  const revenue  = parseFloat(document.getElementById('sale-revenue').value) || 0;
+  const rate     = _currentAffiliate?.commission_rate || 0;
+  const preview  = document.getElementById('sale-commission-preview');
+  const amountEl = document.getElementById('sale-commission-amount');
+  if (revenue > 0 && rate > 0) {
+    const commission = (revenue * rate / 100).toFixed(2);
+    amountEl.textContent = `$${commission}`;
+    preview.classList.remove('hidden');
+  } else {
+    preview.classList.add('hidden');
+  }
+}
+
+async function submitRecordSale(e) {
+  e.preventDefault();
+  const btn      = document.getElementById('record-sale-submit');
+  const code     = document.getElementById('sale-code').value.trim().toUpperCase();
+  const quantity = parseInt(document.getElementById('sale-quantity').value);
+  const revDollar = parseFloat(document.getElementById('sale-revenue').value);
+  const orderId  = document.getElementById('sale-order-id').value.trim();
+  if (!code)                    { showToast('Please enter the discount code', 'error'); return; }
+  if (!revDollar || revDollar <= 0) { showToast('Please enter a revenue amount', 'error'); return; }
+  const revenueCents = Math.round(revDollar * 100);
+  btn.disabled = true; btn.textContent = 'Recording…';
+  try {
+    await apiPost(`/api/affiliates/${_currentAffiliateId}/sales`, {
+      code, quantity, revenue: revenueCents, external_order_id: orderId || null,
+    });
+    closeModal('record-sale-modal');
+    showToast('Sale recorded!', 'success');
+    openAffiliateDetail(_currentAffiliateId);
+  } catch (err) {
+    showToast(err.message || 'Failed to record sale', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Record Sale';
+  }
+}
+
+async function approveAffiliateSale(affiliateId, saleId) {
+  try {
+    await apiPatch(`/api/affiliates/${affiliateId}/sales/${saleId}/approve`, {});
+    showToast('Sale marked as paid', 'success');
+    openAffiliateDetail(affiliateId);
+  } catch (err) {
+    showToast(err.message || 'Could not approve sale', 'error');
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function _fmtCents(cents) {
+  return ((cents || 0) / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
+
+function _affLoadingHtml() {
+  return `<div class="flex items-center justify-center gap-2 text-gray-400 text-sm py-10">
+    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+    </svg>Loading…</div>`;
+}
+
+// Cached creator list for enroll search (fetched once per modal open)
+let _allCreatorsCache = null;
+
+async function _loadAllCreatorsForSearch() {
+  if (_allCreatorsCache) return _allCreatorsCache;
+  try {
+    _allCreatorsCache = await apiGet('/api/creators');
+  } catch (_) {
+    _allCreatorsCache = [];
+  }
+  return _allCreatorsCache;
+}
